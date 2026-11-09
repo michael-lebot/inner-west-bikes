@@ -23,6 +23,11 @@ export default function TermsPage() {
 
       <h2>No affiliation</h2>
       <p>This site isn&apos;t affiliated with Lime, Hello, Ario, Inner West Council or Transport for NSW.</p>
+
+      {/* The map's "i" panel says the same; /list, which has no map, uses this data to choose a street (§7). */}
+      <h2>Map and address data</h2>
+      <p>© OpenStreetMap contributors.</p>
+      <p>© State of New South Wales (Spatial Services, DCS NSW), CC BY 4.0.</p>
     </>
   )
 }
