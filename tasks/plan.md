@@ -719,11 +719,16 @@ them.
 - **Does:** `GET /api/tags` returns `{ tags: PublicTag[] }` from `listLiveTags()` with `Cache-Control: no-store`.
   `lib/use-live-tags.ts`: fetch on mount, when the tab becomes visible or regains focus, every 5 minutes while
   visible, and after the page's own writes (an exported `refresh()`); every minute drop tags with `isExpired`.
+  JSON turns the two timestamps into strings, so `PublicTag` in `schemas.ts` becomes a Zod schema (`z.coerce.date()`
+  for `lastConfirmedAt` and `expiresAt`, the type inferred from it) and `use-live-tags.ts` parses the response
+  through it before any date logic runs.
   Sheet peek content: "N bikes in the graveyard", "Tags disappear 48 hours after the last sighting.", the operator
   key (`Legend.tsx` with `PinIcon` and counts).
 - **Accept:** the count updates within one refresh after a tag is expired with SQL; the response for 100 tags is
-  ≤ 15 KB gzipped (perf test inserts 100 tags with SQL); first paint never waits for this request.
-- **Files:** `app/api/tags/route.ts`, `lib/use-live-tags.ts`, `components/{Legend,MapScreen}.tsx`.
+  ≤ 15 KB gzipped (perf test inserts 100 tags with SQL); first paint never waits for this request. A unit test
+  parses a JSON-serialised tag through `PublicTag` and gets `Date` objects back.
+- **Files:** `app/api/tags/route.ts`, `lib/use-live-tags.ts`, `components/{Legend,MapScreen}.tsx`,
+  `packages/shared/src/schemas.ts`.
 - **Verify:** `pnpm e2e e2e/perf.spec.ts --project=pixel`.
 - **Depends:** 2.5.
 
