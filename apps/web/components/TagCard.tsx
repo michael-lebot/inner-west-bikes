@@ -1,6 +1,7 @@
 'use client'
 import { bikeName, PROBLEMS, type PublicTag, type TagJson } from '@iwb/shared'
 import { useEffect, useRef, useState } from 'react'
+import { SMALL } from './buttons'
 import { PinIcon } from './PinIcon'
 import { TagActions } from './TagActions'
 import { TagDetails } from './TagDetails'
@@ -73,7 +74,7 @@ export function TagCard({
             )}
           </span>
         </h2>
-        <button type="button" className="min-h-11 rounded-[10px] border border-edge px-4 font-bold" onClick={onClose}>
+        <button type="button" className={SMALL} onClick={onClose}>
           Close
         </button>
       </div>

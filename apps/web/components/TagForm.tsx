@@ -3,7 +3,7 @@ import { type Operator, OPERATORS, type Problem, PROBLEMS, type TagJson } from '
 import { type FormEvent, useState } from 'react'
 import { send } from '@/lib/send'
 import { announce } from './Announcer'
-import { PRIMARY, SECONDARY } from './buttons'
+import { PRIMARY, SECONDARY, SMALL } from './buttons'
 import { Dialog } from './Dialog'
 import { pinOn, type Spot } from './Placement'
 
@@ -73,11 +73,7 @@ export function TagForm({
       <form noValidate onSubmit={submit} className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="font-bold">{pinOn(spot)}</p>
-          <button
-            type="button"
-            className="min-h-11 rounded-[10px] border border-edge px-4 font-bold"
-            onClick={onChangeLocation}
-          >
+          <button type="button" className={SMALL} onClick={onChangeLocation}>
             Change location
           </button>
         </div>

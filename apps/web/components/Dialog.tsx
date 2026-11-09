@@ -1,6 +1,7 @@
 'use client'
 import { DIALOG_TOP_REM } from '@iwb/shared'
 import { type CSSProperties, useEffect, useRef } from 'react'
+import { SMALL } from './buttons'
 
 /**
  * A modal dialog (§10.4) on the native <dialog>: showModal() keeps Tab inside it and makes the rest of the page inert.
@@ -44,11 +45,7 @@ export function Dialog({
           <h2 id="dialog-heading" ref={heading} tabIndex={-1} className="text-lg font-bold">
             {title}
           </h2>
-          <button
-            type="button"
-            className="min-h-11 rounded-[10px] border border-edge px-4 font-bold"
-            onClick={onCancel}
-          >
+          <button type="button" className={SMALL} onClick={onCancel}>
             Cancel
           </button>
         </div>
