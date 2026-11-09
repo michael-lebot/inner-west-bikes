@@ -33,13 +33,8 @@ export function TagFlow({
 
   if (!spot) return null
   // Once added, the tag is among the live tags while its photo is sent: it is never one of these.
-  const nearby =
-    another === spot
-      ? []
-      : nearbyTags(
-          spot,
-          tags.filter((tag) => tag.id !== draft.id),
-        )
+  const others = tags.filter((tag) => tag.id !== draft.id)
+  const nearby = another === spot ? [] : nearbyTags(spot, others)
   return nearby.length ? (
     <MatchDialog tags={nearby} now={now} apply={apply} onNo={() => setAnother(spot)} onClose={onClose} />
   ) : (
