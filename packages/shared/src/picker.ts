@@ -6,6 +6,11 @@ import picker from '../data/picker.json'
 
 /** A corner's cross street or a house number, and where it is. */
 export type Place = [name: string, lat: number, lng: number]
+/**
+ * A house number as its suburb's file stores it: the step in 1e-5 degrees from the street's house before it, or from
+ * 0, 0 for the first, so it is a place only once `loadHouseNumbers` has added the steps up.
+ */
+export type EncodedPlace = [number: string, dLat: number, dLng: number]
 /** A street in one suburb, and its corners in order along it. */
 export type Street = { street: string; suburb: string; corners: Place[] }
 
@@ -34,8 +39,7 @@ export function searchStreets(query: string) {
 
 /** A street's house numbers, from its suburb's file. */
 export async function loadHouseNumbers({ street, suburb }: Street) {
-  const steps = ((await ADDRESSES[suburb]?.())?.default as Record<string, Place[]> | undefined)?.[street] ?? []
-  // Each point is the step from the one before, in 1e-5 degrees (scripts/build-data.ts).
+  const steps = ((await ADDRESSES[suburb]?.())?.default as Record<string, EncodedPlace[]> | undefined)?.[street] ?? []
   let [lat, lng] = [0, 0]
   return steps.map(([number, dLat, dLng]): Place => {
     lat += dLat

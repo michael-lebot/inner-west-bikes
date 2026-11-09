@@ -9,7 +9,7 @@ import { gzipSync } from 'node:zlib'
 import * as turf from '@turf/turf'
 import type { BBox, FeatureCollection, LineString, MultiPolygon, Point, Polygon, Position } from 'geojson'
 import { BOUNDARY_BUFFER_METERS, STREET_TYPES } from '../src/config.ts'
-import type { Place } from '../src/picker.ts'
+import type { EncodedPlace, Place } from '../src/picker.ts'
 
 /** The tiles cover this much past the council's bounding box: twice as far east and west, for wide screens. */
 const PAD_NS_METERS = 2000
@@ -247,7 +247,7 @@ function steps(byNumber: Map<string, Position>) {
   let [lat, lng] = [0, 0]
   return [...byNumber]
     .sort(([a], [b]) => (parseInt(a) % 2) - (parseInt(b) % 2) || parseInt(a) - parseInt(b) || a.localeCompare(b))
-    .map(([number, [x = 0, y = 0]]): Place => {
+    .map(([number, [x = 0, y = 0]]): EncodedPlace => {
       const [dLat, dLng] = [Math.round(y * 1e5) - lat, Math.round(x * 1e5) - lng]
       lat += dLat
       lng += dLng
