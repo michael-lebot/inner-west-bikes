@@ -117,9 +117,12 @@ test.describe('the tag page', () => {
   })
 })
 
-test('the text pages each have one h1, headings in order, and no axe violations', async ({ page }) => {
+test('the text pages each say the site is being built, have one h1 and headings in order, and pass axe', async ({
+  page,
+}) => {
   for (const path of ['/why', '/accessibility', '/privacy', '/terms']) {
     await page.goto(path)
+    await expect(page.getByRole('main'), path).toContainText('This site is still being built.')
     const levels = await page.locator('h1, h2, h3, h4').evaluateAll((headings) => headings.map((h) => +h.tagName[1]!))
     expect(levels[0], path).toBe(1)
     expect(

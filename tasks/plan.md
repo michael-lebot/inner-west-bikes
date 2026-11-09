@@ -541,9 +541,11 @@ budgets confirmed or reset.
   contact address placeholder, known limits); `/privacy` (§7 list: what is collected and how it is hashed,
   retention per §6, providers and regions, BotID signals, location used only in the browser, contact);
   `/terms` (§7 list: photos must show share bikes, people and plates not the subject, licence to display, removal
-  right, no affiliation). One centred column ≤ 70ch, `Footer` on each, both from the route group's layout.
-- **Accept:** each page has one `<h1>`, headings in order, and passes axe; copy contains no claim the build doesn't
-  implement.
+  right, no affiliation). One centred column ≤ 70ch, `Footer` on each, both from the route group's layout. The
+  copy is the launch copy, so the layout also shows "This site is still being built. This page describes how it will
+  work at launch." until task 6.7 removes it.
+- **Accept:** each page has one `<h1>`, headings in order, and passes axe; every page shows the still-being-built
+  notice, so no copy claims the current build does something it doesn't.
 - **Files:** `app/(text)/layout.tsx`, `app/(text)/{why,accessibility,privacy,terms}/page.tsx`.
 - **Verify:** `pnpm e2e e2e/pages.spec.ts`.
 - **Depends:** 1.4.
@@ -1276,11 +1278,12 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   cron 401 in production. **Launch checklist**: every item in Left for Michael. `docs/accessibility-checklist.md`:
   the §10.6, §12 and §13 manual checks as a ticklist per milestone. `docs/esafety.md`: the §7 one-page response
   procedure, with an empty "Classification" section for Michael. Review every `.env.example` against `env.ts`
-  files; update the README's Status section; re-read `/privacy` and `/terms` against what was built.
+  files; update the README's Status section; re-read `/accessibility`, `/privacy` and `/terms` against what was
+  built, then remove the "still being built" notice from `app/(text)/layout.tsx`.
 - **Accept:** every environment variable read in code appears in exactly one `.env.example` and the runbook; no
-  step in the runbook is needed for local dev or CI.
+  step in the runbook is needed for local dev or CI; the text pages no longer show the "still being built" notice.
 - **Files:** `docs/{launch,accessibility-checklist,esafety}.md`, `apps/*/.env.example`, `README.md`,
-  `app/{privacy,terms}/page.tsx` if copy changed.
+  `app/(text)/layout.tsx`, `app/(text)/{accessibility,privacy,terms}/page.tsx` if copy changed.
 - **Verify:** `grep -rhoE "env\.[A-Z_]+|NEXT_PUBLIC_[A-Z_]+" apps packages --include=*.ts | sort -u` compared with
   the `.env.example` files; `pnpm verify`.
 - **Depends:** 6.6.
