@@ -17,6 +17,17 @@ test('lists the recent tags and passes axe on both screens', async ({ page }) =>
   await expectNoAxeViolations(page)
 })
 
+test('has 44 px nav links with room for the whole focus ring', async ({ page }) => {
+  await page.goto('/tags')
+  for (const name of ['Reported photos', 'Tags']) {
+    const box = await page.getByRole('link', { name }).boundingBox()
+    expect(box?.width, name).toBeGreaterThanOrEqual(44)
+    expect(box?.height, name).toBeGreaterThanOrEqual(44)
+    // The ring is 3 px wide and 2 px out from the link, so it needs 5 px clear above it.
+    expect(box?.y, name).toBeGreaterThanOrEqual(5)
+  }
+})
+
 test('is never indexed and sends its security headers', async ({ request }) => {
   const headers = (await request.get('/tags')).headers()
   expect(headers['x-robots-tag']).toBe('noindex, nofollow')

@@ -14,12 +14,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <html lang="en-AU">
       <body className="bg-white text-ink">
-        <header className="bg-night px-4 text-white">
+        {/* py-1.5 leaves room for the 5 px focus ring above and below the links. */}
+        <header className="bg-night px-4 py-1.5 text-white">
           <nav aria-label="Admin" className="flex gap-6">
             <Link href="/reports" className="flex min-h-11 items-center underline underline-offset-2">
               Reported photos
             </Link>
-            <Link href="/tags" className="flex min-h-11 items-center underline underline-offset-2">
+            <Link
+              href="/tags"
+              className="flex min-h-11 min-w-11 items-center justify-center underline underline-offset-2"
+            >
               Tags
             </Link>
           </nav>
