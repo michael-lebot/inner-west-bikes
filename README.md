@@ -51,6 +51,9 @@ pnpm exec playwright install chromium webkit            # once, for the end-to-e
 | `pnpm lhci`      | Lighthouse CI on `/` and `/list`, after `pnpm e2e`                                |
 | `pnpm verify`    | All of the above from `lint` on, in that order                                    |
 
+The hourly job (retention) runs on Vercel Cron in production. Locally, run it with
+`curl -H "Authorization: Bearer dev-cron-secret" localhost:3000/api/cron/hourly`.
+
 ## Map data
 
 - **Tiles:** `pnpm tiles` runs [`apps/web/scripts/fetch-tiles.sh`](apps/web/scripts/fetch-tiles.sh), which needs the
@@ -71,7 +74,8 @@ pnpm exec playwright install chromium webkit            # once, for the end-to-e
 
 - **Council, suburbs, streets and house numbers:** the committed files in `packages/shared/data/` come from NSW
   Spatial Services. `pnpm --filter @iwb/shared data:fetch` downloads them again (about 50 MB, two minutes) and
-  `data:build` rebuilds the files.
+  `data:build` rebuilds the files: `places.json` for placing a tag, and for Choose by street `picker.json` (every
+  street with its corners) and `addresses/<suburb>.json` (its house numbers).
 - **Preview image:** `pnpm dev` and `pnpm build` first draw `apps/web/public/preview.webp` (git-ignored) from that
   data with [`apps/web/scripts/build-preview.ts`](apps/web/scripts/build-preview.ts). The map screen shows it until
   the map is ready, and keeps it if the map can't load.
