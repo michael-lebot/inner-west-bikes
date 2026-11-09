@@ -429,7 +429,10 @@ budgets confirmed or reset.
 #### Task 1.1 — Workspace and tooling (M)
 - **Does:** root `package.json` (`packageManager: pnpm@9.15.9`, `engines.node: ">=24"`, the root scripts in §1.7),
   `pnpm-workspace.yaml`, `turbo.json` (tasks `build`, `typecheck`, `test`, `dev`; declare `NEXT_PUBLIC_*` in `env`
-  and `DATABASE_URL`, `TEST_DATABASE_URL`, `CI` in `passThroughEnv`, because Turbo 2 hides undeclared variables),
+  and `DATABASE_URL`, `TEST_DATABASE_URL`, `CI` in `passThroughEnv`, because Turbo 2 hides undeclared variables;
+  `build`, `typecheck` and `test` depend on the same task in their workspace dependencies (`^`), because the packages
+  ship source with no build, and without that edge a package change would not invalidate the apps' cached results;
+  `tsconfig.base.json` is a global dependency),
   `tsconfig.base.json` (strict, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`, `moduleResolution: bundler`),
   `eslint.config.mjs` (flat: `eslint-config-next` core-web-vitals and typescript, with the Pages Router rule
   `no-html-link-for-pages` off, plus the import rules of §1.3 and the `process.env` rule of §1.6), `.prettierrc`
