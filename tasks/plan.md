@@ -978,6 +978,11 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   nothing needs truncating; `proxy.test.ts` checks the cookie over HTTPS. The web app's `vitest.config.ts` reuses
   `packages/server/test/global-setup.ts`, which now runs Prisma from its own folder.
   Measured: the BotID client is 2.2 KB gzipped, and the map page's JavaScript before the map is 145,856 B of 153,600.
+  Revisited in PR 3's review: with all of PR 3 in the first load, Lighthouse's LCP on `/` measured 2,555 to 2,571 ms
+  against 2,500, as its model charges the preview for every byte loaded with it (task 2.9). `instrumentation-client.ts`
+  now loads the BotID client with `import()` after the page's own scripts, since nothing is written before a visitor
+  fills in a form: LCP 2,413 to 2,448 ms, and 145,813 B of JavaScript before the map. A build with
+  `NEXT_PUBLIC_VERCEL_ENV` set still fetches the client and calls `initBotId`.
 - **Accept:** route tests (Vitest, real Postgres, `vi.mock('@/lib/bot')`): a bot gets 403 and no database row is
   written; invalid JSON or fields → 400 with the error shape; outside the buffer → 422; a non-live tag → 410
   `tag_gone`; over a limit → 429 with `Retry-After`; every response has `Cache-Control: no-store`.
