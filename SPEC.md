@@ -10,7 +10,7 @@
 >   - It drops the CDN cache for tag data (§11.3) and protects the hourly job (§5.4).
 >   - It fixes the placement, dialog and sheet behaviour that conflicted with the accessibility target (§3, §10,
 >     §12).
->   - Rulings applied provisionally, which need Michael's confirmation, are listed in §14.
+>   - It made five rulings on open product questions. Michael has confirmed all five (§2).
 > - **Rev 5** records Michael's decisions after that review:
 >   - **Use my location** as a third way to place a pin (§4.1);
 >   - a handle that shrinks the tag card with a tap or a flick (§12);
@@ -47,8 +47,11 @@ operators, and has no reporting channel of its own.
 | Map realism | **Real streets and real street names, with a retro game skin**. Must be accurate enough to walk to |
 | Placing a tag | Three ways: **tap the map**; **Use my location**, which proposes a pin to confirm; or pick a street and then a house number or the nearest corner, which needs no map (§4.1, §10.3). Tags up to **20 m outside the council boundary** are accepted |
 | Tag fields | Operator picker + problem pick-list + optional photo. **No free text** is stored or published |
-| "Removed" | Instant, but **rate-limited per visitor**. Every removal is logged so the admin can undo it, until the tag's 48 hours run out (§4.2) |
-| Photo screening | **Published instantly**. Community reports are the safety net; no automated scan. The risk this leaves is recorded in §6 |
+| "Removed" | Instant, but **rate-limited per visitor**. Every removal is logged so the admin can undo it. An undo gives the tag back only the time it had left, and **can't revive it once its 48 hours have run out**; the bike has to be tagged again (§4.2) |
+| Bikes close together | A tag within about 25 m of another is **a suggestion, never a block**. The visitor is asked "Is it one of these?" and can always add a separate tag (§4.2) |
+| Photo screening | **Published instantly**. Community reports are the safety net; no automated scan. The risk this leaves is accepted and recorded in §6 |
+| Reported photos | A reported photo **stops loading from the next request**. Pages that already had it open catch up within 5 minutes (§4.3) |
+| Paused photo uploads | After a flood of reports, uploads **stay off until Michael resumes them**. There is no automatic restart (§4.6) |
 | Report review | **Email alert + a protected admin page** |
 | Hosting | New projects inside StoryCraft's existing Vercel team and its **Vercel-managed Neon organisation, which is on the paid Launch plan** (verified, §5) |
 | Cost tracker and contributions | **Dropped.** Estimated running cost is about A$1.50–4 a week. Revisit only if that changes (§4.5) |
@@ -936,17 +939,7 @@ keyboard. The layout is the fourth screen in `docs/mockups/graveyard-v3.html`.
    public-visibility only, but it helps the bike actually get moved. The contact details are in Appendix B.
 3. **Domain:** which one to buy, for example a `.com.au` or `.au` built on "ebikegraveyard". Availability hasn't been
    checked.
-4. **Rulings applied provisionally in rev 4.** Each is written into the spec as if decided. Michael to confirm or
-   reverse:
-   - **Undo after expiry:** an undo gives a tag back only the time it had left, and can't revive it once its 48 hours
-     have run out. A fresh sighting is needed instead (§4.2).
-   - **"Hidden immediately":** a reported photo stops loading from the next request. Pages that already had it open
-     catch up within 5 minutes (§4.3).
-   - **Bikes close together:** a nearby tag is a suggestion, and the visitor can always say "No, it's another bike"
-     (§4.2).
-   - **Instant photos:** kept, with the risk written down in §6.
-   - **Paused uploads** stay paused until Michael resumes them, with no automatic restart (§4.6).
-5. **Address data licence:** the NSW record says "Creative Commons" without a version. Confirm CC BY 4.0 with Spatial
+4. **Address data licence:** the NSW record says "Creative Commons" without a version. Confirm CC BY 4.0 with Spatial
    Services before launch (§4.1).
 
 ## 15. Milestones
