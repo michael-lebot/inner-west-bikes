@@ -418,7 +418,7 @@ These are exit criteria for M2 and M3 (§15). They run in Vitest against a real 
   Undo is refused after `expires_at`.
 - **Two at once:** two simultaneous requests can't take a visitor past a rate limit. Two simultaneous Removed
   requests write one removal.
-- **Repeats:** sending each kind of write again with the same ID returns the first result, with one event, one
+- **Repeats:** sending each kind of write again with the same ID returns the current state, with one event, one
   rate-limit count and one email.
 - **Photo and tag together:** report → remove → undo leaves the photo hidden. A photo URL returns 404 once its tag
   is removed, expired or taken down. A restored photo isn't hidden by a later report.
@@ -873,7 +873,7 @@ under 100 visits a day there may be too little data to judge these, so they are 
     both are optional;
   - the photo input lets iOS and Android offer camera or library.
 - **Poor connections:**
-  - Every write carries an ID made in the browser, and the server returns the first result for a repeat, so a retry
+  - Every write carries an ID made in the browser, and the server returns the current state for a repeat, so a retry
     can't act twice (§5.3).
   - Network failures and server errors are retried up to three times with backoff, and the form keeps its state.
   - The tag and its photo are sent separately. If only the photo fails, the tag is kept and the photo can be retried
