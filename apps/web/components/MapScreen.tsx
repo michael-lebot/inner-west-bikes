@@ -92,13 +92,7 @@ export function MapScreen() {
 
   return (
     <>
-      {/* Around the preview, the grey the map draws outside the council. */}
-      <section
-        aria-label="Map"
-        aria-describedby="map-summary"
-        className="relative min-h-0 flex-1 overflow-clip"
-        style={{ backgroundColor: GREYS[2] }}
-      >
+      <section aria-label="Map" aria-describedby="map-summary" className="relative min-h-0 flex-1 overflow-clip">
         <a
           href="#sheet"
           className="absolute top-2 left-2 z-10 rounded-[10px] bg-white px-3 py-2.5 font-bold not-focus:sr-only"
@@ -123,12 +117,14 @@ export function MapScreen() {
         )}
         {status !== 'ready' && (
           <>
+            {/* Around the preview, the grey the map draws outside the council, opaque over the map loading under it. */}
             {/* eslint-disable-next-line @next/next/no-img-element -- a static file sized by CSS: next/image would only add JavaScript */}
             <img
               src="/preview.webp"
               alt=""
               fetchPriority="high"
               className="absolute inset-0 h-full w-full object-contain p-2"
+              style={{ backgroundColor: GREYS[2] }}
             />
             <p role="status" className="absolute inset-x-2 top-2 w-fit rounded-[10px] bg-white px-3 py-2">
               {status === 'failed' ? (

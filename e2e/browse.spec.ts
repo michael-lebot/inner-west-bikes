@@ -80,6 +80,25 @@ test('offers the list when the tiles fail to load', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
+test('keeps the preview framed in the outside grey while the map loads behind it', async ({ page }) => {
+  let release!: () => void
+  const held = new Promise<void>((resolve) => (release = resolve))
+  await page.route('**/*.pmtiles', async (route) => {
+    await held
+    await route.continue()
+  })
+  await page.goto('/')
+  // MapLibre has started drawing (its water-blue background) under the preview.
+  await expect(page.locator('.maplibregl-canvas')).toBeAttached()
+  const corner = await page.evaluate(() => {
+    const map = document.querySelector('[aria-label="Map"]')!.getBoundingClientRect()
+    const top = document.elementFromPoint(map.left + 1, map.bottom - 1)!
+    return [top.tagName, getComputedStyle(top).backgroundColor]
+  })
+  expect(corner).toEqual(['IMG', 'rgb(110, 110, 122)'])
+  release()
+})
+
 test('leaves the map for another page without a script error', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
