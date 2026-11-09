@@ -171,10 +171,11 @@ test('keeps every map control in sight and the count above the fold at twice the
   await expect(page.locator('[data-map-ready]')).toBeAttached()
   // The largest text a phone's settings allow, which scales every rem.
   await page.addStyleTag({ content: ':root { font-size: 200% }' })
+  await page.getByRole('button', { name: 'Move map' }).click()
 
   const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
   const boxes = await Promise.all(
-    ['Zoom in', 'Zoom out', 'Move map', 'About this map'].map(
+    ['Zoom in', 'Zoom out', 'Move map', 'About this map', 'Move up', 'Move left', 'Move right', 'Move down'].map(
       async (name) => (await page.getByRole('button', { name, exact: true }).boundingBox())!,
     ),
   )

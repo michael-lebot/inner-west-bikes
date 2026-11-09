@@ -14,11 +14,12 @@ const Icon = ({ d }: { d: string }) => (
   </svg>
 )
 
-// Each arrow moves the map half of what is visible: [label, x, y, where it sits, icon].
+// Each arrow moves the map half of what is visible: [label, x, y, where it sits, icon]. The right arrow sits beside
+// the zoom column, not in it: on a short map, halfway down is where Move map is.
 const ARROWS = [
   ['Move up', 0, -1, 'top-2 left-1/2 -translate-x-1/2', 'M6 15l6-6 6 6'],
   ['Move left', -1, 0, 'top-1/2 left-2 -translate-y-1/2', 'M15 6l-6 6 6 6'],
-  ['Move right', 1, 0, 'top-1/2 right-2 -translate-y-1/2', 'M9 6l6 6-6 6'],
+  ['Move right', 1, 0, 'top-1/2 right-[calc(1rem+44px)] -translate-y-1/2', 'M9 6l6 6-6 6'],
   ['Move down', 0, 1, 'bottom-2 left-1/2 -translate-x-1/2', 'M6 9l6 6 6-6'],
 ] as const
 
