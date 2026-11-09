@@ -77,6 +77,9 @@ test.describe('placing the pin', () => {
       expect(Math.abs(at.y - spot.y)).toBeLessThanOrEqual(1)
     }
     await expect(page.locator('#announcer')).toHaveText(await bar(page).innerText())
+    // The pin only shows the spot the bar reads back: a screen reader meets no button in it.
+    await expect(newPin(page)).not.toHaveAttribute('role')
+    await expect(newPin(page)).toHaveAccessibleName('')
     await expect(page.getByRole('button', { name: 'Use this spot' })).toBeEnabled()
     await expectNoAxeViolations(page)
   })

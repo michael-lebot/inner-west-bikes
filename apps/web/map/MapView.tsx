@@ -235,6 +235,9 @@ function SpotPin({ map, spot }: { map: maplibregl.Map; spot: { lat: number; lng:
 
   useEffect(() => {
     const marker = new maplibregl.Marker({ element, anchor: 'bottom' }).setLngLat([spot.lng, spot.lat]).addTo(map)
+    // MapLibre makes the marker a button named "Map marker"; this pin only shows the spot the bar reads back.
+    element.removeAttribute('role')
+    element.removeAttribute('aria-label')
     return () => void marker.remove()
   }, [map, element, spot.lng, spot.lat])
 
