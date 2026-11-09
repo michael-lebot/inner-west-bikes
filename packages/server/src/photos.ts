@@ -108,13 +108,13 @@ export async function openAnyPhoto(id: string) {
 /** Marks the photos `which` picks deleted, then deletes their files, so a half-deleted photo is never served (§4.3). */
 async function deletePhotos(which: Prisma.Sql) {
   const deleted = await db.$queryRaw<{ blobPath: string; thumbPath: string }[]>`
-    UPDATE photos SET status = 'deleted', deleted_at = now() WHERE status <> 'deleted' AND ${which}
+    UPDATE photos SET status = 'deleted', deleted_at = coalesce(deleted_at, now()) WHERE ${which}
     RETURNING blob_path AS "blobPath", thumb_path AS "thumbPath"`
   await deleteFiles(deleted.flatMap((photo) => [photo.blobPath, photo.thumbPath]))
   return deleted.length
 }
 
-/** Take down (§4.2): the tag's photo goes at once. */
+/** Take down (§4.2): the tag's photo goes at once. One deleted already has its files deleted again, if that failed. */
 export const deleteTagPhoto = (tagId: string) => deletePhotos(Prisma.sql`tag_id = ${tagId}::uuid`)
 
 /**
@@ -122,23 +122,24 @@ export const deleteTagPhoto = (tagId: string) => deletePhotos(Prisma.sql`tag_id 
  * tags are locked first, so a Still there in progress is waited for, and a tag it brought back keeps its photo.
  */
 export const deleteExpiredPhotos = () =>
-  deletePhotos(Prisma.sql`tag_id IN (
+  deletePhotos(Prisma.sql`status <> 'deleted' AND tag_id IN (
     SELECT id FROM tags
     WHERE expires_at <= now()
       AND EXISTS (SELECT 1 FROM photos kept WHERE kept.tag_id = tags.id AND kept.status <> 'deleted')
     FOR UPDATE)`)
 
 /**
- * Hourly step 2 (§5.4): files over an hour old that no photo has, counting a deleted photo's as unused (assumption 16):
- * a failed attach's or a failed deletion's. A file whose row is still being written is younger.
+ * Hourly step 2 (§5.4): files no photo has. A deleted photo's go at once: a failed deletion left them (assumption 16).
+ * A file with no row at all, a failed attach's, waits an hour, as its row may still be being written.
  */
 export async function sweepOrphanFiles() {
   const files = await listFiles()
   const orphans = await db.$queryRaw<{ path: string }[]>`
     SELECT path FROM unnest(${files.map((file) => file.path)}::text[],
                             ${files.map((file) => file.uploadedAt)}::timestamptz[]) AS file (path, uploaded_at)
-    WHERE uploaded_at < now() - interval '1 hour'
-      AND NOT EXISTS (SELECT 1 FROM photos WHERE status <> 'deleted' AND path IN (blob_path, thumb_path))`
+    WHERE NOT EXISTS (SELECT 1 FROM photos WHERE status <> 'deleted' AND path IN (blob_path, thumb_path))
+      AND (uploaded_at < now() - interval '1 hour'
+           OR EXISTS (SELECT 1 FROM photos WHERE path IN (blob_path, thumb_path)))`
   await deleteFiles(orphans.map((orphan) => orphan.path))
   return orphans.length
 }

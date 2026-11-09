@@ -1,6 +1,6 @@
 import { rm } from 'node:fs/promises'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { listFiles, putFile } from './blob'
+import { deleteFiles, listFiles, putFile } from './blob'
 import { db } from './client'
 import { env } from './env'
 import { attachPhoto, deleteExpiredPhotos, type NewPhoto, openAnyPhoto, openPhoto, uploadsPaused } from './photos'
@@ -10,7 +10,7 @@ import type { Visitor } from './visitors'
 // The real seam on the tests' own folder, watched, so a test can make it fail once.
 vi.mock('./blob', async (importOriginal) => {
   const blob = await importOriginal<typeof import('./blob')>()
-  return { ...blob, putFile: vi.fn(blob.putFile) }
+  return { ...blob, putFile: vi.fn(blob.putFile), deleteFiles: vi.fn(blob.deleteFiles) }
 })
 // The real read, watched, so a test can act while an attach's transaction is still open.
 vi.mock('./tags', async (importOriginal) => {
@@ -194,6 +194,16 @@ describe('takeDown', () => {
     await attach()
     expect(await takeDown(TAG)).toBe(true)
     expect(await statuses()).toEqual([{ status: 'deleted' }])
+    expect(await files()).toEqual([])
+  })
+
+  it('§5.5 outside failures: a repeat finishes a Take down whose files the store failed to delete', async () => {
+    await attach()
+    vi.mocked(deleteFiles).mockRejectedValueOnce(new Error('Blob is down'))
+    await expect(takeDown(TAG)).rejects.toThrow('Blob is down')
+    expect(await statuses()).toEqual([{ status: 'deleted' }])
+    expect(await files()).toHaveLength(2)
+    expect(await takeDown(TAG)).toBe(false)
     expect(await files()).toEqual([])
   })
 

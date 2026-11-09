@@ -1429,7 +1429,9 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   inside the function, so the static dependency runs one way, from photos to tags, with no cycle. Attach's insert
   locks its tag's row (`FOR UPDATE`) until the photo is committed, so a Take down waits and then deletes it; expiry
   deletion locks the expired tags that still have a photo before marking it, so a Still there in progress is waited
-  for and a tag it brought back keeps its photo. The sweep compares the listed
+  for and a tag it brought back keeps its photo. A repeated Take down deletes the files of a photo already marked
+  deleted, and the sweep deletes a deleted photo's files at once, keeping the hour's wait for files with no row, so a
+  failed deletion of a photo attached just before its tag expired is finished by the next run. The sweep compares the listed
   files' times with Postgres's `now()`, in one query over `unnest`. `AdminTag` has `photo: { id, status }` in any
   state instead of `photoId`, so the admin tag page names a hidden or deleted photo and shows any that isn't deleted,
   through `openAnyPhoto`. Closing the reports on a deleted photo stays with task 6.1, as PR 5 has none.

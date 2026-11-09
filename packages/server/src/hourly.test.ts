@@ -132,6 +132,9 @@ describe('runHourly', () => {
   })
 
   it('§5.5 outside failures: a photo whose files the store fails to delete is gone from view, and its files go next run', async () => {
+    // Attached moments before its tag's time ran out: its files are newer than the hour a file with no row waits.
+    for (const path of ['expired.webp', 'expired-thumb.webp'])
+      await utimes(join(env.LOCAL_BLOB_DIR, path), new Date(), new Date())
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
     const down = new Error('Blob store down')
     vi.mocked(deleteFiles).mockRejectedValueOnce(down).mockRejectedValueOnce(down)
