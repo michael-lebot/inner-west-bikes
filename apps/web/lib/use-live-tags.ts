@@ -1,6 +1,6 @@
 'use client'
 import { isExpired, type PublicTag, REFRESH_MINUTES } from '@iwb/shared'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 const MINUTE = 60_000
 
@@ -12,10 +12,13 @@ const MINUTE = 60_000
 export function useLiveTags() {
   const [tags, setTags] = useState<PublicTag[]>()
   const [now, setNow] = useState(() => new Date())
+  // Focus and visibility often fire together: only the latest request may set the tags, whichever answers last.
+  const latest = useRef(0)
 
   // A promise chain rather than async/await, so the lint rule can see the state is set later, not in the effect.
-  const refresh = useCallback(
-    () =>
+  const refresh = useCallback(() => {
+    const request = ++latest.current
+    return (
       Promise.all([
         fetch('/api/tags').then((response) => {
           if (!response.ok) throw new Error(`GET /api/tags: ${response.status}`)
@@ -25,13 +28,14 @@ export function useLiveTags() {
         import('@iwb/shared/schemas'),
       ])
         .then(([body, { LiveTags }]) => {
+          if (request !== latest.current) return
           setTags(LiveTags.parse(body).tags)
           setNow(new Date())
         })
         // Offline, or a body that isn't live tags: keep what is showing, and try again at the next refresh.
-        .catch(() => {}),
-    [],
-  )
+        .catch(() => {})
+    )
+  }, [])
 
   useEffect(() => {
     const whenVisible = () => document.visibilityState === 'visible' && refresh()

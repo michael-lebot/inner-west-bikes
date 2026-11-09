@@ -26,6 +26,35 @@ test('counts the live tags by operator, and drops one that expires at the next r
   await expect(page.getByRole('list', { name: 'Key' }).getByRole('listitem').first()).toHaveText(/Lime 6$/)
 })
 
+test('keeps the newest tags when an older refresh answers last', async ({ page }) => {
+  // The first request is answered with the 14 tags of that moment, but only after a newer one has come back.
+  let seen: () => void
+  const firstSeen = new Promise<void>((resolve) => (seen = resolve))
+  let release: () => void
+  const released = new Promise<void>((resolve) => (release = resolve))
+  let calls = 0
+  await page.route('**/api/tags', async (route) => {
+    if (++calls > 1) return route.continue()
+    const response = await route.fetch()
+    seen()
+    await released
+    await route.fulfill({ response })
+  })
+  await page.goto('/')
+  await firstSeen
+
+  await sql(`UPDATE tags SET expires_at = now() WHERE id = '${LLEWELLYN_ST}'`)
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  await expect(page.getByRole('heading', { name: '13 bikes in the graveyard' })).toBeVisible()
+
+  const stale = page.waitForResponse('**/api/tags')
+  release!()
+  await stale
+  // Nothing to wait for if the stale answer is dropped, so give it the time it would take to show.
+  await page.waitForTimeout(500)
+  await expect(page.getByRole('heading', { name: '13 bikes in the graveyard' })).toBeVisible()
+})
+
 test('fits the map screen to the viewport, so the page never scrolls while the map shows', async ({ page }) => {
   await page.goto('/')
   await expect(page.locator('[data-map-ready]')).toBeAttached()
