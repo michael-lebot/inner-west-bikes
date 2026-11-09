@@ -1321,6 +1321,8 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   with `access: 'private'` (confirm the private read call in the Vercel Blob private-storage docs linked from the
   spec); without it, a folder at `LOCAL_BLOB_DIR` (default `<repo>/.data/blob`, resolved as `../../.data/blob` from
   each package's working directory). `env.ts` requires the token on Vercel.
+  As built: `putFile(path, bytes)` takes no content type, as the store reads it from the `.webp` extension. The tests
+  set `LOCAL_BLOB_DIR` to `.data/blob-test` and an empty token, so they never touch the dev folder or a real store.
 - **Accept:** `blob.test.ts` round-trips put/get/list/delete on the local folder; `deleteFiles` on a missing path
   succeeds.
 - **Files:** `packages/server/src/{blob,env}.ts`, `src/blob.test.ts`, `.gitignore`.

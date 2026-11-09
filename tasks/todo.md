@@ -53,7 +53,7 @@ acceptance criteria pass and `pnpm verify` is green.
 
 ## PR 5 — `build/05-photos` (from `build/04-tag-without-map`)
 
-- [ ] 5.1 Blob seam (Vercel Blob private / local folder)
+- [x] 5.1 Blob seam (Vercel Blob private / local folder)
 - [ ] 5.2 Image pipeline and bad-image tests
 - [ ] 5.3 Attach rule and photo route (attach, repeat and Blob-failure tests); `uploadsPaused` in the API
 - [ ] 5.4 Private serving routes (404 unless visible and live)
