@@ -1,7 +1,9 @@
 'use client'
-import { GREYS } from '@iwb/shared'
+import { bikeCount, bikes, GREYS, TAG_LIFETIME_HOURS } from '@iwb/shared'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { useLiveTags } from '@/lib/use-live-tags'
+import { Legend } from './Legend'
 import { ViewToggle } from './ViewToggle'
 
 type MapModule = typeof import('@/map/MapView')
@@ -17,6 +19,7 @@ const READY_WITHIN_MS = 15_000
 export function MapScreen() {
   const [status, setStatus] = useState<Status>('loading')
   const [MapView, setMapView] = useState<MapModule['MapView']>()
+  const { tags } = useLiveTags()
 
   useEffect(() => {
     // Effects run after the server's HTML has been painted, so the map never delays first paint.
@@ -44,7 +47,7 @@ export function MapScreen() {
           Skip to the list
         </a>
         <p id="map-summary" className="sr-only">
-          Map of the Inner West. A list view is available.
+          Map of the Inner West{tags && ` with ${bikes(tags.length)} tagged`}. A list view is available.
         </p>
         {MapView && status !== 'failed' && <MapView onStatus={setStatus} />}
         {status !== 'ready' && (
@@ -76,7 +79,14 @@ export function MapScreen() {
         tabIndex={-1}
         className="flex flex-col gap-3 border-t border-line p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
       >
-        <p className="min-h-7 text-lg font-bold" />
+        {/* Each line keeps its height while the tags load, so nothing moves when they arrive. */}
+        <div>
+          <h2 className="min-h-7 text-lg font-bold">
+            {tags && (tags.length ? bikeCount(tags.length) : 'No bikes in the graveyard right now.')}
+          </h2>
+          <p className="text-sm text-muted">Tags disappear {TAG_LIFETIME_HOURS} hours after the last sighting.</p>
+        </div>
+        <Legend tags={tags} />
         <ViewToggle current="/" />
       </div>
     </>

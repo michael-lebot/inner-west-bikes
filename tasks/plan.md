@@ -334,7 +334,7 @@ Runtime (each justified; nothing else is added without a line here):
 | `pmtiles` 4.5 | web `map/` | PMTiles protocol for MapLibre (§4.1), about 5 KB |
 | `botid` 1.5 | web | Vercel BotID (§6) |
 | `sharp` 0.35 | web `lib/image.ts` | Decode, resize, re-encode photos (§4.3); also renders the preview image |
-| `zod` 4 | shared | Validation at every boundary (§6), env parsing |
+| `zod` 4 | shared | Validation at every boundary (§6), env parsing. `schemas.ts` uses `zod/mini`, which the browser loads (2.6) |
 | `@turf/boolean-point-in-polygon` 7 | shared | The inside-the-council check named in §4.1 |
 | `@prisma/client` + `prisma` 6.19, `@prisma/adapter-pg` 6.19 | db | Prisma 6 (§5). Rust-free client (`engineType = "client"`) with the `pg` adapter: no engine binary to trace in a pnpm monorepo, and the same driver works against Docker Postgres and Neon |
 | `@vercel/blob` 2.8 | db | Private photo store (§4.3 needs ≥ 2.3) |
@@ -454,7 +454,8 @@ budgets confirmed or reset.
 - **Does:** `packages/shared` with `package.json` exports (`"."` and `"./theme.css"`; tasks 2.1 and 4.1 add
   `"./geo"`, `"./data/*"` and `"./picker"` with the files they point at; task 2.5 adds `"./palette"` for the preview
   script, which runs in Node and so can't follow `index.ts`'s extensionless imports, and `"sideEffects": ["*.css"]`,
-  so a client component that imports one colour doesn't carry the Zod schemas), `config.ts` (operators Lime/Hello/Ario/Not sure with key, label, letter, `active`; the six
+  so a client component that imports one colour doesn't carry the Zod schemas; task 2.6 adds `"./schemas"`, which
+  the map screen imports lazily), `config.ts` (operators Lime/Hello/Ario/Not sure with key, label, letter, `active`; the six
   problems; four report reasons; `LIMITS` exactly as the §6 table; the constants listed in §1.5), `errors.ts`
   (§1.6 table), `format.ts` (bike count "1 bike / N bikes in the graveyard", "Last seen 17 h ago", "Disappears in
   31 h", absolute "3:40 pm Tuesday" in `Australia/Sydney`, `isExpired`), `theme.css` (UI tokens from the mockup:
@@ -747,11 +748,17 @@ them.
   visible, and after the page's own writes (an exported `refresh()`); every minute drop tags with `isExpired`.
   JSON turns the two timestamps into strings, so `PublicTag` in `schemas.ts` becomes a Zod schema (`z.coerce.date()`
   for `lastConfirmedAt` and `expiresAt`, the type inferred from it) and `use-live-tags.ts` parses the response
-  through it before any date logic runs.
+  through it before any date logic runs. Measured: classic Zod put 32 KB and even Zod Mini 15.8 KB (Turbopack
+  shakes it far less than Rolldown's 5.7 KB) into the JavaScript before the map, against 13 KB of headroom. So
+  `schemas.ts` uses `zod/mini`, and the hook loads it with `import('@iwb/shared/schemas')` alongside the first
+  fetch, which keeps it off the first paint like the map. The hook returns `refresh` rather than exporting it, since
+  only components under `MapScreen` write. The key lists all four operators, Not sure included, with each count in
+  a box as wide before it arrives as after.
   Sheet peek content: "N bikes in the graveyard", "Tags disappear 48 hours after the last sighting.", the operator
   key (`Legend.tsx` with `PinIcon` and counts).
 - **Accept:** the count updates within one refresh after a tag is expired with SQL; the response for 100 tags is
-  ≤ 15 KB gzipped (perf test inserts 100 tags with SQL); first paint never waits for this request. A unit test
+  ≤ 15 KB gzipped (perf test inserts 100 tags with SQL, and gzips the body itself: `next start` doesn't compress
+  route handlers, Vercel does); first paint never waits for this request. A unit test
   parses a JSON-serialised tag through `PublicTag` and gets `Date` objects back.
 - **Files:** `app/api/tags/route.ts`, `lib/use-live-tags.ts`, `components/{Legend,MapScreen}.tsx`,
   `packages/shared/src/schemas.ts`.

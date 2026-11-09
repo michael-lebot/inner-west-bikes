@@ -35,6 +35,8 @@ export function MapView({ onStatus }: { onStatus: (status: MapStatus) => void })
         fadeDuration: 0,
         maxTileCacheSize: 64,
         attributionControl: false,
+        // The canvas is a region inside the map screen's own "Map" region, so it needs a name of its own.
+        locale: { 'Map.Title': 'Map: arrow keys move it' },
       })
     } catch {
       // No WebGL.
