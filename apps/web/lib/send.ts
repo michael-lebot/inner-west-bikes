@@ -25,12 +25,9 @@ export async function send<T>(path: string, body: object): Promise<Sent<T>> {
       response = null
     }
     const retryAfter = Number(response?.headers.get('Retry-After') ?? Infinity)
-    const wait =
-      !response || response.status >= 500
-        ? BACKOFF_MS[tries - 1]
-        : response.status === 429 && retryAfter <= MAX_RETRY_AFTER_SECONDS
-          ? retryAfter * 1000
-          : undefined
+    let wait: number | undefined
+    if (!response || response.status >= 500) wait = BACKOFF_MS[tries - 1]
+    else if (response.status === 429 && retryAfter <= MAX_RETRY_AFTER_SECONDS) wait = retryAfter * 1000
     if (wait === undefined || tries === 3) return { ok: false, error: await failure(response) }
     await new Promise((resolve) => setTimeout(resolve, wait))
   }
