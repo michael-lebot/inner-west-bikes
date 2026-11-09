@@ -1,6 +1,9 @@
-import { type AdminTag, dateTime, OPERATORS, PROBLEMS } from '@iwb/shared'
+import { type AdminTag, dateTime, OPERATORS, PROBLEMS, type TagStatus } from '@iwb/shared'
 import Link from 'next/link'
 import { CELL, Table } from './Table'
+
+/** A tag's status in words, here and on its own screen. */
+export const STATUS: Record<TagStatus, string> = { active: 'Active', removed: 'Removed', taken_down: 'Taken down' }
 
 const COLUMNS = ['Street', 'Suburb', 'Status', 'Live', 'Operator', 'Problem', 'Created', 'Removed', 'Expires']
 
@@ -16,7 +19,7 @@ export function TagTable({ label, tags }: { label: string; tags: AdminTag[] }) {
             </Link>
           </td>
           <td className={CELL}>{tag.suburb}</td>
-          <td className={CELL}>{tag.status}</td>
+          <td className={CELL}>{STATUS[tag.status]}</td>
           <td className={CELL}>{tag.live ? 'Yes' : 'No'}</td>
           <td className={CELL}>{OPERATORS[tag.operator].label}</td>
           <td className={CELL}>{PROBLEMS[tag.problem]}</td>

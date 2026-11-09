@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { Fragment } from 'react'
 import { PRIMARY, SECONDARY } from '@/components/buttons'
 import { CELL, Table } from '@/components/Table'
+import { STATUS } from '@/components/TagTable'
 
 export const metadata: Metadata = { title: 'Tag' }
 
@@ -63,7 +64,7 @@ export default async function TagPage({ params, searchParams }: PageProps<'/tags
   if (!tag) notFound()
   const [{ notice, confirm }, events] = await Promise.all([searchParams, listTagEvents(tag.id)])
   const details = [
-    ['Status', tag.status],
+    ['Status', STATUS[tag.status]],
     ['Live', tag.live ? 'Yes' : 'No'],
     ['Operator', OPERATORS[tag.operator].label],
     ['Problem', PROBLEMS[tag.problem]],
