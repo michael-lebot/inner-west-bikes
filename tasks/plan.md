@@ -90,7 +90,7 @@ pass props to components. No package builds anything: both apps compile the pack
 │       ├── scripts/                 fetch-nsw.ts, build-data.ts (dev only, need network). data/raw/ is git-ignored.
 │       └── src/
 │           ├── index.ts             Main entry (small, always loaded): config, schemas, errors, format, near
-│           ├── config.ts            Operators, problems, report reasons, LIMITS, every tunable constant
+│           ├── config.ts            Operators, problems, report reasons, LIMITS, the numbers the spec names
 │           ├── schemas.ts           Zod request/response schemas and their types (PublicTag, …)
 │           ├── errors.ts            AppError, error codes → HTTP status → visitor-facing message
 │           ├── format.ts            Counts, relative/absolute times, accessible names, photo alt text
@@ -221,6 +221,9 @@ must equal the request host), run, then `303` redirect back with a `?notice=` co
 | HTTP shape of public writes / admin writes | `apps/web/lib/write.ts` / `apps/admin/lib/action.ts` |
 | Browser retry policy (§5.3) | `apps/web/lib/send.ts` |
 | Live-tag refresh policy (§11.3) | `apps/web/lib/use-live-tags.ts` |
+
+Product limits and the numbers the spec names live in `config.ts`. UI mechanics, such as a timeout, a marker size or
+a flick threshold, stay beside the behaviour they control.
 
 ### 1.6 Conventions
 
