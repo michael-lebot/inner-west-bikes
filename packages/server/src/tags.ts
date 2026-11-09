@@ -30,13 +30,58 @@ export async function getLiveTag(id: string, client: Client = db) {
   return tag ?? null
 }
 
-export type RecentTag = PublicTag & { status: TagStatus; live: boolean; createdAt: Date }
+/** A tag in any state, as the admin app sees it. */
+export type AdminTag = PublicTag & {
+  status: TagStatus
+  live: boolean
+  createdAt: Date
+  removedAt: Date | null
+  confirmCount: number
+}
+
+const ADMIN_FIELDS = Prisma.sql`
+  ${PUBLIC_FIELDS}, status, (${LIVE}) AS live, created_at AS "createdAt", removed_at AS "removedAt",
+  confirm_count AS "confirmCount"`
 
 /** For the admin app: the latest tags in any state, newest first. */
 export function listRecentTags() {
-  return db.$queryRaw<RecentTag[]>`
-    SELECT ${PUBLIC_FIELDS}, status, (${LIVE}) AS live, created_at AS "createdAt"
-    FROM tags ORDER BY created_at DESC LIMIT 100`
+  return db.$queryRaw<AdminTag[]>`SELECT ${ADMIN_FIELDS} FROM tags ORDER BY created_at DESC LIMIT 100`
+}
+
+/** For the admin app: the removed tags, the latest removal first, to undo a malicious one (§4.6). */
+export function listRecentRemovals() {
+  return db.$queryRaw<AdminTag[]>`
+    SELECT ${ADMIN_FIELDS} FROM tags WHERE status = 'removed' ORDER BY removed_at DESC NULLS LAST LIMIT 100`
+}
+
+/** For the admin app: one tag in any state, or null. */
+export async function getTag(id: string) {
+  const [tag] = await db.$queryRaw<AdminTag[]>`SELECT ${ADMIN_FIELDS} FROM tags WHERE id = ${id}::uuid`
+  return tag ?? null
+}
+
+/**
+ * For the admin app: a tag's events, each with how many actions its hashed visitor and its hashed IP made on any tag
+ * that UTC day, the day the IP's salt covers (§4.6). A hash cleared after 30 days counts nothing.
+ */
+export function listTagEvents(tagId: string) {
+  return db.$queryRaw<
+    {
+      type: TagEventType
+      at: Date
+      visitorHash: string | null
+      ipHash: string | null
+      visitorActions: number
+      ipActions: number
+    }[]
+  >`
+    WITH events AS (SELECT *, date_trunc('day', at, 'UTC') AS day FROM tag_events WHERE tag_id = ${tagId}::uuid)
+    SELECT type, at, visitor_hash AS "visitorHash", ip_hash AS "ipHash",
+      (SELECT count(*) FROM tag_events same WHERE same.visitor_hash = events.visitor_hash
+         AND same.at >= day AND same.at < day + interval '1 day')::int AS "visitorActions",
+      (SELECT count(*) FROM tag_events same WHERE same.ip_hash = events.ip_hash
+         AND same.at >= day AND same.at < day + interval '1 day')::int AS "ipActions"
+    FROM events ORDER BY at`
 }
 
 /**

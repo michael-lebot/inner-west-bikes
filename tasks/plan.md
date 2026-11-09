@@ -1213,6 +1213,11 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   (shown while `status = 'removed'`; an expired one shows "Expired, can't undo") and **Take down** (with a
   confirmation step, final) as form posts to `POST /api/tags/[id]/undo` and `/take-down`. A skipped-unless-configured
   `e2e/admin-access.spec.ts` that asserts an unauthenticated request to `ADMIN_PREVIEW_URL` is refused.
+  As built: the per-hash counts come with the events, from one query (`listTagEvents`), rather than a separate
+  `countActionsByHashOnDay`; the day is the event's UTC day, the day an IP salt covers. `getTag` and
+  `listRecentRemovals` read tags in any state as `AdminTag` (the tables' type, which replaces `RecentTag`). The
+  lookup takes the first UUID in what is pasted. Take down's link reloads the page with `?confirm=take-down`, which
+  shows the question and the one form that posts. `action()` answers a post without a matching `Origin` with 403.
 - **Accept:** a cross-origin POST is rejected; undo makes the tag live again with only its remaining time; admin
   pages pass axe.
 - **Files:** `apps/admin/lib/action.ts`, `app/tags/page.tsx`, `app/tags/[id]/page.tsx`,

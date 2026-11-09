@@ -1,12 +1,15 @@
 // The public API of @iwb/server. Apps import from here and nothing deeper.
 export {
+  type AdminTag,
   confirmStillThere,
   createTag,
   getLiveTag,
+  getTag,
   listLiveTags,
+  listRecentRemovals,
   listRecentTags,
+  listTagEvents,
   markRemoved,
-  type RecentTag,
   takeDown,
   undoRemoval,
 } from './tags'

@@ -6,8 +6,11 @@ import {
   confirmStillThere,
   createTag,
   getLiveTag,
+  getTag,
   listLiveTags,
+  listRecentRemovals,
   listRecentTags,
+  listTagEvents,
   markRemoved,
   takeDown,
   undoRemoval,
@@ -287,5 +290,62 @@ describe('takeDown', () => {
   it('takes down a removed tag too', async () => {
     expect(await takeDown(REMOVED)).toBe(true)
     expect(await undoRemoval(REMOVED)).toBe('not_removed')
+  })
+})
+
+describe('the admin reads', () => {
+  it('getTag finds a tag in any state, with its removal and sightings, and null for no tag', async () => {
+    await markRemoved({ tagId: LIVE, requestId: crypto.randomUUID(), visitor: alice })
+    expect(await getTag(LIVE)).toMatchObject({
+      id: LIVE,
+      status: 'removed',
+      live: false,
+      removedAt: expect.any(Date),
+      confirmCount: 0,
+    })
+    expect(await getTag(TAKEN_DOWN)).toMatchObject({ status: 'taken_down', removedAt: null })
+    expect(await getTag('00000000-0000-4000-8000-000000000000')).toBeNull()
+  })
+
+  it('listRecentRemovals lists the removed tags, the latest removal first', async () => {
+    await markRemoved({ tagId: LIVE, requestId: crypto.randomUUID(), visitor: alice })
+    expect((await listRecentRemovals()).map((tag) => tag.id)).toEqual([LIVE, REMOVED])
+  })
+
+  it('listTagEvents gives each event with the actions its visitor and its IP made that UTC day, on any tag', async () => {
+    await db.$executeRaw`
+      INSERT INTO tag_events (tag_id, type, request_id, visitor_hash, ip_hash, at)
+      VALUES (${LIVE}::uuid, 'created', gen_random_uuid(), ${alice.visitorHash}, ${alice.ipHash}, '2026-11-09 01:00Z'),
+             (${REMOVED}::uuid, 'still_there', gen_random_uuid(), ${alice.visitorHash}, ${alice.ipHash},
+              '2026-11-09 23:59Z'),
+             (${REMOVED}::uuid, 'removed', gen_random_uuid(), ${alice.visitorHash}, ${bob.ipHash}, '2026-11-08 23:59Z'),
+             (${LIVE}::uuid, 'still_there', gen_random_uuid(), ${bob.visitorHash}, ${alice.ipHash}, '2026-11-09 12:00Z'),
+             (${LIVE}::uuid, 'restored', gen_random_uuid(), NULL, NULL, '2026-11-09 13:00Z')`
+    expect(await listTagEvents(LIVE)).toEqual([
+      {
+        type: 'created',
+        at: new Date('2026-11-09T01:00Z'),
+        visitorHash: alice.visitorHash,
+        ipHash: alice.ipHash,
+        visitorActions: 2,
+        ipActions: 3,
+      },
+      {
+        type: 'still_there',
+        at: new Date('2026-11-09T12:00Z'),
+        visitorHash: bob.visitorHash,
+        ipHash: alice.ipHash,
+        visitorActions: 1,
+        ipActions: 3,
+      },
+      {
+        type: 'restored',
+        at: new Date('2026-11-09T13:00Z'),
+        visitorHash: null,
+        ipHash: null,
+        visitorActions: 0,
+        ipActions: 0,
+      },
+    ])
   })
 })
