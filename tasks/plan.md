@@ -678,7 +678,8 @@ them.
 #### Task 2.3 — Overworld style: base layers and labels (M)
 - **Does:** `apps/web/map/style.ts` builds the MapLibre style in code against the Protomaps v4 tile schema
   (layers `earth`, `water`, `landuse`/`landcover` parks, `roads` by kind with brown casing and sandy fill, `transit`
-  rail dashed, `places` suburb labels in ink with a 2 px white halo, `roads` street labels in white label boxes),
+  rail dashed (in v4 rail is a `roads` kind), suburb labels in ink with a 2 px white halo (from `council.json`'s
+  label points, see 2.1), `roads` street labels in white label boxes, shortened with `STREET_TYPES`),
   using `palette.ts`. Source `pmtiles://<TILES_URL>` with `maxzoom: 15` (above 15 MapLibre overzooms). Label layers
   filtered with `["within", councilBuffered]`. Glyphs: generate Atkinson Hyperlegible Regular and Bold PBFs for
   range 0–255 once (`cargo install build_pbf_glyphs`, or MapLibre's font-maker) and commit them to

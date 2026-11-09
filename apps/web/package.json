@@ -11,7 +11,9 @@
   "dependencies": {
     "@iwb/server": "workspace:*",
     "@iwb/shared": "workspace:*",
+    "maplibre-gl": "5.24.0",
     "next": "catalog:",
+    "pmtiles": "4.5.0",
     "react": "catalog:",
     "react-dom": "catalog:"
   },

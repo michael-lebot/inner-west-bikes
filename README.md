@@ -56,6 +56,19 @@ pnpm exec playwright install chromium webkit            # once, for the end-to-e
 - **Tiles:** `pnpm tiles` runs [`apps/web/scripts/fetch-tiles.sh`](apps/web/scripts/fetch-tiles.sh), which needs the
   [`pmtiles` CLI](https://github.com/protomaps/go-pmtiles/releases) (`brew install pmtiles`). It writes
   `apps/web/public/tiles/inner-west.pmtiles` (about 13 MB), which `next start` serves with range requests.
+- **Label glyphs:** the map draws its labels in Atkinson Hyperlegible from signed-distance-field PBFs, range 0–255
+  only, committed in `apps/web/public/glyphs/` (the font's licence is `apps/web/public/fonts/OFL.txt`). To make them
+  again, put `AtkinsonHyperlegible-Regular.ttf` and `-Bold.ttf` from
+  [google/fonts](https://github.com/google/fonts/tree/main/ofl/atkinsonhyperlegible) in a folder `fonts/`, then:
+
+  ```sh
+  cargo install build_pbf_glyphs@1.5.1
+  build_pbf_glyphs fonts glyphs
+  for style in Regular Bold; do
+    cp glyphs/AtkinsonHyperlegible-$style/0-255.pbf apps/web/public/glyphs/AtkinsonHyperlegible-$style/
+  done
+  ```
+
 - **Council, suburbs and streets:** the committed files in `packages/shared/data/` come from NSW Spatial Services.
   `pnpm --filter @iwb/shared data:fetch` downloads them again and `data:build` rebuilds the files.
 
