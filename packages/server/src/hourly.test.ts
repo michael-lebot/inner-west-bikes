@@ -1,6 +1,13 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { db } from './client'
 import { runHourly } from './hourly'
+import { clearOldHashes } from './visitors'
+
+// The real first step, watched, so a test can make it fail once.
+vi.mock('./visitors', async (importOriginal) => {
+  const visitors = await importOriginal<typeof import('./visitors')>()
+  return { ...visitors, clearOldHashes: vi.fn(visitors.clearOldHashes) }
+})
 
 const TAG = '5eed0000-0000-4000-8000-000000000001'
 const PHOTO = '5eed0000-0000-4000-8000-0000000000f1'
@@ -66,6 +73,18 @@ describe('runHourly', () => {
       counters: [{ key: 'recent' }],
       salts: [{ back: 0 }, { back: 1 }],
     })
+  })
+
+  it('runs the steps after one that fails, and names it', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.mocked(clearOldHashes).mockRejectedValueOnce(new Error('connection lost'))
+    expect(await runHourly()).toEqual({
+      done: { deleteOldCounters: 1, deleteOldSalts: 2 },
+      failed: ['clearOldHashes'],
+    })
+    expect(await rows()).toMatchObject({ counters: [{ key: 'recent' }], salts: [{ back: 0 }, { back: 1 }] })
+    expect(logged).toHaveBeenCalledWith('Hourly step clearOldHashes failed', expect.any(Error))
+    logged.mockRestore()
   })
 
   it('§5.5 hourly job twice: two runs in a row and two runs at once leave the same rows as one run', async () => {

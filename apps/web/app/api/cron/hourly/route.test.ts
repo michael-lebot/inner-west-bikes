@@ -37,4 +37,12 @@ describe('GET /api/cron/hourly', () => {
     })
     expect(runHourly).toHaveBeenCalledOnce()
   })
+
+  it('answers 500 with the summary when a step failed, so the cron log shows it', async () => {
+    const summary = { done: { deleteOldCounters: 0, deleteOldSalts: 0 }, failed: ['clearOldHashes'] }
+    vi.mocked(runHourly).mockResolvedValueOnce(summary)
+    const response = await call('Bearer dev-cron-secret')
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual(summary)
+  })
 })
