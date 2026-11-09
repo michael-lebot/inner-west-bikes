@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
-import { chip, expectNoAxeViolations, newPin, resetDb, sql } from './support'
+import { chip, expectNoAxeViolations, newPin, newTagId, resetDb, sql, tagEvents, undoInAdmin } from './support'
 
 const OUTSIDE = 'That spot is outside the Inner West. Tap inside the gold line.'
 
@@ -419,11 +419,10 @@ test.describe('Still there and Removed', () => {
 })
 
 test.describe('a tag from start to end', () => {
-  const newTag = async () => (await sql(`SELECT id FROM tags WHERE id::text NOT LIKE '5eed%'`))[0].id as string
-  const events = (id: string) =>
-    sql(`SELECT type FROM tag_events WHERE tag_id = '${id}' ORDER BY at`).then((rows) => rows.map((row) => row.type))
-
-  test('by touch: add it, then mark it Still there and Removed', async ({ page, isMobile }) => {
+  test('by touch: add it, mark it Still there and Removed, and undo the removal in the admin', async ({
+    page,
+    isMobile,
+  }) => {
     test.skip(!isMobile, 'the phone projects')
     await startTagging(page)
     await placeAwayFromTags(page, true)
@@ -432,7 +431,7 @@ test.describe('a tag from start to end', () => {
     await chip(page, 'Damaged').tap()
     await page.getByRole('button', { name: 'Add to the map' }).tap()
     await expect(page.locator('#announcer')).toHaveText('Tag added')
-    const id = await newTag()
+    const id = await newTagId()
 
     await page.locator(`[data-tag="${id}"] button`).tap()
     const card = page.getByRole('region', { name: 'Ario e-bike' })
@@ -443,10 +442,17 @@ test.describe('a tag from start to end', () => {
     await expect(page.locator('#announcer')).toHaveText('Removed.')
     await expect(page.locator(`[data-tag="${id}"]`)).toHaveCount(0)
     await expect(page.getByRole('heading', { name: '14 bikes in the graveyard' })).toBeVisible()
-    expect(await events(id)).toEqual(['created', 'still_there', 'removed'])
+
+    await undoInAdmin(page, id)
+    await page.reload()
+    await expect(page.locator(`[data-tag="${id}"]`)).toHaveCount(1)
+    expect(await tagEvents(id)).toEqual(['created', 'still_there', 'removed', 'restored'])
   })
 
-  test('by keyboard: add it, then mark it Still there and Removed', async ({ page, isMobile }) => {
+  test('by keyboard: add it, mark it Still there and Removed, and undo the removal in the admin', async ({
+    page,
+    isMobile,
+  }) => {
     test.skip(isMobile, 'the desktop project')
     await page.goto('/')
     await expect(page.locator('[data-map-ready]')).toBeAttached()
@@ -468,7 +474,7 @@ test.describe('a tag from start to end', () => {
     await page.keyboard.press('Enter')
     await expect(page.locator('#announcer')).toHaveText('Tag added')
     await expect(page.getByRole('button', { name: 'Tag a dumped bike' })).toBeFocused()
-    const id = await newTag()
+    const id = await newTagId()
 
     // A pin is a button in the map's tab order; this one is reached directly, as the order depends on where it is.
     await page.locator(`[data-tag="${id}"] button`).focus()
@@ -481,7 +487,11 @@ test.describe('a tag from start to end', () => {
     await page.keyboard.press('Enter')
     await expect(page.locator('#announcer')).toHaveText('Removed.')
     await expect(page.getByRole('heading', { name: '14 bikes in the graveyard' })).toBeFocused()
-    expect(await events(id)).toEqual(['created', 'still_there', 'removed'])
+
+    await undoInAdmin(page, id)
+    await page.reload()
+    await expect(page.locator(`[data-tag="${id}"]`)).toHaveCount(1)
+    expect(await tagEvents(id)).toEqual(['created', 'still_there', 'removed', 'restored'])
   })
 
   test('when the tag is added but every answer is cut off, the form keeps its answers and sending again adds it once', async ({

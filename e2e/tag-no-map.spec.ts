@@ -1,5 +1,5 @@
 import { expect, type Page, type Response, test } from '@playwright/test'
-import { chip, expectNoAxeViolations, newPin, resetDb, sql } from './support'
+import { chip, expectNoAxeViolations, newPin, newTagId, resetDb, sql, tagEvents, undoInAdmin } from './support'
 
 test.beforeEach(() => resetDb())
 // Instant camera moves, so the map has settled when it is looked at.
@@ -182,6 +182,26 @@ test.describe('Choose by street', () => {
     }
   })
 
+  test("at the largest text on an SE-sized phone, reaches each step's buttons and cancels the form", async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'the phone projects')
+    await page.setViewportSize({ width: 375, height: 667 })
+    await page.goto('/list')
+    await page.addStyleTag({ content: ':root { font-size: 200% }' })
+    await page.getByRole('button', { name: 'Tag a dumped bike' }).click()
+    // Each click below first scrolls its button into view, and fails if anything covers it. Sending the form at this
+    // size is tested on the map screen (tag-map.spec.ts).
+    await pickStreet(page, 'llew', 'Llewellyn St, Marrickville')
+    await findNumber(page, '12')
+    await dialog(page).getByRole('button', { name: 'Use this spot' }).click()
+    await chip(page, 'Lime').click()
+    await dialog(page).locator('form').getByRole('button', { name: 'Cancel' }).click()
+    await expect(dialog(page)).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Tag a dumped bike' })).toBeFocused()
+  })
+
   test.describe('by keyboard', () => {
     test.skip(({ isMobile }) => isMobile, 'the desktop project')
 
@@ -304,5 +324,68 @@ test.describe('Use my location', () => {
     await page.getByRole('button', { name: 'Use my location' }).click()
     await expect(bar(page)).toHaveText('Your location is only accurate to about 80 m. Choose a street instead.')
     await expect(page.getByRole('button', { name: 'Use this spot' })).toBeDisabled()
+  })
+})
+
+test.describe('a tag from start to end', () => {
+  /** The form after a spot is used: an Ario that is damaged, added. */
+  async function addArio(page: Page) {
+    await expect(dialog(page).getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
+    await chip(page, 'Ario').click()
+    await chip(page, 'Damaged').click()
+    await dialog(page).getByRole('button', { name: 'Add to the map' }).click()
+    await expect(announced(page)).toHaveText('Tag added')
+    return newTagId()
+  }
+
+  for (const [way, choose] of [
+    ['a house number', (page: Page) => findNumber(page, '12')],
+    ['a corner', (page: Page) => dialog(page).getByRole('button', { name: 'near Lynch La' }).click()],
+  ] as const)
+    test(`by Choose by street on /list, with ${way}: add it, mark it Still there and Removed, and undo the removal in the admin`, async ({
+      page,
+    }) => {
+      await startOnList(page)
+      await pickStreet(page, 'llew', 'Llewellyn St, Marrickville')
+      await choose(page)
+      await dialog(page).getByRole('button', { name: 'Use this spot' }).click()
+      const id = await addArio(page)
+
+      const row = page.getByRole('listitem').filter({ has: page.locator(`a[href="/tag/${id}"]`) })
+      await row.getByRole('button', { name: 'Still there' }).click()
+      await expect(announced(page)).toHaveText('Marked still there')
+      await row.getByRole('button', { name: 'Removed' }).click()
+      await expect(row.getByText('Removed.')).toBeFocused()
+
+      await undoInAdmin(page, id)
+      await page.reload()
+      await expect(page.getByRole('heading', { name: '15 bikes in the graveyard' })).toBeVisible()
+      await expect(row).toHaveCount(1)
+      expect(await tagEvents(id)).toEqual(['created', 'still_there', 'removed', 'restored'])
+    })
+
+  test.describe('by Use my location', () => {
+    test.use({ permissions: ['geolocation'], geolocation: { latitude: -33.90512, longitude: 151.17288, accuracy: 15 } })
+
+    test('on the map: add it, mark it Still there and Removed, and undo the removal in the admin', async ({ page }) => {
+      await startOnMap(page)
+      await page.getByRole('button', { name: 'Use my location' }).click()
+      await expect(bar(page)).toHaveText('Near Llewellyn St, Marrickville, accurate to about 15 metres')
+      await page.getByRole('button', { name: 'Use this spot' }).click()
+      const id = await addArio(page)
+
+      await page.locator(`[data-tag="${id}"] button`).click()
+      const card = page.getByRole('region', { name: 'Ario e-bike' })
+      await card.getByRole('button', { name: 'Still there' }).click()
+      await expect(announced(page)).toHaveText('Marked still there')
+      await card.getByRole('button', { name: 'Removed' }).click()
+      await expect(announced(page)).toHaveText('Removed.')
+      await expect(page.locator(`[data-tag="${id}"]`)).toHaveCount(0)
+
+      await undoInAdmin(page, id)
+      await page.reload()
+      await expect(page.locator(`[data-tag="${id}"]`)).toHaveCount(1)
+      expect(await tagEvents(id)).toEqual(['created', 'still_there', 'removed', 'restored'])
+    })
   })
 })

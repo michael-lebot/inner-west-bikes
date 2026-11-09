@@ -1,5 +1,5 @@
 import { gzipSync } from 'node:zlib'
-import { expect, type Page, type Request, test } from '@playwright/test'
+import { expect, type Page, type Request, type Response, test } from '@playwright/test'
 import { resetDb, sql } from './support'
 
 // SPEC.md §11.1, in compressed bytes as transferred by `next start` (gzip).
@@ -33,6 +33,14 @@ const INTERACTION_MS = 600
 // (PR 3's first CI run, pull request #4) and 72 to 104 ms on a laptop. Picking a chip moves no map and keeps §11.1's
 // 200 ms: 16 to 24 ms on a laptop, under 60% of it.
 const CHIP_MS = 200
+// Choose by street's data (§11.1): every street with its corners, loaded when the picker opens, and one suburb's house
+// numbers, loaded when a street in it is chosen. Marrickville's are the largest. Measured in task 4.6 (2026-11-10):
+// 77,058 B and 30,684 B.
+const STREETS_BYTES = 100_000
+const SUBURB_NUMBERS_BYTES = 40_000
+// Typing in the street search and choosing a street move no map, so they keep §11.1's 200 ms: a letter measured 16 to
+// 24 ms and choosing 16 ms on a laptop, under 60% of it.
+const PICKER_MS = 200
 
 const LLEWELLYN_ST = '5eed0000-0000-4000-8000-000000000003'
 
@@ -119,10 +127,10 @@ test('a mid-range phone over 4G loads the map from a 300 KB bundle and 40 tiles'
   expect(sum(tiles), 'first view tile bytes').toBeLessThanOrEqual(FIRST_VIEW_TILE_BYTES)
 })
 
-/** Times each interaction from input to the next paint, with Event Timing, once the map is ready. */
-async function interactionTimer(page: Page) {
-  await page.goto('/')
-  await expect(page.locator('[data-map-ready]')).toBeAttached({ timeout: 30_000 })
+/** Times each interaction from input to the next paint, with Event Timing, once the page (and any map) is ready. */
+async function interactionTimer(page: Page, path = '/') {
+  await page.goto(path)
+  if (path === '/') await expect(page.locator('[data-map-ready]')).toBeAttached({ timeout: 30_000 })
   await page.evaluate(() => {
     const durations: number[] = ((window as unknown as { durations: number[] }).durations = [])
     new PerformanceObserver((list) => {
@@ -173,6 +181,63 @@ test('opening the tag form and picking a chip each reach the next paint in time'
     .annotations.push({ type: 'measured', description: `open the form ${openForm} ms, pick a chip ${chip} ms` })
   expect(openForm, 'ms from Use this spot to the form').toBeLessThanOrEqual(INTERACTION_MS)
   expect(chip, 'ms from tapping a chip to its tick').toBeLessThanOrEqual(CHIP_MS)
+})
+
+test('on /list, typing a street and choosing it each reach the next paint in time', async ({ page }) => {
+  const timed = await interactionTimer(page, '/list')
+  await page.getByRole('button', { name: 'Tag a dumped bike' }).click()
+  await page.getByRole('button', { name: 'Choose by street' }).click()
+  await expect(page.getByText('Type part of its name.')).toBeVisible()
+  const search = page.getByRole('searchbox', { name: 'Street' })
+  // One letter at a time, and the slowest counts.
+  let typing = 0
+  for (const letter of 'llew') typing = Math.max(typing, await timed(() => search.press(letter)))
+  const choose = await timed(async () => {
+    await page.getByRole('button', { name: 'Llewellyn St, Marrickville' }).click()
+    await expect(page.getByRole('heading', { name: 'Llewellyn St, Marrickville' })).toBeVisible()
+  })
+  test.info().annotations.push({ type: 'measured', description: `type a letter ${typing} ms, choose ${choose} ms` })
+  expect(typing, 'ms from a key to the streets that match').toBeLessThanOrEqual(PICKER_MS)
+  expect(choose, 'ms from choosing a street to its step').toBeLessThanOrEqual(PICKER_MS)
+})
+
+test("/list loads the streets only when Choose by street opens, and a suburb's house numbers when a street is chosen", async ({
+  page,
+}) => {
+  const scripts: Response[] = []
+  page.on('response', (response) => response.request().resourceType() === 'script' && scripts.push(response))
+  // The streets' file has each street's corners; a suburb's has, for each street, its first house at full precision.
+  const isStreets = (text: string) => text.includes('"corners":[')
+  const isNumbers = (text: string) => /\["\d[^"]*",-3\d{6},15\d{6}\]/.test(text)
+  const loaded = async (is: (text: string) => boolean) =>
+    (await Promise.all(scripts.map((script) => script.text()))).filter(is).length
+  const next = (is: (text: string) => boolean) =>
+    page.waitForResponse(
+      async (response) => response.request().resourceType() === 'script' && is(await response.text()),
+    )
+  const bytes = async (response: Response) => (await response.request().sizes()).responseBodySize
+
+  await page.goto('/list', { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: 'Tag a dumped bike' }).click()
+  expect(await loaded(isStreets), 'streets before Choose by street').toBe(0)
+  const streets = next(isStreets)
+  await page.getByRole('button', { name: 'Choose by street' }).click()
+  const streetsBytes = await bytes(await streets)
+  expect(await loaded(isNumbers), 'house numbers before a street is chosen').toBe(0)
+
+  const numbers = next(isNumbers)
+  await page.getByRole('searchbox', { name: 'Street' }).fill('llew')
+  await page.getByRole('button', { name: 'Llewellyn St, Marrickville' }).click()
+  const numbersBytes = await bytes(await numbers)
+  await page.waitForLoadState('networkidle')
+  expect(await loaded(isNumbers), "suburbs' house numbers loaded").toBe(1)
+
+  test.info().annotations.push({
+    type: 'measured',
+    description: `streets ${streetsBytes} B, Marrickville's house numbers ${numbersBytes} B`,
+  })
+  expect(streetsBytes, 'streets bytes').toBeLessThanOrEqual(STREETS_BYTES)
+  expect(numbersBytes, "one suburb's house number bytes").toBeLessThanOrEqual(SUBURB_NUMBERS_BYTES)
 })
 
 test('/api/tags sends 100 live tags in 15 KB or less, gzipped', async ({ request }) => {

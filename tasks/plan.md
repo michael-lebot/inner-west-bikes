@@ -1253,6 +1253,12 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   At an SE-sized viewport (375×667) with `html { font-size: 200% }`, the form's Add to the map and Cancel can be
   scrolled to and pressed. axe on the street picker in each step and on admin tags. `perf.spec.ts`: picker data
   ≤ 100 KB and one suburb's numbers ≤ 40 KB, each loaded only when needed.
+  As built: each start-to-end test ends with `undoInAdmin` (`e2e/support.ts`), which pastes the tag's public link
+  into the admin lookup and presses Undo removal: the touch and keyboard ones in `tag-map.spec.ts`, and in
+  `tag-no-map.spec.ts` Use my location on the map and Choose by street on `/list` by house number and by corner. At
+  the SE size and 200% text, `tag-map.spec.ts` sends the form and `tag-no-map.spec.ts` walks the picker's steps and
+  cancels it. `perf.spec.ts` also gates typing in the street search and choosing a street at 200 ms (16 to 24 ms
+  measured).
 - **Accept:** green on three projects; M2 exit criteria in §15 that can run here are all covered.
 - **Files:** `e2e/{tag-no-map,admin,perf}.spec.ts`.
 - **Verify:** `pnpm verify`.

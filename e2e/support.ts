@@ -44,3 +44,25 @@ export const chip = (page: Page, name: string) => page.getByRole('radio', { name
 
 /** The new tag's pin: the one marker that isn't a live tag's. */
 export const newPin = (page: Page) => page.locator('.maplibregl-marker:not([data-tag])')
+
+/** The id of the one tag a test added: the seeded ones start 5eed. */
+export const newTagId = async () => (await sql(`SELECT id FROM tags WHERE id::text NOT LIKE '5eed%'`))[0].id as string
+
+/** A tag's events, oldest first. */
+export const tagEvents = (id: string) =>
+  sql(`SELECT type FROM tag_events WHERE tag_id = '${id}' ORDER BY at`).then((rows) => rows.map((row) => row.type))
+
+/**
+ * Undoes a tag's removal in the admin app beside the public site, as Michael would (§4.6): the tag's public link
+ * pasted into the lookup, then Undo removal.
+ */
+export async function undoInAdmin(page: Page, id: string) {
+  const admin = await page.context().newPage()
+  await admin.goto('http://localhost:3001/tags')
+  const lookup = admin.getByRole('textbox', { name: 'Tag id or link' })
+  await lookup.fill(`http://localhost:3000/tag/${id}`)
+  await lookup.press('Enter')
+  await admin.getByRole('button', { name: 'Undo removal' }).click()
+  await expect(admin.getByText('Undone: the tag is live again, with the time it had left.')).toBeVisible()
+  await admin.close()
+}
