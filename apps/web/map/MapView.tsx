@@ -133,7 +133,7 @@ export function MapView({ tags, now, selected, onPick, onStatus, spot, onPlace, 
   // Placing (§10.3, §12): taps and the crosshair place the pin, and MapLibre's own arrow keys stand aside.
   const placing = !!onPlace
   const place = useEffectEvent((lat: number, lng: number) => onPlace?.(lat, lng))
-  const key = useEffectEvent((event: KeyboardEvent) => {
+  const keydown = useEffectEvent((event: KeyboardEvent) => {
     if (!map) return
     if (event.key === 'Enter') {
       if (spot) onUse?.()
@@ -164,12 +164,12 @@ export function MapView({ tags, now, selected, onPick, onStatus, spot, onPlace, 
     )
     map.keyboard.disable()
     map.on('click', click)
-    canvas.addEventListener('keydown', key)
+    canvas.addEventListener('keydown', keydown)
     return () => {
       canvas.setAttribute('aria-label', name)
       map.keyboard.enable()
       map.off('click', click)
-      canvas.removeEventListener('keydown', key)
+      canvas.removeEventListener('keydown', keydown)
     }
   }, [map, placing])
 
