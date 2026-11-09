@@ -43,7 +43,7 @@ acceptance criteria pass and `pnpm verify` is green.
 
 ## PR 4 — `build/04-tag-without-map` (from `build/03-tag-on-map`)
 
-- [ ] 4.1 House-number and corner data (multiCRS address points) and `matchHouseNumber` test
+- [x] 4.1 House-number and corner data (multiCRS address points) and `matchHouseNumber` test
 - [ ] 4.2 Street picker on the map screen and on `/list` (no MapLibre on `/list`)
 - [ ] 4.3 Use my location with Playwright mocked-position tests
 - [ ] 4.4 Admin Tags screen: lookup, events, same-day counts, Undo removal, Take down; admin-access spec

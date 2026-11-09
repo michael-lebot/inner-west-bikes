@@ -69,8 +69,9 @@ pnpm exec playwright install chromium webkit            # once, for the end-to-e
   done
   ```
 
-- **Council, suburbs and streets:** the committed files in `packages/shared/data/` come from NSW Spatial Services.
-  `pnpm --filter @iwb/shared data:fetch` downloads them again and `data:build` rebuilds the files.
+- **Council, suburbs, streets and house numbers:** the committed files in `packages/shared/data/` come from NSW
+  Spatial Services. `pnpm --filter @iwb/shared data:fetch` downloads them again (about 50 MB, two minutes) and
+  `data:build` rebuilds the files.
 - **Preview image:** `pnpm dev` and `pnpm build` first draw `apps/web/public/preview.webp` (git-ignored) from that
   data with [`apps/web/scripts/build-preview.ts`](apps/web/scripts/build-preview.ts). The map screen shows it until
   the map is ready, and keeps it if the map can't load.
@@ -79,3 +80,5 @@ pnpm exec playwright install chromium webkit            # once, for the end-to-e
 
 - Map data © OpenStreetMap contributors.
 - Council and suburb boundaries and street names © State of New South Wales (Spatial Services, DCS NSW), CC BY 4.0.
+- House numbers © State of New South Wales (Spatial Services, DCS NSW), under a Creative Commons licence whose
+  version is to be confirmed before launch (SPEC.md §14).

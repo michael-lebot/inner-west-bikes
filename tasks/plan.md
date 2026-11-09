@@ -1135,6 +1135,19 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   per suburb. Corners: where two differently named streets share a vertex (clustered within 15 m), ordered along each
   street's main axis → `picker.json` (`[{ street, suburb, corners: [[cross, lat, lng], …] }]`). `src/picker.ts`:
   `searchStreets(query)`, `cornersOf(entry)`, `loadAddresses(suburb)`, `matchHouseNumber(numbers, typed)`.
+  As built: each query's pages go in the order of the layer's id field, as ArcGIS promises pages that neither overlap
+  nor skip only then (199,329 address points; the council, suburbs and roads came back byte for byte as before). An
+  address's street is looked up by its full name in the road data, so it is written exactly as the road's ("HAWTHORNE
+  PARADE" is "Hawthorne Pde"); 7 points name a street the road data doesn't, and are left out. A whole property's
+  point wins over its units'. Corners are clustered within 50 m, not 15: at 15 m, 146 corners kept a twin 16 to 45 m
+  away under the same name, where a divided road or offset arms meet a street. Further apart, as where a crescent
+  meets a street at both ends, 48 repeats remain. A corner's suburb is the gazetted, unsimplified one it is in. Each
+  street's house numbers are stored as steps from the one before in 1e-5 degrees, going up one side of the street and
+  then the other: Marrickville went from 52 KB gzipped to 30 KB. `picker.ts` exports `searchStreets`,
+  `loadHouseNumbers(street)` (one street's numbers from its suburb's file) and `matchHouseNumber`; each entry carries
+  its corners, so there is no `cornersOf`. Measured: 53,513 house numbers on 1,479 streets in their suburbs (1,058
+  names), in 29 suburb files, the largest 30,475 B gzipped (Marrickville) and the median 5,420 B; `picker.json` has
+  2,007 streets and 6,716 corners in 75,950 B gzipped.
 - **Accept:** totals close to §4.1's measurement (about 53,548 numbers on about 1,482 streets) are logged and
   recorded; `picker.json` ≤ 100 KB and the largest suburb file ≤ 40 KB gzipped; `picker.test.ts` covers §5.5 house
   numbers (12 matches 12, 12A and 10–14; an unknown number returns null).
