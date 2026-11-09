@@ -147,13 +147,15 @@ export const POST = write(async ({ request, params, visitor }) => {
 ```
 
 ```ts
-// apps/web/lib/write.ts — the only wrapper; the photo route uses it too (with formData instead of json)
+// apps/web/lib/write.ts — the only wrapper; the photo route uses it too (with formData instead of json, so task 5.3
+// lets multipart/form-data through step 2 as well: a JSON route can't parse it, and only text/plain can carry JSON)
 export function write<P>(run: (ctx: WriteContext<P>) => Promise<object>) {
   return async (request: Request, { params }: { params: Promise<P> }) => {
     try {
       if (await isBot()) throw new AppError('bot')                 // 1. BotID first, before any work
-      const visitor = await identify(request)                       // 2. hashed cookie + hashed IP (daily salt)
-      return Response.json(await run({ request, params, visitor }), { headers: NO_STORE })   // 3. parse + domain
+      if (!isJson(request)) throw new AppError('invalid')           // 2. a form on another site can't send JSON
+      const visitor = await identify(request)                       // 3. hashed cookie + hashed IP (daily salt)
+      return Response.json(await run({ request, params, visitor }), { headers: NO_STORE })   // 4. parse + domain
     } catch (error) {
       return errorResponse(error)   // AppError → its status + {error:{code,message}}; ZodError → 400; else log, 500
     }
