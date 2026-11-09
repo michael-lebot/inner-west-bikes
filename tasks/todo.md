@@ -49,7 +49,7 @@ acceptance criteria pass and `pnpm verify` is green.
 - [x] 4.4 Admin Tags screen: lookup, events, same-day counts, Undo removal, Take down; admin-access spec
 - [x] 4.5 Hourly job route (401, steps 3–4, twice and concurrent), `vercel.json` for both apps
 - [x] 4.6 M2 exit E2E: create → confirm → remove → admin undo by touch, keyboard, location and street
-- [ ] Checkpoint: CI green, browser verification at both sizes, PR opened against `build/03-tag-on-map`
+- [x] Checkpoint: CI green, browser verification at both sizes, PR opened against `build/03-tag-on-map`
 
 ## PR 5 — `build/05-photos` (from `build/04-tag-without-map`)
 
