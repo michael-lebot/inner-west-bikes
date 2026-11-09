@@ -1258,7 +1258,9 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   `tag-no-map.spec.ts` Use my location on the map and Choose by street on `/list` by house number and by corner. At
   the SE size and 200% text, `tag-map.spec.ts` sends the form and `tag-no-map.spec.ts` walks the picker's steps and
   cancels it. `perf.spec.ts` also gates typing in the street search and choosing a street at 200 ms (16 to 24 ms
-  measured).
+  measured). Measured at the end of PR 4: 146,901 B of JavaScript before the map (PR 3: 145,813 B; Use my location
+  and the street picker's button are in it, the picker itself is not), Lighthouse's LCP on `/` 2,401 to 2,421 ms,
+  and a 291,081 B map bundle.
 - **Accept:** green on three projects; M2 exit criteria in §15 that can run here are all covered.
 - **Files:** `e2e/{tag-no-map,admin,perf}.spec.ts`.
 - **Verify:** `pnpm verify`.
