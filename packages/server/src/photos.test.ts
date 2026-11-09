@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { listFiles, putFile } from './blob'
 import { db } from './client'
 import { env } from './env'
-import { attachPhoto, type NewPhoto, openAnyPhoto, openPhoto, uploadsPaused } from './photos'
+import { attachPhoto, deleteExpiredPhotos, type NewPhoto, openAnyPhoto, openPhoto, uploadsPaused } from './photos'
 import { getLiveTag, getTag, listLiveTags, markRemoved, takeDown, undoRemoval } from './tags'
 import type { Visitor } from './visitors'
 
@@ -12,6 +12,14 @@ vi.mock('./blob', async (importOriginal) => {
   const blob = await importOriginal<typeof import('./blob')>()
   return { ...blob, putFile: vi.fn(blob.putFile) }
 })
+// The real read, watched, so a test can act while an attach's transaction is still open.
+vi.mock('./tags', async (importOriginal) => {
+  const tags = await importOriginal<typeof import('./tags')>()
+  return { ...tags, getLiveTag: vi.fn(tags.getLiveTag) }
+})
+const { getLiveTag: realGetLiveTag } = await vi.importActual<typeof import('./tags')>('./tags')
+const pause = () => new Promise((resolve) => setTimeout(resolve, 200))
+const statuses = () => db.$queryRaw`SELECT status::text FROM photos`
 
 const TAG = '5eed0000-0000-4000-8000-000000000001'
 const alice: Visitor = { visitorHash: 'a'.repeat(64), ipHash: '1'.repeat(64) }
@@ -185,8 +193,39 @@ describe('takeDown', () => {
   it("deletes the tag's photo at once: the row is marked deleted, then the files go", async () => {
     await attach()
     expect(await takeDown(TAG)).toBe(true)
-    expect(await db.$queryRaw`SELECT status::text FROM photos`).toEqual([{ status: 'deleted' }])
+    expect(await statuses()).toEqual([{ status: 'deleted' }])
     expect(await files()).toEqual([])
+  })
+
+  it('waits for an attach in progress, then deletes the photo it attached', async () => {
+    let takingDown: Promise<boolean> | undefined
+    // The attach's last read, with its photo's row written but not committed.
+    vi.mocked(getLiveTag).mockImplementationOnce(async (id, client) => {
+      takingDown = takeDown(TAG)
+      await pause()
+      return realGetLiveTag(id, client)
+    })
+    await attach()
+    expect(await takingDown).toBe(true)
+    expect(await statuses()).toEqual([{ status: 'deleted' }])
+    expect(await files()).toEqual([])
+  })
+})
+
+describe('deleteExpiredPhotos', () => {
+  it('waits for a Still there in progress, and keeps the photo of the tag it brings back', async () => {
+    await attach()
+    await db.$executeRaw`UPDATE tags SET expires_at = now() - interval '1 second' WHERE id = ${TAG}::uuid`
+    let cleaning: Promise<number> | undefined
+    // As a Still there whose transaction began a moment before the tag's time ran out, its new time not yet committed.
+    await db.$transaction(async (tx) => {
+      await tx.$executeRaw`UPDATE tags SET expires_at = now() + interval '48 hours' WHERE id = ${TAG}::uuid`
+      cleaning = deleteExpiredPhotos()
+      await pause()
+    })
+    expect(await cleaning).toBe(0)
+    expect(await statuses()).toEqual([{ status: 'visible' }])
+    expect(await files()).toHaveLength(2)
   })
 })
 

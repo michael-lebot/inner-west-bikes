@@ -67,10 +67,12 @@ export async function attachPhoto({
     await Promise.all([putFile(full, photo.full), putFile(thumb, photo.thumb)])
     return await db.$transaction(async (tx) => {
       await countAction(tx, 'photo', visitor)
+      // The tag's row stays locked until the photo is committed, so a Take down waits for it, then deletes it.
       const attached = await tx.$executeRaw`
         INSERT INTO photos (tag_id, blob_path, thumb_path, width, height, bytes)
         SELECT id, ${full}, ${thumb}, ${photo.width}, ${photo.height}, ${photo.full.length} FROM tags
         WHERE id = ${tagId}::uuid AND ${LIVE} AND ${taggedBy(visitor)} AND NOT ${PAUSED}
+        FOR UPDATE
         ON CONFLICT (tag_id) DO NOTHING`
       // Rolling back takes the count back too.
       if (!attached) throw new AppError('conflict')
@@ -115,9 +117,16 @@ async function deletePhotos(which: Prisma.Sql) {
 /** Take down (§4.2): the tag's photo goes at once. */
 export const deleteTagPhoto = (tagId: string) => deletePhotos(Prisma.sql`tag_id = ${tagId}::uuid`)
 
-/** Hourly step 1 (§5.4): the photos of tags whose time has run out, whatever their state, as none can come back. */
+/**
+ * Hourly step 1 (§5.4): the photos of tags whose time has run out, whatever their state, as none can come back. Their
+ * tags are locked first, so a Still there in progress is waited for, and a tag it brought back keeps its photo.
+ */
 export const deleteExpiredPhotos = () =>
-  deletePhotos(Prisma.sql`tag_id IN (SELECT id FROM tags WHERE expires_at <= now())`)
+  deletePhotos(Prisma.sql`tag_id IN (
+    SELECT id FROM tags
+    WHERE expires_at <= now()
+      AND EXISTS (SELECT 1 FROM photos kept WHERE kept.tag_id = tags.id AND kept.status <> 'deleted')
+    FOR UPDATE)`)
 
 /**
  * Hourly step 2 (§5.4): files over an hour old that no photo has, counting a deleted photo's as unused (assumption 16):
