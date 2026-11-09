@@ -1193,6 +1193,13 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   only accurate to about 80 m. Tap where the bike is, or choose a street."; outside → "You're outside the Inner
   West. Tap the map or choose a street."; refused or timed out → a plain message. Nothing submits automatically and
   the position is never sent except as the confirmed pin.
+  As built: `LocateButton` sits in `Placement` beside Choose by street, so the map screen and `/list` share it. It
+  loads `@iwb/shared/geo` while the position is found, reads "Finding you…" meanwhile, and says what happened in the
+  bar's line, which is also announced. A result replaces the pin: only an accurate position inside the council leaves
+  one. Accurate and rough positions centre the map at street level (`MapView`'s `centre`), and a refused permission
+  says "Your browser didn't share your location." while a timeout or no position says "We couldn't find your
+  location.". On `/list` each message ends "Choose a street instead." The refused case is its own test, without the
+  permission from the start, as WebKit keeps answering after `clearPermissions()`.
 - **Accept:** §5.5 Use my location in Playwright (`context.setGeolocation`, granted and denied permissions): an
   accurate inside position proposes a pin; rough, outside and refused leave no pin and the other ways work.
 - **Files:** `components/{LocateButton,Placement,ListTagButton}.tsx`, `e2e/tag-no-map.spec.ts`.

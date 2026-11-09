@@ -2,6 +2,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { PRIMARY, SECONDARY } from './buttons'
+import { LocateButton, type Located } from './LocateButton'
 
 // Loaded when it opens, out of the JavaScript before the map (§11.1).
 const StreetPicker = lazy(() => import('./StreetPicker').then((module) => ({ default: module.StreetPicker })))
@@ -21,14 +22,16 @@ export function Placement({
   spot,
   note,
   withMap = true,
+  onLocate,
   onChoose,
   onUse,
   onCancel,
 }: {
   spot?: Spot
-  /** Said in place of the spot: why the last tap or arrow key placed no pin. */
+  /** Said in place of the spot: why the last try placed no pin, or where Use my location put it. */
   note?: string
   withMap?: boolean
+  onLocate: (located: Located) => void
   /** A spot chosen by street, which needs no confirming on the map: the form comes next. */
   onChoose: (spot: Spot) => void
   onUse: () => void
@@ -38,6 +41,7 @@ export function Placement({
   useEffect(() => heading.current?.focus(), [])
   const [choosing, setChoosing] = useState(false)
   const chooseButton = useRef<HTMLButtonElement>(null)
+  const prompt = withMap ? 'Tap the map where the bike is.' : 'Use your location, or choose the street.'
 
   const stopChoosing = () => {
     flushSync(() => setChoosing(false))
@@ -49,12 +53,13 @@ export function Placement({
       <h2 id="placement-heading" ref={heading} tabIndex={-1} className="text-lg font-bold">
         Tag a dumped bike
       </h2>
-      <p className="min-h-12">
-        {note ?? (spot ? pinOn(spot) : withMap ? 'Tap the map where the bike is.' : 'Choose the street it is on.')}
-      </p>
-      <button ref={chooseButton} type="button" className={SECONDARY} onClick={() => setChoosing(true)}>
-        Choose by street
-      </button>
+      <p className="min-h-12">{note ?? (spot ? pinOn(spot) : prompt)}</p>
+      <div className="grid grid-cols-2 gap-2">
+        <LocateButton withMap={withMap} onLocate={onLocate} />
+        <button ref={chooseButton} type="button" className={SECONDARY} onClick={() => setChoosing(true)}>
+          Choose by street
+        </button>
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <button type="button" className={SECONDARY} onClick={onCancel}>
           Cancel

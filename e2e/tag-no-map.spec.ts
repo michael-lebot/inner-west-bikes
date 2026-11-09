@@ -215,3 +215,94 @@ test.describe('Choose by street', () => {
     })
   })
 })
+
+test.describe('Use my location', () => {
+  // Number 12 Llewellyn St, Marrickville, and Sydney Town Hall, 3 km outside the council.
+  const LLEWELLYN_ST = { latitude: -33.90512, longitude: 151.17288 }
+  const TOWN_HALL = { latitude: -33.8732, longitude: 151.2061 }
+  test.use({ permissions: ['geolocation'], geolocation: { ...LLEWELLYN_ST, accuracy: 15 } })
+
+  test('§5.5 Use my location: an accurate position inside the council proposes a pin there, and sends nothing', async ({
+    page,
+  }) => {
+    const posts: string[] = []
+    page.on('request', (request) => request.method() === 'POST' && posts.push(request.url()))
+    await startOnMap(page)
+    await page.getByRole('button', { name: 'Use my location' }).click()
+    const near = 'Near Llewellyn St, Marrickville, accurate to about 15 metres'
+    await expect(bar(page)).toHaveText(near)
+    await expect(announced(page)).toHaveText(near)
+    // The map centres there, with the pin's tip on the spot.
+    const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
+    await expect
+      .poll(async () => {
+        const pin = (await newPin(page).boundingBox())!
+        return Math.hypot(
+          pin.x + pin.width / 2 - (map.x + map.width / 2),
+          pin.y + pin.height - (map.y + map.height / 2),
+        )
+      })
+      .toBeLessThan(2)
+    await expect(page.getByRole('button', { name: 'Use this spot' })).toBeEnabled()
+    await expectNoAxeViolations(page)
+    expect(posts).toEqual([])
+  })
+
+  /** Use my location, then: no pin, the note said, and the other ways still there. */
+  async function expectNoPin(page: Page, note: string) {
+    await page.getByRole('button', { name: 'Use my location' }).click()
+    await expect(bar(page)).toHaveText(note)
+    await expect(announced(page)).toHaveText(note)
+    await expect(newPin(page)).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Use this spot' })).toBeDisabled()
+    await page.getByRole('button', { name: 'Choose by street' }).click()
+    await expect(dialog(page).getByRole('heading', { name: 'Choose by street' })).toBeFocused()
+    await page.keyboard.press('Escape')
+  }
+
+  test('§5.5 Use my location: a rough position and one outside the council leave no pin, and the other ways work', async ({
+    page,
+    context,
+    isMobile,
+  }) => {
+    await startOnMap(page)
+    await context.setGeolocation({ ...TOWN_HALL, accuracy: 10 })
+    await expectNoPin(page, "You're outside the Inner West. Tap the map or choose a street.")
+    await context.setGeolocation({ ...LLEWELLYN_ST, accuracy: 80 })
+    await expectNoPin(page, 'Your location is only accurate to about 80 m. Tap where the bike is, or choose a street.')
+
+    // The rough position centred the map, where a tap places the pin.
+    const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
+    const middle = { x: map.x + map.width / 2, y: map.y + map.height / 2 }
+    if (isMobile) await page.touchscreen.tap(middle.x, middle.y)
+    else await page.mouse.click(middle.x, middle.y)
+    await expect(bar(page)).toHaveText('Pin on Llewellyn St, Marrickville')
+  })
+
+  test.describe('refused', () => {
+    test.use({ permissions: [] })
+
+    test('§5.5 Use my location: a refused permission leaves no pin, and the other ways work', async ({ page }) => {
+      await startOnMap(page)
+      await expectNoPin(page, "Your browser didn't share your location. Tap the map or choose a street.")
+    })
+  })
+
+  test('on /list, reads the spot back for Use this spot, which leads to the form, or says to choose a street', async ({
+    page,
+    context,
+  }) => {
+    await startOnList(page)
+    await page.getByRole('button', { name: 'Use my location' }).click()
+    await expect(bar(page)).toHaveText('Near Llewellyn St, Marrickville, accurate to about 15 metres')
+    await page.getByRole('button', { name: 'Use this spot' }).click()
+    await expect(dialog(page).getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
+    await expect(dialog(page)).toContainText('Pin on Llewellyn St, Marrickville')
+
+    await dialog(page).getByRole('button', { name: 'Change location' }).click()
+    await context.setGeolocation({ ...LLEWELLYN_ST, accuracy: 80 })
+    await page.getByRole('button', { name: 'Use my location' }).click()
+    await expect(bar(page)).toHaveText('Your location is only accurate to about 80 m. Choose a street instead.')
+    await expect(page.getByRole('button', { name: 'Use this spot' })).toBeDisabled()
+  })
+})

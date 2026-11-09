@@ -17,6 +17,7 @@ export function ListTagButton({ tags, now }: { tags: PublicTag[]; now: Date }) {
   const router = useRouter()
   const [tagging, setTagging] = useState<'place' | 'describe'>()
   const [spot, setSpot] = useState<Spot>()
+  const [note, setNote] = useState<string>()
   const button = useRef<HTMLButtonElement>(null)
 
   const end = () => {
@@ -24,6 +25,7 @@ export function ListTagButton({ tags, now }: { tags: PublicTag[]; now: Date }) {
     flushSync(() => {
       setTagging(undefined)
       setSpot(undefined)
+      setNote(undefined)
     })
     button.current?.focus()
   }
@@ -47,9 +49,15 @@ export function ListTagButton({ tags, now }: { tags: PublicTag[]; now: Date }) {
     <div className="basis-full">
       <Placement
         spot={spot}
+        note={note}
         withMap={false}
+        onLocate={(located) => {
+          setNote(located.note)
+          setSpot(located.spot)
+        }}
         onChoose={(chosen) => {
           setSpot(chosen)
+          setNote(undefined)
           setTagging('describe')
         }}
         onUse={() => setTagging('describe')}

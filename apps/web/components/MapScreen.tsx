@@ -8,6 +8,7 @@ import { announce } from './Announcer'
 import { PRIMARY } from './buttons'
 import { CrowdChooser } from './CrowdChooser'
 import { Legend } from './Legend'
+import type { Located } from './LocateButton'
 import { OUTSIDE, Placement, pinOn, type Spot } from './Placement'
 import { TagCard } from './TagCard'
 import { TagList } from './TagList'
@@ -39,8 +40,10 @@ export function MapScreen() {
   // Tagging a bike (§3): placing the pin, then describing the bike.
   const [tagging, setTagging] = useState<'place' | 'describe'>()
   const [spot, setSpot] = useState<Spot>()
-  // Why the last try placed no pin, said in place of the spot.
+  // Why the last try placed no pin, or where Use my location put it, said in place of the spot.
   const [note, setNote] = useState<string>()
+  // Where Use my location centres the map.
+  const [centre, setCentre] = useState<Located['centre']>()
   const tagButton = useRef<HTMLButtonElement>(null)
   const geo = useRef<Promise<Geo>>(null)
 
@@ -89,6 +92,13 @@ export function MapScreen() {
     announce(inside ? pinOn({ lat, lng, street, suburb }) : OUTSIDE)
   }
 
+  /** Use my location proposes a pin only when it is close enough, and centres the map on any position (§4.1). */
+  const locate = (located: Located) => {
+    setNote(located.note)
+    setSpot(located.spot)
+    setCentre(located.centre)
+  }
+
   /** Chosen by street, the spot goes straight to the form, with the map behind it centred there (§10.3). */
   const choose = (chosen: Spot) => {
     setSpot(chosen)
@@ -102,6 +112,7 @@ export function MapScreen() {
       setTagging(undefined)
       setSpot(undefined)
       setNote(undefined)
+      setCentre(undefined)
     })
     tagButton.current?.focus()
   }
@@ -182,6 +193,7 @@ export function MapScreen() {
             }}
             onStatus={setStatus}
             spot={spot}
+            centre={centre}
             onPlace={tagging === 'place' ? place : undefined}
             onUse={() => setTagging('describe')}
           />
@@ -227,6 +239,7 @@ export function MapScreen() {
             <Placement
               spot={spot}
               note={note}
+              onLocate={locate}
               onChoose={choose}
               onUse={() => setTagging('describe')}
               onCancel={endTagging}

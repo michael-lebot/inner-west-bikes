@@ -24,6 +24,15 @@ function cornerName(corners: Place[], corner: Place) {
   return `near ${corner[0]}${same.length > 1 ? ` (${same.indexOf(corner) + 1} of ${same.length})` : ''}`
 }
 
+/** The line under the search box: what it has found, out of the streets once they have loaded. */
+function searchStatus(query: string, found: number | undefined) {
+  if (found === undefined) return 'Loading streets…'
+  if (!query.trim()) return 'Type part of its name.'
+  if (!found) return 'No street in the Inner West matches that.'
+  if (found > SHOWN) return `${found} streets match. Type more to narrow them down.`
+  return `${found} ${found === 1 ? 'street matches' : 'streets match'}.`
+}
+
 /**
  * Choose by street (§10.3), the way to place a tag without the map: a street, then the nearest house number or
  * corner, then the spot read back with Use this spot. What is typed never leaves the browser, and the house number
@@ -56,15 +65,7 @@ export function StreetPicker({ onUse, onCancel }: { onUse: (spot: Spot) => void;
   }, [])
 
   const found = loaded?.picker.searchStreets(query) ?? []
-  const status = !loaded
-    ? 'Loading streets…'
-    : !query.trim()
-      ? 'Type part of its name.'
-      : !found.length
-        ? 'No street in the Inner West matches that.'
-        : found.length > SHOWN
-          ? `${found.length} streets match. Type more to narrow them down.`
-          : `${found.length} ${found.length === 1 ? 'street matches' : 'streets match'}.`
+  const status = searchStatus(query, loaded && found.length)
   // A screen reader isn't told when the list under the box changes, so the count is spoken (4.1.3).
   useEffect(() => {
     if (query.trim()) announce(status)
