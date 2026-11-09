@@ -5,7 +5,7 @@ acceptance criteria pass and `pnpm verify` is green.
 
 ## PR 1 — `build/01-foundation` (from `main`)
 
-- [ ] 1.1 Workspace and tooling (pnpm, Turbo, strict TS, ESLint import rules, Prettier, Docker Postgres 18)
+- [x] 1.1 Workspace and tooling (pnpm, Turbo, strict TS, ESLint import rules, Prettier, Docker Postgres 18)
 - [ ] 1.2 Shared config, tokens and the contrast test
 - [ ] 1.3 Database package: full §5.1 schema, initial migration, client, `LIVE`, seed, DB test setup
 - [ ] 1.4 Web app shell: layout, header, fonts, proxy with nonce CSP and security headers

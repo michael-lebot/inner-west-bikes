@@ -337,7 +337,8 @@ Runtime (each justified; nothing else is added without a line here):
 | `@vercel/blob` 2.8 | db | Private photo store (§4.3 needs ≥ 2.3) |
 
 Dev only: `typescript` ~6.0 (typescript-eslint supports < 6.1; TS 7 has no compiler API yet), `turbo` 2,
-`eslint` 9 (eslint-plugin-react does not support 10 yet) with `eslint-config-next` 16 and `typescript-eslint`,
+`eslint` 9 (eslint-plugin-react does not support 10 yet) with `eslint-config-next` 16 (its `typescript` config brings
+typescript-eslint), `next` at the root too (eslint-config-next loads its parser from `next` without declaring it),
 `prettier`, `tailwindcss` 4 + `@tailwindcss/postcss`, `vitest` **4.1** (Vitest 5 excludes Node 25, the local
 runtime), `@playwright/test`, `@axe-core/playwright`, `@lhci/cli`, `pg` + `@types/pg` (E2E SQL helper),
 `@turf/turf` (data build scripts only), `@types/node`, `@types/react`.
@@ -350,7 +351,8 @@ chips; `navigator.geolocation`; canvas `toBlob` for resizing; `map.addImage` for
 
 Node: `.nvmrc` is `24` (Active LTS until Oct 2026, now Maintenance LTS; supported by Vercel and Next 16's
 `>=20.9`). `engines.node` is `">=24"` so local Node 25 runs everything. Pin exact versions in the lockfile; record
-them in PR 1's description.
+them in PR 1's description. A version used by more than one `package.json` lives once, in the `catalog` of
+`pnpm-workspace.yaml`.
 
 ### 1.9 Deliberately not built
 
@@ -428,15 +430,15 @@ budgets confirmed or reset.
   `pnpm-workspace.yaml`, `turbo.json` (tasks `build`, `typecheck`, `test`, `dev`; declare `NEXT_PUBLIC_*` in `env`
   and `DATABASE_URL`, `TEST_DATABASE_URL`, `CI` in `passThroughEnv`, because Turbo 2 hides undeclared variables),
   `tsconfig.base.json` (strict, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`, `moduleResolution: bundler`),
-  `eslint.config.mjs` (flat: `eslint-config-next` core-web-vitals with `settings.next.rootDir: ['apps/*/']`,
-  typescript-eslint, plus the import rules of §1.3 and the `process.env` rule of §1.6), `.prettierrc`
-  (`printWidth: 120`, `semi: false`, `singleQuote: true`), `.gitignore`, `.nvmrc`, `docker-compose.yml`, README
-  setup section.
+  `eslint.config.mjs` (flat: `eslint-config-next` core-web-vitals and typescript, with the Pages Router rule
+  `no-html-link-for-pages` off, plus the import rules of §1.3 and the `process.env` rule of §1.6), `.prettierrc`
+  (`printWidth: 120`, `semi: false`, `singleQuote: true`), `.prettierignore` (the hand-formatted `SPEC.md`,
+  `tasks/plan.md` and mockups, and the lockfile), `.gitignore`, `.nvmrc`, `docker-compose.yml`, README setup section.
 - **Accept:** `pnpm install` on a clean clone succeeds on Node 24 and 25; `pnpm lint` runs ESLint and
   `prettier --check` over the repo; a test import of `maplibre-gl` from `apps/web/components/` fails lint;
   `pnpm db:up` starts Postgres 18 and waits until healthy.
 - **Files:** `package.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`, `eslint.config.mjs`,
-  `.prettierrc`, `.gitignore`, `.nvmrc`, `docker-compose.yml`, `README.md`.
+  `.prettierrc`, `.prettierignore`, `.gitignore`, `.nvmrc`, `docker-compose.yml`, `README.md`.
 - **Verify:** `pnpm install && pnpm lint && pnpm db:up && docker compose ps`.
 - **Depends:** none.
 

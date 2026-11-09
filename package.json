@@ -1,0 +1,28 @@
+{
+  "name": "inner-west-bikes",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "db:up": "docker compose up --detach --wait",
+    "db:down": "docker compose down",
+    "dev": "turbo run dev",
+    "lint": "eslint . && prettier --check .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "build": "turbo run build",
+    "start": "pnpm --recursive --parallel start",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.5",
+    "next": "catalog:",
+    "prettier": "3.9.10",
+    "turbo": "2.11.10",
+    "typescript": "6.0.3"
+  }
+}

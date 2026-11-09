@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Versions used by more than one package.json, kept in one place.
+catalog:
+  next: 16.4.5

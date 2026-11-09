@@ -1,0 +1,16 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "globalEnv": ["NEXT_PUBLIC_*"],
+  "globalPassThroughEnv": ["DATABASE_URL", "TEST_DATABASE_URL", "CI"],
+  "tasks": {
+    "build": {
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "typecheck": {},
+    "test": {},
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
