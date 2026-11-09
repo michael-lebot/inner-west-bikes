@@ -1,10 +1,10 @@
-import { bikes, type PublicTag } from '@iwb/shared'
+import { bikes, byPlace, type PublicTag } from '@iwb/shared'
 import { TagRow } from './TagRow'
 
 /** Live tags grouped by suburb: suburbs, then the streets in each, in alphabetical order. */
 export function TagList({ tags, now }: { tags: PublicTag[]; now: Date }) {
   const bySuburb = new Map<string, PublicTag[]>()
-  for (const tag of tags.toSorted((a, b) => a.suburb.localeCompare(b.suburb) || a.street.localeCompare(b.street))) {
+  for (const tag of tags.toSorted(byPlace)) {
     const group = bySuburb.get(tag.suburb)
     if (group) group.push(tag)
     else bySuburb.set(tag.suburb, [tag])

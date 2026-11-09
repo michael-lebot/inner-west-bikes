@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bikeCount, bikeName, clockTime, dateTime, duration, isExpired } from './format'
+import { bikeCount, bikeName, byPlace, clockTime, dateTime, duration, isExpired, pinLabel } from './format'
 
 describe('bikeCount', () => {
   it('uses the singular for one bike', () => {
@@ -34,6 +34,13 @@ describe('duration', () => {
     expect(duration(start, after(40))).toBe('40 min')
     expect(duration(start, after(0))).toBe('1 min')
   })
+
+  it('spells the units out for screen readers', () => {
+    expect(duration(start, after(31 * 60), true)).toBe('31 hours')
+    expect(duration(start, after(60), true)).toBe('1 hour')
+    expect(duration(start, after(40), true)).toBe('40 minutes')
+    expect(duration(start, after(1), true)).toBe('1 minute')
+  })
 })
 
 describe('clockTime', () => {
@@ -61,5 +68,36 @@ describe('isExpired', () => {
 
   it('is true from expiresAt on', () => {
     expect(isExpired({ expiresAt: now }, now)).toBe(true)
+  })
+})
+
+describe('byPlace', () => {
+  it('orders by suburb, then street', () => {
+    const tags = [
+      { suburb: 'Newtown', street: 'King St' },
+      { suburb: 'Marrickville', street: 'Llewellyn St' },
+      { suburb: 'Newtown', street: 'Denison St' },
+    ]
+    expect(tags.toSorted(byPlace).map((tag) => tag.street)).toEqual(['Llewellyn St', 'Denison St', 'King St'])
+  })
+})
+
+describe('pinLabel', () => {
+  it('names the bike, the problem, the place and when it disappears', () => {
+    const expiresAt = new Date('2026-11-10T04:40:00Z')
+    const tag = {
+      id: '5eed0000-0000-4000-8000-000000000006',
+      lat: -33.895472,
+      lng: 151.177079,
+      suburb: 'Newtown',
+      street: 'Denison St',
+      operator: 'lime',
+      problem: 'blocking_footpath',
+      lastConfirmedAt: new Date('2026-11-08T13:40:00Z'),
+      expiresAt,
+    } as const
+    expect(pinLabel(tag, new Date(expiresAt.getTime() - (31 * 60 + 20) * 60_000))).toBe(
+      'Lime e-bike, blocking footpath, Denison St, Newtown, disappears in 31 hours, at 3:40 pm Tuesday',
+    )
   })
 })

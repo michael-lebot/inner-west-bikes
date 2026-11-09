@@ -773,6 +773,13 @@ them.
   visible map area. Tapping a pin whose centre is within 44 px of another opens `CrowdChooser` ("N bikes here") built
   from `TagRow`s. The selected pin bobs twice, only under `prefers-reduced-motion: no-preference`. Hover: pointer
   cursor and the focus outline only.
+  As built: each pin's button is 44 × 44 px with the pin standing at the middle of its bottom edge, and hover gives
+  it the focus ring (`HOVER_RING`, shared with `TagRow`). A click from Enter or Space (`detail` 0) picks that pin
+  alone, since from the keyboard each pin is its own stop; only a tap looks for crowding. MapLibre gives a custom
+  marker element `role="button"` and "Map marker", which would nest one button in another, so `MapView` removes
+  both. The picked pin gets `aria-expanded` and the bob; the card it opens is task 2.8. The order is `byPlace` in
+  `format.ts`, shared with `TagList`. "Map ready" is marked once the first `idle` has passed and the pins are in;
+  the preview gives way at that first `idle`, so a failed `/api/tags` can't take the map away.
 - **Accept:** every live tag is one focusable button; Enter opens its card; overlapping pins at zoom 12 open the
   chooser; no pin is drawn on the canvas.
 - **Files:** `map/MapView.tsx`, `components/{CrowdChooser,PinIcon}.tsx`, `packages/shared/src/format.ts`.

@@ -1,9 +1,8 @@
 'use client'
-import { isExpired, type PublicTag } from '@iwb/shared'
-import { useCallback, useEffect, useState } from 'react'
+import { isExpired, type PublicTag, REFRESH_MINUTES } from '@iwb/shared'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
-const REFRESH_MS = 5 * 60_000
-const TICK_MS = 60_000
+const MINUTE = 60_000
 
 /**
  * The live tags (§11.3): fetched on mount, when the tab comes back or regains focus, every 5 minutes while it is
@@ -39,8 +38,8 @@ export function useLiveTags() {
     refresh()
     document.addEventListener('visibilitychange', whenVisible)
     window.addEventListener('focus', refresh)
-    const refreshing = setInterval(whenVisible, REFRESH_MS)
-    const ticking = setInterval(() => setNow(new Date()), TICK_MS)
+    const refreshing = setInterval(whenVisible, REFRESH_MINUTES * MINUTE)
+    const ticking = setInterval(() => setNow(new Date()), MINUTE)
     return () => {
       document.removeEventListener('visibilitychange', whenVisible)
       window.removeEventListener('focus', refresh)
@@ -49,5 +48,6 @@ export function useLiveTags() {
     }
   }, [refresh])
 
-  return { tags: tags?.filter((tag) => !isExpired(tag, now)), now, refresh }
+  const live = useMemo(() => tags?.filter((tag) => !isExpired(tag, now)), [tags, now])
+  return { tags: live, now, refresh }
 }

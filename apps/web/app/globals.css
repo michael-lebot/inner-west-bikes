@@ -19,6 +19,14 @@
 
 @theme {
   --font-sans: 'Atkinson Hyperlegible', system-ui, sans-serif;
+  /* The selected pin's bob, from the mockup: two cycles, then still (§10.5). */
+  --animate-bob: bob 1s steps(2) 2;
+
+  @keyframes bob {
+    50% {
+      transform: translateY(-4px);
+    }
+  }
 }
 
 /* The map screen's side-panel layout: 768 px and wider, and phones held sideways (§12, §13). */

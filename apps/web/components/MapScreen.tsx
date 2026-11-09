@@ -1,8 +1,9 @@
 'use client'
-import { bikeCount, bikes, GREYS, TAG_LIFETIME_HOURS } from '@iwb/shared'
+import { bikeCount, bikes, GREYS, type PublicTag, TAG_LIFETIME_HOURS } from '@iwb/shared'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveTags } from '@/lib/use-live-tags'
+import { CrowdChooser } from './CrowdChooser'
 import { Legend } from './Legend'
 import { ViewToggle } from './ViewToggle'
 
@@ -19,7 +20,16 @@ const READY_WITHIN_MS = 15_000
 export function MapScreen() {
   const [status, setStatus] = useState<Status>('loading')
   const [MapView, setMapView] = useState<MapModule['MapView']>()
-  const { tags } = useLiveTags()
+  const { tags, now } = useLiveTags()
+  const [selected, setSelected] = useState<string>()
+  const [crowd, setCrowd] = useState<PublicTag[]>()
+  // The pin that opened the chooser, which gets focus back when it closes.
+  const opener = useRef<HTMLElement>(null)
+
+  const select = (tag: PublicTag) => {
+    setCrowd(undefined)
+    setSelected(tag.id)
+  }
 
   useEffect(() => {
     // Effects run after the server's HTML has been painted, so the map never delays first paint.
@@ -49,7 +59,19 @@ export function MapScreen() {
         <p id="map-summary" className="sr-only">
           Map of the Inner West{tags && ` with ${bikes(tags.length)} tagged`}. A list view is available.
         </p>
-        {MapView && status !== 'failed' && <MapView onStatus={setStatus} />}
+        {MapView && status !== 'failed' && (
+          <MapView
+            tags={tags}
+            now={now}
+            selected={selected}
+            onPick={(picked, pin) => {
+              opener.current = pin
+              if (picked.length > 1) setCrowd(picked)
+              else if (picked[0]) select(picked[0])
+            }}
+            onStatus={setStatus}
+          />
+        )}
         {status !== 'ready' && (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element -- a static file sized by CSS: next/image would only add JavaScript */}
@@ -79,15 +101,29 @@ export function MapScreen() {
         tabIndex={-1}
         className="flex flex-col gap-3 border-t border-line p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
       >
-        {/* Each line keeps its height while the tags load, so nothing moves when they arrive. */}
-        <div>
-          <h2 className="min-h-7 text-lg font-bold">
-            {tags && (tags.length ? bikeCount(tags.length) : 'No bikes in the graveyard right now.')}
-          </h2>
-          <p className="text-sm text-muted">Tags disappear {TAG_LIFETIME_HOURS} hours after the last sighting.</p>
-        </div>
-        <Legend tags={tags} />
-        <ViewToggle current="/" />
+        {crowd ? (
+          <CrowdChooser
+            tags={crowd}
+            now={now}
+            onSelect={select}
+            onClose={() => {
+              setCrowd(undefined)
+              opener.current?.focus()
+            }}
+          />
+        ) : (
+          <>
+            {/* Each line keeps its height while the tags load, so nothing moves when they arrive. */}
+            <div>
+              <h2 className="min-h-7 text-lg font-bold">
+                {tags && (tags.length ? bikeCount(tags.length) : 'No bikes in the graveyard right now.')}
+              </h2>
+              <p className="text-sm text-muted">Tags disappear {TAG_LIFETIME_HOURS} hours after the last sighting.</p>
+            </div>
+            <Legend tags={tags} />
+            <ViewToggle current="/" />
+          </>
+        )}
       </div>
     </>
   )
