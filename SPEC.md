@@ -11,7 +11,8 @@
 >   - It fixes the placement, dialog and sheet behaviour that conflicted with the accessibility target (§3, §10,
 >     §12).
 >   - Rulings applied provisionally, which need Michael's confirmation, are listed in §13.
->   - After the review, Michael added **Use my location** as a third way to place a pin (§4.1).
+>   - After the review, Michael added **Use my location** as a third way to place a pin (§4.1), and a handle that
+>     shrinks the tag card with a tap or a flick (§12).
 >
 > Sources are listed at the end.
 
@@ -85,7 +86,8 @@ The three main screens are shown in `docs/mockups/graveyard-v3.html`.
    - the photo, operator, problem and street;
    - "Last seen Xh ago · Disappears in Yh", with a timer bar;
    - "Is it still there?" with **Still there** and **Removed** buttons;
-   - a low-key **Report this photo** link.
+   - a low-key **Report this photo** link;
+   - a handle at the top, which shrinks the card to one line to show more of the map, and brings it back (§12).
 4. **Report a photo.** Choose a reason. The photo stops loading for everyone from their next request, and Michael gets
    an email. A page that already had it open drops it at its next refresh (§4.3).
 5. **Admin (Michael).** Review the queue of reported photos and restore or delete each one. Undo removals that were
@@ -628,6 +630,8 @@ are WCAG success criteria. Where our own rule is stricter than the criterion, th
     keyboard alike.
   - **Non-modal:** the tag card. Focus moves to its heading, Esc or its Close button closes it, and focus returns to
     the pin. The map stays usable.
+    - Its handle is a button named "Shrink card" or "Expand card", and it reports its state with `aria-expanded`
+      (§12).
   - **Modal dialogs** (2.4.3): the tag form, the report form, the "Is it one of these?" question and the street
     picker.
     - Focus moves to the heading, and Tab stays inside.
@@ -663,7 +667,8 @@ are WCAG success criteria. Where our own rule is stricter than the criterion, th
   - **Pan:** a **Move map** button opens four arrow buttons, and each tap moves the map half a screen. Keyboard
     arrows alone don't meet 2.5.7, because a touch user who can't drag has no keyboard.
   - **Placing:** tap, keyboard, Use my location, or Choose by street (§10.3).
-  - **The sheet is not draggable.** Its height follows what it is showing (§12), and it closes with a button.
+  - **The sheet never needs a drag.** Its height follows what it is showing. The tag card's handle shrinks and
+    restores it with a tap; a flick on the handle is an optional extra (§12).
   - Map rotation is off.
 - **No time limits** on any action (2.2.1). That includes the photo: the server sets no deadline for attaching it
   (§4.3).
@@ -681,7 +686,8 @@ are WCAG success criteria. Where our own rule is stricter than the criterion, th
   - VoiceOver on iOS Safari and TalkBack on Android Chrome, including tagging a bike from start to finish with Choose
     by street and with Use my location;
   - keyboard only on desktop;
-  - touch without dragging: reach a spot that starts off screen and tag it using taps alone;
+  - touch without dragging: reach a spot that starts off screen and tag it using taps alone, then shrink and
+    restore a tag card the same way;
   - 200% zoom, 320 px width, and the largest system text size on an SE-sized phone, checking that each form's
     submit and cancel buttons can be reached;
   - label and pin contrast judged on the real map on a phone, not only in the token test.
@@ -788,11 +794,24 @@ under 100 visits a day there may be too little data to judge these, so they are 
 - **Mobile first,** designed for 320–430 px. At 768 px and wider, the bottom sheet becomes a side panel.
 - **Layout:**
   - The map fills the viewport below the header (`100dvh`).
-  - The sheet has three heights, set by what it is showing and never by dragging:
-    - **peek:** the count and primary button, or the placement bar;
+  - The sheet has three heights, set by what it is showing:
+    - **peek:** the count and primary button, the placement bar, or a shrunk tag card;
     - **half:** a tag card;
     - **full:** any of the dialogs in §10.4, over a short map strip. The strip is for reference only and can't be
       touched.
+  - **The tag card can be shrunk,** to show more of the map without closing it.
+    - A handle at the top of the card is a real button. A tap shrinks the card to one line ("Lime e-bike · Blocking
+      footpath · Denison St"), and a second tap brings it back.
+    - A flick does the same: a vertical swipe of 30 px or more that starts on the handle. The card switches when the
+      finger lifts. It doesn't follow the finger.
+    - Only the handle listens for the flick, never the card's content, so it can't fight with scrolling inside the
+      card.
+    - The switch takes 200 ms or less, and is instant under `prefers-reduced-motion: reduce`.
+    - While the card is shrunk, its other buttons are out of reach of pointer and keyboard. The handle and Close
+      stay.
+    - `shortcut: flick on release, upgrade to a card that follows the finger if this feels stiff on phones at M1.`
+  - **Dialogs and the browse panel have no handle.** A dialog keeps its height and closes only with Cancel or Esc, so
+    a stray swipe can't dismiss a half-filled form.
   - The page itself never scrolls while the map is visible, so scrolling and panning never fight. `touch-action` is
     set on the map only.
   - **The sheet scrolls inside itself.** Its height is capped at the space left under the header and inside the safe
@@ -866,7 +885,7 @@ under 100 visits a day there may be too little data to judge these, so they are 
 | Milestone | Scope | Exit criteria |
 |---|---|---|
 | **M0 Infra** | GitHub repo; Turborepo skeleton; Vercel projects (`web`, `admin`) in `michael-lebot's projects`, region `syd1`; Neon via the Vercel Marketplace (Sydney); Blob stores (public and private); Resend; `CRON_SECRET`; CI (lint, typecheck, Vitest, axe, Lighthouse CI and the Playwright performance checks from §11.4, contrast test); spend alert | Empty apps deploy; Prisma migration runs on Neon; CI gates run; the bare build is measured and the §11.1 budgets are confirmed or reset |
-| **M1 Map prototype** | PMTiles extract on Blob; Overworld MapLibre style with pattern sprites; mask and gold council line; Atkinson Hyperlegible glyphs; HTML-marker pins with the crowded-pin chooser; zoom and Move map buttons; static preview image and the map-failed fallback; bottom sheet with its three heights and inner scrolling | On a real mid-range Android over 4G, the §11.1 budgets pass, including "map ready"; the PMTiles checks in §11.2 pass; street names are legible at zoom 16 on a 320 px screen; VoiceOver and TalkBack can reach every pin; a spot that starts off screen can be reached with taps alone; contrast test passes |
+| **M1 Map prototype** | PMTiles extract on Blob; Overworld MapLibre style with pattern sprites; mask and gold council line; Atkinson Hyperlegible glyphs; HTML-marker pins with the crowded-pin chooser; zoom and Move map buttons; static preview image and the map-failed fallback; bottom sheet with its three heights, inner scrolling and the tag card's handle | On a real mid-range Android over 4G, the §11.1 budgets pass, including "map ready"; the PMTiles checks in §11.2 pass; street names are legible at zoom 16 on a 320 px screen; VoiceOver and TalkBack can reach every pin; a spot that starts off screen can be reached with taps alone; a tag card shrinks and restores by tap and by flick; contrast test passes |
 | **M2 Tags** | Placement step and form dialog (zoom ≥ 16, buffered boundary, keyboard crosshair, Use my location, Choose by street, Change location); nearby-tag suggestion; still-there and removed under the §4.2 rules; safe retries (§5.3); BotID; rate limits; the hourly job; `/list` and `/tag/[id]`; admin Tags screen with Undo and Take down | Playwright (desktop and mobile projects): create → confirm → remove → admin undo, by touch, by keyboard, by Use my location, and by Choose by street with no map; the §5.5 tests for expiry edges, two at once, repeats, access, the hourly job and Use my location pass; axe finds no A or AA violations; at the largest text size on an SE-sized screen, the form can be submitted and cancelled |
 | **M3 Photos and moderation** | Upload pipeline; photo attach with its own retry; private serving; reports; email with digest retry; admin queue; pause switch and circuit breaker | A reported photo returns 404 on the next request and stays hidden through remove → undo; a photo returns 404 once its tag is no longer live; restore works; the §5.5 photo, bad-image and outside-failure tests pass; generated alt text is present; the admin app passes axe |
 | **M4 Launch** | `/why`, `/accessibility`, `/privacy`, `/terms`; eSafety classification and response procedure (§7); domain; OSM and NSW attribution; manual assistive-technology pass (§10.6); launch checklist | Michael signs off |
@@ -876,7 +895,7 @@ under 100 visits a day there may be too little data to judge these, so they are 
 Hosting-cost tracker and contributions (deferred, §4.5); accounts; free-text notes; automated image moderation;
 placing a tag from a photo's stored location; live location tracking; operator or council integrations and
 notifications; multiple photos per tag; a stats or heat-map page (the data is kept for later); dark mode; an offline
-queue and installable-app (PWA) support; other councils; an abuse dashboard and visitor blocking; a draggable sheet; a
+queue and installable-app (PWA) support; other councils; an abuse dashboard and visitor blocking; a sheet that follows the finger; a
 CDN cache for tag data.
 
 ## Appendix A — Cost tracking and contributions research (parked)
