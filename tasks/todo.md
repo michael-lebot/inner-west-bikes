@@ -18,7 +18,7 @@ acceptance criteria pass and `pnpm verify` is green.
 
 ## PR 2 — `build/02-browse-map` (from `build/01-foundation`)
 
-- [ ] 2.1 NSW boundary, suburb and street data (fetch + build) and `where()`
+- [x] 2.1 NSW boundary, suburb and street data (fetch + build) and `where()`
 - [ ] 2.2 Tiles: pinned extract script, local range serving, CI cache
 - [ ] 2.3 Overworld style: base layers, labels, Atkinson PBF glyphs, `within` filters
 - [ ] 2.4 Map art: pattern sprites, mask, gold wall with dark casing; contrast test extended

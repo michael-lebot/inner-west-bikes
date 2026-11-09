@@ -9,3 +9,4 @@ packages/server/src/generated/
 playwright-report/
 test-results/
 .lighthouseci/
+packages/shared/data/raw/

@@ -344,7 +344,8 @@ Dev only: `typescript` ~6.0 (typescript-eslint supports < 6.1; TS 7 has no compi
 typescript-eslint), `next` at the root too (eslint-config-next loads its parser from `next` without declaring it),
 `prettier`, `tailwindcss` 4 + `@tailwindcss/postcss`, `vitest` **4.1** (Vitest 5 excludes Node 25, the local
 runtime), `@playwright/test`, `@axe-core/playwright`, `@lhci/cli`, `pg` + `@types/pg` (E2E SQL helper),
-`@turf/turf` (data build scripts only), `@types/node`, `@types/react`.
+`@turf/turf` (data build scripts only), `@types/geojson` (the GeoJSON types `geo.ts` and the data scripts use; turf
+brings them, but pnpm only resolves a package's own dependencies), `@types/node`, `@types/react`.
 
 Platform features used instead of packages: Node 24 type stripping runs `.ts` scripts (no `tsx`); `fetch` for Resend
 (no SDK); `crypto.randomUUID` (no `uuid`); `Intl.DateTimeFormat` (no date library); native `<dialog>` with
@@ -641,10 +642,12 @@ them.
   `council.json` with the true boundary, the bbox, the 2 km padded `maxBounds` box (about 151.090, −33.955 to
   151.220, −33.825) and the **mask** polygon (outer ring = padded box, hole = council ring, wound correctly; a test
   checks signed areas); `places.json` with the suburbs that intersect the buffered polygon (including neighbours
-  that only touch the buffer) and named road segments inside it, titled and abbreviated as in `process_geo.py`
-  (Street → St, Road → Rd, …), simplified at about 2 m with coordinates at 6 dp. `src/geo.ts`: `where(lat, lng)`
+  that only touch the buffer) and named road segments inside it (open and not in a tunnel, so a bike above the
+  WestConnex tunnels gets the street on top), titled and abbreviated as in `process_geo.py` (Street → St, Road → Rd,
+  …), each street's segments joined end to end, simplified at about 2 m with coordinates at 6 dp. `src/geo.ts`: `where(lat, lng)`
   returns `{ inside, suburb, street }`, inside by `booleanPointInPolygon` on the buffered polygon, suburb by
-  point-in-polygon, street by nearest segment in local metres.
+  point-in-polygon (or the nearest suburb, for the metre-wide slivers that simplifying each suburb leaves between
+  them), street by nearest segment in local metres.
 - **Accept:** `where.test.ts` passes for a point on Llewellyn St (inside, Marrickville, Llewellyn St); the far
   footpath of King St opposite the boundary (inside, Newtown); a point 30 m outside the buffer (outside); a point on
   Parramatta Rd's midline (inside). The suburb list contains the 17 wholly-inside and 9 partly-inside suburbs of

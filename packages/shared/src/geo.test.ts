@@ -1,0 +1,55 @@
+import type { Position } from 'geojson'
+import { describe, expect, it } from 'vitest'
+import council from '../data/council.json'
+import places from '../data/places.json'
+import { where } from './geo'
+
+describe('where', () => {
+  it('finds a point on Llewellyn St, Marrickville', () => {
+    expect(where(-33.904497, 151.171932)).toEqual({ inside: true, suburb: 'Marrickville', street: 'Llewellyn St' })
+  })
+
+  it("counts the far footpath of King St, across the boundary in the City of Sydney's half of Newtown", () => {
+    expect(where(-33.896734, 151.179755)).toEqual({ inside: true, suburb: 'Newtown', street: 'King St' })
+  })
+
+  it('counts the midline of Parramatta Rd, 7 m outside the boundary', () => {
+    expect(where(-33.871321, 151.122567)).toMatchObject({ inside: true, street: 'Parramatta Rd' })
+  })
+
+  it('refuses a point 30 m beyond the 20 m strip', () => {
+    expect(where(-33.896976, 151.180046)).toMatchObject({ inside: false })
+  })
+})
+
+describe('places.json', () => {
+  it('has every suburb wholly or partly inside the council (§4.1), and the neighbours that touch the strip', () => {
+    const wholly = ['Ashfield', 'Balmain', 'Balmain East', 'Birchgrove', 'Dulwich Hill', 'Enmore', 'Haberfield']
+    wholly.push('Leichhardt', 'Lewisham', 'Lilyfield', 'Marrickville', 'Petersham', 'Rozelle', 'Stanmore')
+    wholly.push('Summer Hill', 'Sydenham', 'Tempe')
+    const partly = ['Annandale', 'St Peters', 'Newtown', 'Croydon', 'Camperdown', 'Hurlstone Park', 'Croydon Park']
+    partly.push('Ashbury', 'Mascot')
+    expect(places.suburbs.map((suburb) => suburb.name)).toEqual(expect.arrayContaining([...wholly, ...partly]))
+  })
+})
+
+describe('council.json', () => {
+  /** Twice the signed area by the shoelace formula: positive when the ring runs anticlockwise. */
+  const signedArea = (ring: Position[]) =>
+    ring.reduce((sum, [x = 0, y = 0], i) => {
+      const [nx = 0, ny = 0] = ring[(i + 1) % ring.length] ?? []
+      return sum + x * ny - nx * y
+    }, 0)
+
+  it('winds the mask so the council is a hole in it, not a second grey polygon', () => {
+    const [outer = [], hole = []] = council.mask.coordinates
+    expect(council.mask.coordinates).toHaveLength(2)
+    expect(signedArea(outer)).toBeGreaterThan(0)
+    expect(signedArea(hole)).toBeLessThan(0)
+  })
+
+  it('cuts the hole along the council boundary itself, not the 20 m strip', () => {
+    const hole = council.mask.coordinates[1] ?? []
+    expect([hole, hole.toReversed()]).toContainEqual(council.boundary.coordinates[0])
+  })
+})
