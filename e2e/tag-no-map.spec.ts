@@ -1,5 +1,18 @@
 import { expect, type Page, type Response, test } from '@playwright/test'
-import { chip, expectNoAxeViolations, newPin, newTagId, resetDb, sql, tagEvents, undoInAdmin } from './support'
+import {
+  bar,
+  chip,
+  expectNoAxeViolations,
+  mapBox,
+  newPin,
+  newTagId,
+  resetDb,
+  sql,
+  startTagging,
+  tagEvents,
+  tap,
+  undoInAdmin,
+} from './support'
 
 test.beforeEach(() => resetDb())
 // Instant camera moves, so the map has settled when it is looked at.
@@ -7,20 +20,8 @@ test.use({ reducedMotion: 'reduce' })
 
 const dialog = (page: Page) => page.getByRole('dialog')
 const announced = (page: Page) => page.locator('#announcer')
-const bar = (page: Page) => page.locator('#placement-heading + p')
-
-async function startOnList(page: Page) {
-  await page.goto('/list')
-  await page.getByRole('button', { name: 'Tag a dumped bike' }).click()
-  await expect(page.getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
-}
-
-async function startOnMap(page: Page) {
-  await page.goto('/')
-  await expect(page.locator('[data-map-ready]')).toBeAttached()
-  await page.getByRole('button', { name: 'Tag a dumped bike' }).click()
-  await expect(page.getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
-}
+// Number 12 Llewellyn St, Marrickville, for Use my location.
+const LLEWELLYN_ST = { latitude: -33.90512, longitude: 151.17288 }
 
 /** Choose by street as far as its second step: the street found by typing and picked. */
 async function pickStreet(page: Page, typed: string, street: string) {
@@ -40,7 +41,7 @@ test.describe('Choose by street', () => {
   test('on /list, finds a house by its number and tags it, sending the spot but never the number', async ({ page }) => {
     const scripts: Response[] = []
     page.on('response', (response) => response.request().resourceType() === 'script' && scripts.push(response))
-    await startOnList(page)
+    await startTagging(page, '/list')
     await page.getByRole('button', { name: 'Choose by street' }).click()
     const search = dialog(page).getByRole('searchbox', { name: 'Street' })
     await search.fill('llew')
@@ -91,7 +92,7 @@ test.describe('Choose by street', () => {
   test('on /list, lists the corners in order along the street, and asks about a live tag at the one chosen', async ({
     page,
   }) => {
-    await startOnList(page)
+    await startTagging(page, '/list')
     await pickStreet(page, 'llewellyn st marr', 'Llewellyn St, Marrickville')
     await expect(dialog(page).getByRole('list', { name: 'Or the nearest corner' }).getByRole('button')).toHaveText([
       'near Enmore Rd',
@@ -121,13 +122,13 @@ test.describe('Choose by street', () => {
     page,
     isMobile,
   }) => {
-    await startOnMap(page)
+    await startTagging(page)
     await pickStreet(page, 'llew', 'Llewellyn St, Marrickville')
     await findNumber(page, '12')
     await dialog(page).getByRole('button', { name: 'Use this spot' }).click()
     await expect(dialog(page).getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
     // The map behind the form shows the pin: in the strip above it on a phone, beside the panel on the desktop.
-    const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
+    const map = await mapBox(page)
     const pin = (await newPin(page).boundingBox())!
     expect(pin.y).toBeGreaterThanOrEqual(map.y)
     expect(pin.x).toBeGreaterThanOrEqual(map.x)
@@ -137,14 +138,12 @@ test.describe('Choose by street', () => {
     await expect(page.getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
     await expect(bar(page)).toHaveText('Pin on Llewellyn St, Marrickville')
     const at = (await newPin(page).boundingBox())!
-    const spot = { x: at.x + at.width / 2 + 30, y: at.y + at.height }
-    if (isMobile) await page.touchscreen.tap(spot.x, spot.y)
-    else await page.mouse.click(spot.x, spot.y)
+    await tap(page, isMobile, { x: at.x + at.width / 2 + 30, y: at.y + at.height })
     await expect.poll(async () => (await newPin(page).boundingBox())!.x).toBeCloseTo(at.x + 30, 0)
   })
 
   test('closes on Cancel or Esc, leaving the placement bar as it was', async ({ page }) => {
-    await startOnMap(page)
+    await startTagging(page)
     for (const close of ['Cancel', 'Escape']) {
       await page.getByRole('button', { name: 'Choose by street' }).click()
       await expect(dialog(page).getByRole('heading', { name: 'Choose by street' })).toBeFocused()
@@ -158,7 +157,7 @@ test.describe('Choose by street', () => {
 
   test('keeps the search box and the streets above an on-screen keyboard', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'the phone projects')
-    await startOnList(page)
+    await startTagging(page, '/list')
     await page.getByRole('button', { name: 'Choose by street' }).click()
     await dialog(page).getByRole('searchbox', { name: 'Street' }).fill('llew')
     // An on-screen keyboard shrinks the visual viewport only, as it does on iOS and on Android.
@@ -240,8 +239,7 @@ test.describe('Choose by street', () => {
 })
 
 test.describe('Use my location', () => {
-  // Number 12 Llewellyn St, Marrickville, and Sydney Town Hall, 3 km outside the council.
-  const LLEWELLYN_ST = { latitude: -33.90512, longitude: 151.17288 }
+  // Sydney Town Hall, 3 km outside the council.
   const TOWN_HALL = { latitude: -33.8732, longitude: 151.2061 }
   test.use({ permissions: ['geolocation'], geolocation: { ...LLEWELLYN_ST, accuracy: 15 } })
 
@@ -250,13 +248,13 @@ test.describe('Use my location', () => {
   }) => {
     const posts: string[] = []
     page.on('request', (request) => request.method() === 'POST' && posts.push(request.url()))
-    await startOnMap(page)
+    await startTagging(page)
     await page.getByRole('button', { name: 'Use my location' }).click()
     const near = 'Near Llewellyn St, Marrickville, accurate to about 15 metres'
     await expect(bar(page)).toHaveText(near)
     await expect(announced(page)).toHaveText(near)
     // The map centres there, with the pin's tip on the spot.
-    const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
+    const map = await mapBox(page)
     await expect
       .poll(async () => {
         const pin = (await newPin(page).boundingBox())!
@@ -288,17 +286,15 @@ test.describe('Use my location', () => {
     context,
     isMobile,
   }) => {
-    await startOnMap(page)
+    await startTagging(page)
     await context.setGeolocation({ ...TOWN_HALL, accuracy: 10 })
     await expectNoPin(page, "You're outside the Inner West. Tap the map or choose a street.")
     await context.setGeolocation({ ...LLEWELLYN_ST, accuracy: 80 })
     await expectNoPin(page, 'Your location is only accurate to about 80 m. Tap where the bike is, or choose a street.')
 
     // The rough position centred the map, where a tap places the pin.
-    const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
-    const middle = { x: map.x + map.width / 2, y: map.y + map.height / 2 }
-    if (isMobile) await page.touchscreen.tap(middle.x, middle.y)
-    else await page.mouse.click(middle.x, middle.y)
+    const map = await mapBox(page)
+    await tap(page, isMobile, { x: map.x + map.width / 2, y: map.y + map.height / 2 })
     await expect(bar(page)).toHaveText('Pin on Llewellyn St, Marrickville')
   })
 
@@ -306,7 +302,7 @@ test.describe('Use my location', () => {
     test.use({ permissions: [] })
 
     test('§5.5 Use my location: a refused permission leaves no pin, and the other ways work', async ({ page }) => {
-      await startOnMap(page)
+      await startTagging(page)
       await expectNoPin(page, "Your browser didn't share your location. Tap the map or choose a street.")
     })
   })
@@ -315,7 +311,7 @@ test.describe('Use my location', () => {
     page,
     context,
   }) => {
-    await startOnList(page)
+    await startTagging(page, '/list')
     await page.getByRole('button', { name: 'Use my location' }).click()
     await expect(bar(page)).toHaveText('Near Llewellyn St, Marrickville, accurate to about 15 metres')
     await page.getByRole('button', { name: 'Use this spot' }).click()
@@ -348,7 +344,7 @@ test.describe('a tag from start to end', () => {
     test(`by Choose by street on /list, with ${way}: add it, mark it Still there and Removed, and undo the removal in the admin`, async ({
       page,
     }) => {
-      await startOnList(page)
+      await startTagging(page, '/list')
       await pickStreet(page, 'llew', 'Llewellyn St, Marrickville')
       await choose(page)
       await dialog(page).getByRole('button', { name: 'Use this spot' }).click()
@@ -368,10 +364,10 @@ test.describe('a tag from start to end', () => {
     })
 
   test.describe('by Use my location', () => {
-    test.use({ permissions: ['geolocation'], geolocation: { latitude: -33.90512, longitude: 151.17288, accuracy: 15 } })
+    test.use({ permissions: ['geolocation'], geolocation: { ...LLEWELLYN_ST, accuracy: 15 } })
 
     test('on the map: add it, mark it Still there and Removed, and undo the removal in the admin', async ({ page }) => {
-      await startOnMap(page)
+      await startTagging(page)
       await page.getByRole('button', { name: 'Use my location' }).click()
       await expect(bar(page)).toHaveText('Near Llewellyn St, Marrickville, accurate to about 15 metres')
       await page.getByRole('button', { name: 'Use this spot' }).click()

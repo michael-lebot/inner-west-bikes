@@ -1,5 +1,18 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
-import { chip, expectNoAxeViolations, newPin, newTagId, resetDb, sql, tagEvents, undoInAdmin } from './support'
+import {
+  bar,
+  chip,
+  expectNoAxeViolations,
+  mapBox,
+  newPin,
+  newTagId,
+  resetDb,
+  sql,
+  startTagging,
+  tagEvents,
+  tap,
+  undoInAdmin,
+} from './support'
 
 const OUTSIDE = 'That spot is outside the Inner West. Tap inside the gold line.'
 
@@ -7,19 +20,10 @@ test.beforeEach(() => resetDb())
 // Instant camera moves, so each tap lands on the map as it will stay.
 test.use({ reducedMotion: 'reduce' })
 
-const mapBox = async (page: Page) => (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
-const bar = (page: Page) => page.locator('#placement-heading + p')
-
 /** Where a pin's tip is: the middle of its bottom edge. */
 async function tip(pin: Locator) {
   const box = (await pin.boundingBox())!
   return { x: box.x + box.width / 2, y: box.y + box.height }
-}
-
-/** A tap on a phone, a click on the desktop. */
-async function tap(page: Page, isMobile: boolean, { x, y }: { x: number; y: number }) {
-  if (isMobile) await page.touchscreen.tap(x, y)
-  else await page.mouse.click(x, y)
 }
 
 /** Presses Tab, or Shift+Tab, until `target` has the focus. */
@@ -27,13 +31,6 @@ async function tabTo(page: Page, target: Locator, key = 'Tab') {
   for (let i = 0; i < 40 && !(await target.evaluate((element) => element === document.activeElement)); i++)
     await page.keyboard.press(key)
   await expect(target).toBeFocused()
-}
-
-async function startTagging(page: Page) {
-  await page.goto('/')
-  await expect(page.locator('[data-map-ready]')).toBeAttached()
-  await page.getByRole('button', { name: 'Tag a dumped bike' }).click()
-  await expect(page.getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
 }
 
 /** Places the pin a little way from the map's middle, where no tag is within 25 m. */
