@@ -1,6 +1,6 @@
 # SPEC — The Inner West E-bike Graveyard
 
-> Status: **draft for review, rev 4** · Author: Michael Levot (with Claude) · 2026-11-09
+> Status: **draft for review, rev 5** · Author: Michael Levot (with Claude) · 2026-11-09
 > - **Rev 2** added the name and the chosen visual direction. It dropped the cost tracker and contributions,
 >   recorded the verified Neon plan, and added the boundary buffer.
 > - **Rev 3** removed every pixel and dot-matrix font and kept the retro look in the map art only. It also added the
@@ -10,9 +10,12 @@
 >   - It drops the CDN cache for tag data (§11.3) and protects the hourly job (§5.4).
 >   - It fixes the placement, dialog and sheet behaviour that conflicted with the accessibility target (§3, §10,
 >     §12).
->   - Rulings applied provisionally, which need Michael's confirmation, are listed in §13.
->   - After the review, Michael added **Use my location** as a third way to place a pin (§4.1), and a handle that
->     shrinks the tag card with a tap or a flick (§12).
+>   - Rulings applied provisionally, which need Michael's confirmation, are listed in §14.
+> - **Rev 5** records Michael's decisions after that review:
+>   - **Use my location** as a third way to place a pin (§4.1);
+>   - a handle that shrinks the tag card with a tap or a flick (§12);
+>   - house-number entry in the street picker, using NSW address data (§4.1, §10.3);
+>   - a desktop section and mockup screen (§13).
 >
 > Sources are listed at the end.
 
@@ -42,7 +45,7 @@ operators, and has no reporting channel of its own.
 | Bike type | Share-scheme bikes and e-bikes only (Lime, Hello, Ario, plus "Not sure") |
 | Who acts on tags | **Public visibility only** in v1. No operator or council integrations |
 | Map realism | **Real streets and real street names, with a retro game skin**. Must be accurate enough to walk to |
-| Placing a tag | Three ways: **tap the map**; **Use my location**, which proposes a pin to confirm; or pick a street and its nearest corner, which needs no map (§4.1, §10.3). Tags up to **20 m outside the council boundary** are accepted |
+| Placing a tag | Three ways: **tap the map**; **Use my location**, which proposes a pin to confirm; or pick a street and then a house number or the nearest corner, which needs no map (§4.1, §10.3). Tags up to **20 m outside the council boundary** are accepted |
 | Tag fields | Operator picker + problem pick-list + optional photo. **No free text** is stored or published |
 | "Removed" | Instant, but **rate-limited per visitor**. Every removal is logged so the admin can undo it, until the tag's 48 hours run out (§4.2) |
 | Photo screening | **Published instantly**. Community reports are the safety net; no automated scan. The risk this leaves is recorded in §6 |
@@ -56,7 +59,7 @@ operators, and has no reporting channel of its own.
 
 ## 3. Core user flows
 
-The three main screens are shown in `docs/mockups/graveyard-v3.html`.
+The three main phone screens and the desktop layout are shown in `docs/mockups/graveyard-v3.html`.
 
 1. **Browse.** The map opens on the whole council area, with everything outside it greyed out and live tags shown as
    pins. A tag is live until it is removed or its 48 hours run out (§4.2).
@@ -70,7 +73,8 @@ The three main screens are shown in `docs/mockups/graveyard-v3.html`.
    2. **Place.** The whole map stays usable. There are three ways to set the spot:
       - tap it on the map;
       - **Use my location**, which proposes a pin where the visitor is standing (§4.1);
-      - **Choose by street**, which picks a street and its nearest corner without the map (§10.3).
+      - **Choose by street**, which picks a street, then a house number or the nearest corner, without the map
+        (§10.3).
    3. **Check the pin.** A bar under the map reads "Pin on Llewellyn St, Marrickville", with **Use this spot** and
       **Cancel**. Tapping somewhere else moves the pin. Spots outside the council plus 20 m are rejected with a
       friendly message.
@@ -152,6 +156,19 @@ The three main screens are shown in `docs/mockups/graveyard-v3.html`.
     King St is in Newtown's City of Sydney half, but it is still "Newtown".
   - Street names come from the nearest named road segment, using the same NSW data bundled as a small lookup.
   - The same build step lists every corner where two named streets meet, for the street picker (§10.3).
+- **House numbers,** also for the street picker: the NSW Spatial Services address points (Geocoded Addressing Theme,
+  AddressPoint layer), from the same publisher as the boundaries and roads.
+  - **Build step:** keep the points inside the buffered polygon, drop unit numbers ("707/16" becomes "16"), and keep
+    one point per street number.
+  - **Measured on 2026-11-09:** 100,241 address points give 53,548 street numbers on 1,482 streets.
+  - **Shipped as one file per suburb** (30 files). The largest is 34 KB gzipped (Marrickville) and the median is
+    6 KB. A file loads only when a street in that suburb is chosen.
+  - Pull from the newer service, `NSW_Geocoded_Addressing_Theme_multiCRS`. The older one is marked as retiring.
+  - **Licence:** the dataset's record says "Creative Commons", with attribution to the State of New South Wales
+    (Spatial Services), but gives no version. Confirm CC BY 4.0 with Spatial Services before launch (§14). The
+    attribution line the site already carries covers it.
+  - The OpenStreetMap tiles can't do this job. They hold about 8,000 house numbers for the council against 53,548
+    here, and each is a bare number with no street attached.
 - **Inside-the-council check:** turf `booleanPointInPolygon` against the buffered polygon, run in the browser for
   instant feedback and again on the server as the rule that counts. PostGIS isn't needed in v1.
 - **Use my location (optional).** A button in the placement step, for someone standing beside the bike.
@@ -306,7 +323,7 @@ runs.
 
 | Layer | Choice (mirrors StoryCraft where sensible) |
 |---|---|
-| Repo | Turborepo monorepo: `apps/web` (public), `apps/admin` (protected), `packages/db` (Prisma schema and client), `packages/shared` (Zod schemas, boundary and buffered GeoJSON, street and corner lookups, operator and problem config) |
+| Repo | Turborepo monorepo: `apps/web` (public), `apps/admin` (protected), `packages/db` (Prisma schema and client), `packages/shared` (Zod schemas, boundary and buffered GeoJSON, street, corner and house-number lookups, operator and problem config) |
 | Framework | Next.js 16 App Router, TypeScript strict, route handlers (no server actions), Tailwind 4 |
 | Database | Neon Postgres 18, Prisma 6 — **new project in Sydney (`aws-ap-southeast-2`)**, created through the **Vercel Marketplace Neon integration** in the `michael-lebot's projects` Vercel team. It then lands in the Vercel-managed org "Vercel: michael-lebot's projects", which is on the **Launch** plan (verified 2026-11-09 with `neonctl orgs list`) and billed through Vercel |
 | Functions | Vercel, **region `syd1`** (Vercel's default is Washington DC, iad1) |
@@ -392,7 +409,7 @@ same result as running it once.
 
 ### 5.5 Tests beyond the happy path
 
-These are exit criteria for M2 and M3 (§14). They run in Vitest against a real Postgres unless marked Playwright.
+These are exit criteria for M2 and M3 (§15). They run in Vitest against a real Postgres unless marked Playwright.
 
 - **Expiry edges:** Still there and Removed work one second before `expires_at` and change nothing one second after.
   Undo is refused after `expires_at`.
@@ -411,6 +428,8 @@ These are exit criteria for M2 and M3 (§14). They run in Vitest against a real 
 - **Access:** the hourly job returns 401 without the token. The admin app can't be reached without Vercel
   Authentication (Playwright, against a preview deployment).
 - **Hourly job twice:** two runs in a row, and two runs at once, give the same result as one.
+- **House numbers** (unit test): the same number, a lettered number (12A) and a range that contains the number
+  (10–14) all match. An unknown number gives the message and no pin.
 - **Use my location** (Playwright, with a mocked position): an accurate position inside the council proposes a pin. A
   rough position, one outside the council, and a refused permission each leave no pin and the other ways working.
 
@@ -454,8 +473,8 @@ the clearing (§5.4).
 - Security headers: strict CSP (map tiles from our own Blob domain only), `X-Content-Type-Options: nosniff`,
   `Referrer-Policy: strict-origin-when-cross-origin`, and `Permissions-Policy: geolocation=(self)`.
 - All input is validated with Zod at the boundary.
-- No visitor-written text is stored or published, by design. The street search box (§10.3) is typed into, but its
-  text never leaves the browser.
+- No visitor-written text is stored or published, by design. The street search and house number boxes (§10.3) are
+  typed into, but their text never leaves the browser.
 
 **Known risk, accepted.** Photos publish instantly, so an unsuitable photo is public until someone reports it or
 Michael sees it. Reporting stops it loading from then on, but can't undo views or downloads that already happened.
@@ -597,15 +616,21 @@ are WCAG success criteria. Where our own rule is stricter than the criterion, th
   "Tag a dumped bike" on `/list`.
   1. **Street:** a labelled search box over the streets inside the council, each shown with its suburb ("Llewellyn
      St, Marrickville"). Typing narrows the list. The typed text is never stored or sent.
-  2. **Nearest corner:** the cross streets along that street, in order ("near Marrickville Rd"). This is what tells
-     one end of a long road from the other.
-  3. **Confirm:** the spot is read back as "Near the corner of Llewellyn St and Marrickville Rd, Marrickville", with
-     **Use this spot**. The usual form follows.
-  - The pin lands on the corner. Accuracy to the nearest corner is accepted on this route.
+  2. **Where on the street,** one of:
+     - **House number:** type the number of the nearest house ("12"). A typed number matches the same number, a
+       lettered one (12A) or a range that contains it (10–14). If nothing matches, the message is "We don't have
+       number 12 on Llewellyn St. Try another number, or pick the nearest corner."
+     - **Nearest corner:** the cross streets along that street, in order ("near Marrickville Rd"). This is what
+       tells one end of a long road from the other.
+  3. **Confirm:** the spot is read back as "12 Llewellyn St, Marrickville" or "Near the corner of Llewellyn St and
+     Marrickville Rd, Marrickville", with **Use this spot**. The usual form follows.
+  - With a house number the pin lands on that property, not on the footpath. With a corner it lands on the corner.
+    Both are accepted on this route.
+  - The house number only finds the spot. It isn't stored, sent or shown. The tag records the point and the street,
+    like any other tag.
   - On the map screen the map also centres there, so a sighted visitor can tap to fine-tune the spot.
-  - The corner list is built from the bundled NSW road data (§4.1) and loaded only when the picker opens. No
-    geocoding API is needed.
-  - It takes a street and a corner, not a house number. The bundled data has no address points.
+  - The street, corner and house-number lists are built from the bundled NSW data (§4.1) and loaded only when
+    needed. No geocoding API is used.
 - **Use my location** (§4.1) is the quicker route for someone at the bike. It works with a screen reader, and from
   `/list` with no map.
   - The result is read back as "Near Llewellyn St, Marrickville, accurate to about 15 metres", with **Use this
@@ -720,6 +745,7 @@ dependency versions. If Next.js and MapLibre alone don't fit, the budgets are re
 | Fonts | 2 woff2 files (400 and 700), Latin subset, ≤ 60 KB total |
 | `GET /api/tags` response (compressed) | ≤ 15 KB for 100 tags |
 | Corner list for the street picker (compressed) | ≤ 100 KB, loaded only when the picker opens |
+| House numbers for one suburb (compressed) | ≤ 40 KB, loaded only when a street in that suburb is chosen |
 
 **Field targets.** For real visitors on mobile at the 75th percentile: LCP ≤ 2.5 s, INP ≤ 200 ms, CLS ≤ 0.1. With
 under 100 visits a day there may be too little data to judge these, so they are watched, not gated.
@@ -791,7 +817,7 @@ under 100 visits a day there may be too little data to judge these, so they are 
 
 ## 12. Mobile usability plan
 
-- **Mobile first,** designed for 320–430 px. At 768 px and wider, the bottom sheet becomes a side panel.
+- **Mobile first,** designed for 320–430 px. At 768 px and wider, the bottom sheet becomes a side panel (§13).
 - **Layout:**
   - The map fills the viewport below the header (`100dvh`).
   - The sheet has three heights, set by what it is showing:
@@ -819,8 +845,9 @@ under 100 visits a day there may be too little data to judge these, so they are 
     taller by large text, wrapped chips or an error message can always be scrolled to its buttons.
   - Every card and dialog has a visible Close or Cancel button at the top, and the focused control is scrolled into
     view.
-  - **On-screen keyboard:** only the street search opens one. Its input sits at the top of the dialog with the
-    results directly beneath, and the dialog is sized to the visual viewport so the keyboard doesn't cover them.
+  - **On-screen keyboard:** only the street picker opens one, for the street search and the house number. Each
+    input sits at the top of the dialog with its results directly beneath, and the dialog is sized to the visual
+    viewport so the keyboard doesn't cover them.
     `100dvh` alone doesn't handle this.
 - **Safe areas:** `viewport-fit=cover` and `env(safe-area-inset-*)` padding for notches and the home indicator.
 - **Thumb reach:** primary actions sit in the bottom 40% of the screen. The header holds only the name and "Why this
@@ -838,7 +865,8 @@ under 100 visits a day there may be too little data to judge these, so they are 
   - browser page zoom is never disabled.
 - **Forms:**
   - native radio inputs styled as 44 px chips;
-  - no typing is needed to tag a bike. The street search (§10.3) is the only text box;
+  - no typing is needed to tag a bike. The street search and house number (§10.3) are the only text boxes, and
+    both are optional;
   - the photo input lets iOS and Android offer camera or library.
 - **Poor connections:**
   - Every write carries an ID made in the browser, and the server returns the first result for a repeat, so a retry
@@ -848,7 +876,8 @@ under 100 visits a day there may be too little data to judge these, so they are 
     on its own (§4.3).
   - The error reads "Couldn't send. Check your connection and try again."
   - There is no offline queue in v1.
-- **Browsers:** iOS Safari 16.4+, plus the last two versions of Chrome for Android and Samsung Internet.
+- **Browsers:** iOS Safari 16.4+, plus the last two versions of Chrome for Android and Samsung Internet. Desktop
+  browsers are listed in §13.
   - Older browsers, such as iOS 15, get the list view instead of the map. Their PMTiles range requests trigger a
     pre-check that Blob rejects.
   - If the map fails to load on a supported browser, the list is offered in its place (§11.2).
@@ -857,12 +886,50 @@ under 100 visits a day there may be too little data to judge these, so they are 
   - Playwright mobile projects (iPhone 13 and Pixel 7 emulation) for every flow.
   - Manual checks at every milestone on a small iPhone (SE size), a current iPhone and a mid-range Android:
     - the largest system text size, landscape, and the browser's toolbar both expanded and collapsed;
-    - the street search with the on-screen keyboard open;
+    - the street search and house number with the on-screen keyboard open;
     - a real photo from the camera and one from the library, on both iOS and Android;
     - Use my location outdoors, both allowed and refused, on both iOS and Android;
     - the map on the oldest supported Safari (16.4).
 
-## 13. Open questions
+## 13. Desktop
+
+The site is designed for phones first (§12). On a larger screen it must work just as well with a mouse and a
+keyboard. The layout is the fourth screen in `docs/mockups/graveyard-v3.html`.
+
+- **Browsers:** the last two versions of Chrome, Edge, Firefox and Safari on desktop. If the map can't load, the list
+  is offered in its place, as on phones (§11.2).
+- **Layout, at 768 px and wider:**
+  - The header runs across the top. Below it, the panel sits on the left, 380 px wide and full height. The map fills
+    the rest.
+  - There is no maximum width. On a very wide screen the map gets wider and the panel stays 380 px.
+  - The text pages (`/why`, `/privacy` and the rest) and `/list` keep their content in a centred column no wider than
+    about 70 characters.
+- **What the panel shows:**
+  - **Browsing:** the count, the operator key and "Tag a dumped bike", then the list of live tags grouped by suburb.
+    The panel has the room, so the List toggle isn't shown at this width.
+    - The rows are the ones the crowded-pin chooser uses (§4.1), and the list scrolls inside the panel.
+    - Clicking a row opens that tag's card, pans the map to its pin and outlines the pin.
+  - **A tag card** opens in the panel in place of the list. Its Close button returns to the list.
+  - **Forms** (the tag form, report form, street picker and "Is it one of these?") open inside the panel too, not as
+    a centred box. They are still modal dialogs (§10.4), so the map is dimmed and can't be used while one is open.
+    The placement step is not a dialog, and the map stays live for it.
+- **No handle on the tag card.** The panel sits beside the map and covers none of it, so there is nothing to shrink
+  (§12).
+- **Mouse:**
+  - Click a pin to open its card. During placement, click the map to drop or move the pin.
+  - Dragging pans and the scroll wheel zooms. The +/− and Move map buttons are there as well (§10.5).
+  - **Hover changes appearance only.** The cursor becomes a pointer, and the pin or list row gets the same outline
+    as keyboard focus. Nothing appears on hover that isn't available another way, so there are no tooltips to build
+    or to make accessible.
+- **Keyboard:** as in §10.4. A manual keyboard-only pass runs in Chrome, Safari and Firefox at every milestone.
+- **Use my location:** a computer usually works out its location from Wi-Fi or the network, which is often worse
+  than the 50 m cut-off. The map then centres roughly and asks for a click (§4.1). That is the expected result on
+  desktop, not an error.
+- **Photos:** the same file input opens a file picker. Dragging a file onto the page isn't needed in v1.
+- **Performance:** the budgets are set and gated on mobile (§11.1). Desktop has no separate gate.
+- **Testing:** the Playwright desktop project (1280 × 800) runs every flow and the axe checks at this layout.
+
+## 14. Open questions
 
 1. **"Why this page exists" copy:** to be supplied by Michael; launch is blocked until then.
 2. **Operator report links:** should the tag card show a small "Report to Lime" contact link? It's still
@@ -879,18 +946,20 @@ under 100 visits a day there may be too little data to judge these, so they are 
      (§4.2).
    - **Instant photos:** kept, with the risk written down in §6.
    - **Paused uploads** stay paused until Michael resumes them, with no automatic restart (§4.6).
+5. **Address data licence:** the NSW record says "Creative Commons" without a version. Confirm CC BY 4.0 with Spatial
+   Services before launch (§4.1).
 
-## 14. Milestones
+## 15. Milestones
 
 | Milestone | Scope | Exit criteria |
 |---|---|---|
 | **M0 Infra** | GitHub repo; Turborepo skeleton; Vercel projects (`web`, `admin`) in `michael-lebot's projects`, region `syd1`; Neon via the Vercel Marketplace (Sydney); Blob stores (public and private); Resend; `CRON_SECRET`; CI (lint, typecheck, Vitest, axe, Lighthouse CI and the Playwright performance checks from §11.4, contrast test); spend alert | Empty apps deploy; Prisma migration runs on Neon; CI gates run; the bare build is measured and the §11.1 budgets are confirmed or reset |
-| **M1 Map prototype** | PMTiles extract on Blob; Overworld MapLibre style with pattern sprites; mask and gold council line; Atkinson Hyperlegible glyphs; HTML-marker pins with the crowded-pin chooser; zoom and Move map buttons; static preview image and the map-failed fallback; bottom sheet with its three heights, inner scrolling and the tag card's handle | On a real mid-range Android over 4G, the §11.1 budgets pass, including "map ready"; the PMTiles checks in §11.2 pass; street names are legible at zoom 16 on a 320 px screen; VoiceOver and TalkBack can reach every pin; a spot that starts off screen can be reached with taps alone; a tag card shrinks and restores by tap and by flick; contrast test passes |
-| **M2 Tags** | Placement step and form dialog (zoom ≥ 16, buffered boundary, keyboard crosshair, Use my location, Choose by street, Change location); nearby-tag suggestion; still-there and removed under the §4.2 rules; safe retries (§5.3); BotID; rate limits; the hourly job; `/list` and `/tag/[id]`; admin Tags screen with Undo and Take down | Playwright (desktop and mobile projects): create → confirm → remove → admin undo, by touch, by keyboard, by Use my location, and by Choose by street with no map; the §5.5 tests for expiry edges, two at once, repeats, access, the hourly job and Use my location pass; axe finds no A or AA violations; at the largest text size on an SE-sized screen, the form can be submitted and cancelled |
+| **M1 Map prototype** | PMTiles extract on Blob; Overworld MapLibre style with pattern sprites; mask and gold council line; Atkinson Hyperlegible glyphs; HTML-marker pins with the crowded-pin chooser; zoom and Move map buttons; static preview image and the map-failed fallback; bottom sheet with its three heights, inner scrolling and the tag card's handle; the desktop side-panel layout (§13) | On a real mid-range Android over 4G, the §11.1 budgets pass, including "map ready"; the PMTiles checks in §11.2 pass; street names are legible at zoom 16 on a 320 px screen; VoiceOver and TalkBack can reach every pin; a spot that starts off screen can be reached with taps alone; a tag card shrinks and restores by tap and by flick; the desktop layout passes the keyboard-only check; contrast test passes |
+| **M2 Tags** | Placement step and form dialog (zoom ≥ 16, buffered boundary, keyboard crosshair, Use my location, Choose by street with house numbers and corners, Change location); nearby-tag suggestion; still-there and removed under the §4.2 rules; safe retries (§5.3); BotID; rate limits; the hourly job; `/list` and `/tag/[id]`; admin Tags screen with Undo and Take down | Playwright (desktop and mobile projects): create → confirm → remove → admin undo, by touch, by keyboard, by Use my location, and by Choose by street with no map (by house number and by corner); the §5.5 tests for expiry edges, two at once, repeats, access, the hourly job, house numbers and Use my location pass; axe finds no A or AA violations; at the largest text size on an SE-sized screen, the form can be submitted and cancelled |
 | **M3 Photos and moderation** | Upload pipeline; photo attach with its own retry; private serving; reports; email with digest retry; admin queue; pause switch and circuit breaker | A reported photo returns 404 on the next request and stays hidden through remove → undo; a photo returns 404 once its tag is no longer live; restore works; the §5.5 photo, bad-image and outside-failure tests pass; generated alt text is present; the admin app passes axe |
-| **M4 Launch** | `/why`, `/accessibility`, `/privacy`, `/terms`; eSafety classification and response procedure (§7); domain; OSM and NSW attribution; manual assistive-technology pass (§10.6); launch checklist | Michael signs off |
+| **M4 Launch** | `/why`, `/accessibility`, `/privacy`, `/terms`; eSafety classification and response procedure (§7); address-data licence confirmed (§14); domain; OSM and NSW attribution; manual assistive-technology pass (§10.6); launch checklist | Michael signs off |
 
-## 15. Out of scope for v1
+## 16. Out of scope for v1
 
 Hosting-cost tracker and contributions (deferred, §4.5); accounts; free-text notes; automated image moderation;
 placing a tag from a photo's stored location; live location tracking; operator or council integrations and
@@ -945,6 +1014,9 @@ Kept so the feature can be revived quickly if costs grow.
   - [OSM attribution guidelines](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines)
   - [NSW Spatial Services copyright](https://www.spatial.nsw.gov.au/copyright)
   - [Neon extensions](https://neon.com/docs/extensions/pg-extensions)
+  - [NSW Geocoded Addressing Theme](https://data.nsw.gov.au/data/dataset/1-9b2990428ef4411da7c61ae56b2c6806)
+  - [NSW Geocoded Addressing Theme, GDA2020 service](https://data.nsw.gov.au/data/dataset/1-7cd525ea0da74a169ccdd6979e28c793)
+  - [Protomaps basemap layers (address points)](https://docs.protomaps.com/basemaps/layers)
 - **Platform:**
   - [Vercel fair use](https://vercel.com/docs/limits/fair-use-guidelines)
   - [Vercel pricing](https://vercel.com/docs/pricing)
