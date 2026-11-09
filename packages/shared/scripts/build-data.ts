@@ -9,7 +9,7 @@ import { gzipSync } from 'node:zlib'
 import * as turf from '@turf/turf'
 import type { BBox, FeatureCollection, LineString, MultiPolygon, Point, Polygon, Position } from 'geojson'
 import { BOUNDARY_BUFFER_METERS, STREET_TYPES } from '../src/config.ts'
-import type { EncodedPlace, Place } from '../src/picker.ts'
+import type { EncodedPlace, Place, Street } from '../src/picker.ts'
 
 /** The tiles cover this much past the council's bounding box: twice as far east and west, for wide screens. */
 const PAD_NS_METERS = 2000
@@ -181,7 +181,7 @@ function onGrid(point: Position) {
   return around[inside] ?? null
 }
 
-const picker = new Map<string, { street: string; suburb: string; corners: Place[] }>()
+const picker = new Map<string, Street>()
 function entry(street: string, suburb: string) {
   const key = `${street}, ${suburb}`
   if (!picker.has(key)) picker.set(key, { street, suburb, corners: [] })
