@@ -16,7 +16,7 @@ export function Header() {
       </Link>
       <Link
         href="/why"
-        className="flex min-h-11 w-24 items-center text-right text-sm leading-tight underline underline-offset-2"
+        className="flex min-h-11 w-24 items-center text-right text-sm leading-tight underline underline-offset-2 md:w-auto"
       >
         Why this page exists
       </Link>

@@ -62,6 +62,17 @@ test.describe('the map screen shell', () => {
     await expect(why).toHaveCSS('outline-width', '3px')
     await expect(why).toHaveCSS('outline-style', 'solid')
   })
+
+  test('fits "Why this page exists" on one line on a desktop', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Phones wrap it onto two lines, as the mockup does')
+    await page.goto('/')
+    const lines = await page.getByRole('link', { name: 'Why this page exists' }).evaluate((link) => {
+      const range = document.createRange()
+      range.selectNodeContents(link)
+      return range.getClientRects().length
+    })
+    expect(lines).toBe(1)
+  })
 })
 
 test('pages reflow at 320 px wide with no horizontal scroll', async ({ page }) => {
