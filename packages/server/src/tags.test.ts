@@ -182,7 +182,7 @@ describe('confirmStillThere', () => {
     expect(await hoursLeft(NEW)).toBeCloseTo(48, 3)
   })
 
-  it('§5.5 repeats: Still there again with the same request id returns the first result, with one event and one count', async () => {
+  it('§5.5 repeats: Still there again with the same request id returns the current state, with one event and one count', async () => {
     await insertTag(NEW, 'active', HOUR)
     const requestId = crypto.randomUUID()
     const first = await still(NEW, alice, requestId)
@@ -191,6 +191,14 @@ describe('confirmStillThere', () => {
     expect(await events(NEW)).toEqual(['still_there'])
     expect(await row(NEW)).toMatchObject({ confirmCount: 1 })
     expect(await counts()).toEqual([1, 1, 1])
+  })
+
+  it('§5.3 repeats: a repeat after the tag has gone says so, rather than giving the tag back as it was', async () => {
+    const requestId = crypto.randomUUID()
+    await still(LIVE, alice, requestId)
+    await markRemoved({ tagId: LIVE, requestId: crypto.randomUUID(), visitor: bob })
+    expect(await still(LIVE, alice, requestId)).toEqual({ tag: null })
+    expect(await events(LIVE)).toEqual(['still_there', 'removed'])
   })
 
   it('refuses a request id already used by another visitor, or for something else', async () => {
@@ -233,7 +241,7 @@ describe('markRemoved', () => {
     expect(await events(LIVE)).toEqual(['removed'])
   })
 
-  it('§5.5 repeats: Removed again with the same request id returns the first result, with one event and one count', async () => {
+  it('§5.5 repeats: Removed again with the same request id returns the current state, with one event and one count', async () => {
     const requestId = crypto.randomUUID()
     expect(await remove(LIVE, alice, requestId)).toEqual({ tag: null })
     expect(await remove(LIVE, alice, requestId)).toEqual({ tag: null })

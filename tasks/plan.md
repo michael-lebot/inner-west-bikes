@@ -950,13 +950,15 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   As built: create inserts the tag (`ON CONFLICT (id) DO NOTHING`) before `claimRequest`, because the created event
   refers to it; a repeat inserts nothing and the claim then finds the first create, and a refused create rolls the
   tag back with its count. `claimRequest` treats a stored request id as a repeat only for the same visitor, tag and
-  action; anything else is `conflict`, and a tag that doesn't exist is `tag_gone`. Undo removal and take down are one
+  action; anything else is `conflict`, and a tag that doesn't exist is `tag_gone`. A repeat returns the tag's current
+  state, as `SPEC.md` §5.3's bullets and §1.4 say; §5.3's opening sentence said "the first result" and, by the
+  owner's ruling in PR 3's review, now says the current state too. Undo removal and take down are one
   statement each, the change and its event in one `WITH … INSERT`; undo also clears `removed_at`. Once the web app's
   type check sees `@iwb/shared/geo` through `@iwb/server`, `@types/geojson` is in its program, so `map/style.ts`
   types the council JSON as GeoJSON and the web app lists `@types/geojson` too.
 - **Accept:** `tags.test.ts` covers §5.5 expiry edges (Still there and Removed work one second before `expires_at`
   and change nothing one second after; undo refused after `expires_at`), two at once (two simultaneous Removed write
-  one removal), repeats (create, Still there and Removed with the same ID return the first result with one event and
+  one removal), repeats (create, Still there and Removed with the same ID return the current state with one event and
   one count), a repeat from another visitor → 409, Still there never adds time on top, undo returns only the time
   left, take down is final.
 - **Files:** `packages/server/src/{tags,index}.ts`, `src/tags.test.ts`.

@@ -379,8 +379,8 @@ site_state      one row: uploads_paused_at · uploads_paused_reason
 
 ### 5.3 Safe retries
 
-A phone on a poor connection can lose the reply to a write that actually worked. Sending it again must return the
-first result, not act twice.
+A phone on a poor connection can lose the reply to a write that actually worked. Sending it again must not act twice;
+it returns the current state.
 
 - **Every write carries an ID made in the browser.**
   - **Create:** the ID is the tag's own `id`. The insert uses `ON CONFLICT (id) DO NOTHING`, and a repeat returns the
