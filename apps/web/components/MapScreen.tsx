@@ -49,6 +49,11 @@ export function MapScreen() {
     setSelected(tag.id)
   }
 
+  const closeChooser = () => {
+    setCrowd(undefined)
+    opener.current?.focus()
+  }
+
   const closeCard = () => {
     setSelected(undefined)
     // Back to the card's pin (§10.4), or to the sheet when there is no map.
@@ -56,6 +61,15 @@ export function MapScreen() {
       document.querySelector<HTMLElement>(`[data-tag="${selected}"] button`) ?? document.getElementById('sheet')
     )?.focus()
   }
+
+  // Esc closes the chooser or the card wherever focus is, since neither is a dialog (§10.4).
+  const close = crowded?.length ? closeChooser : card && closeCard
+  useEffect(() => {
+    if (!close) return
+    const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && close()
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [close])
 
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>
@@ -138,15 +152,7 @@ export function MapScreen() {
         className="z-10 flex max-h-[60dvh] flex-col gap-3 overflow-y-auto overscroll-contain border-t border-line bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgb(0_0_0/0.08)] wide:max-h-none wide:w-95 wide:shrink-0 wide:border-t-0 wide:border-r wide:shadow-[4px_0_12px_rgb(0_0_0/0.08)]"
       >
         {crowded?.length ? (
-          <CrowdChooser
-            tags={crowded}
-            now={now}
-            onSelect={select}
-            onClose={() => {
-              setCrowd(undefined)
-              opener.current?.focus()
-            }}
-          />
+          <CrowdChooser tags={crowded} now={now} onSelect={select} onClose={closeChooser} />
         ) : card ? (
           <TagCard key={card.id} tag={card} now={now} onClose={closeCard} />
         ) : (

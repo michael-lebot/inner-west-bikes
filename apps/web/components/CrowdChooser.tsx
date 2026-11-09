@@ -17,13 +17,6 @@ export function CrowdChooser({
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => heading.current?.focus(), [])
 
-  // Esc closes the chooser wherever focus is, as it does the card (§10.4).
-  useEffect(() => {
-    const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
-    document.addEventListener('keydown', closeOnEscape)
-    return () => document.removeEventListener('keydown', closeOnEscape)
-  }, [onClose])
-
   return (
     <section aria-labelledby="crowd-heading" className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
