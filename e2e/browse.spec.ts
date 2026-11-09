@@ -86,8 +86,13 @@ test.describe('pins', () => {
     await expect(page.locator('[data-map-ready]')).toBeAttached()
   })
 
-  test('are one button per live tag, named in full, in suburb then street order', async ({ page }) => {
+  test('are one 44 px button per live tag, named in full, in suburb then street order', async ({ page }) => {
     await expect(pins(page)).toHaveCount(14)
+    // axe spares the pins from target-size because they may overlap, so their size is checked here (§10.5).
+    const sides = await pins(page).evaluateAll((buttons) =>
+      buttons.flatMap((button) => [button.getBoundingClientRect().width, button.getBoundingClientRect().height]),
+    )
+    expect(Math.min(...sides)).toBeGreaterThanOrEqual(44)
     const names = await pins(page).evaluateAll((buttons) => buttons.map((button) => button.ariaLabel ?? ''))
     expect(names[0]).toMatch(
       /^Hello e-bike, blocking footpath, Liverpool Rd, Ashfield, disappears in 1 hour, at \d{1,2}:\d\d [ap]m \w+day$/,
