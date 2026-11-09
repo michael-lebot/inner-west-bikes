@@ -14,7 +14,7 @@ acceptance criteria pass and `pnpm verify` is green.
 - [x] 1.7 Admin app shell with the recent-tags table
 - [x] 1.8 Test harness: Playwright (3 projects), axe helper, Lighthouse CI, perf sizes
 - [x] 1.9 CI workflow; M0 measurements recorded, budgets confirmed or reset
-- [ ] Checkpoint: CI green, browser verification at 390×844 and 1280×800, PR opened against `main`
+- [x] Checkpoint: CI green, browser verification at 390×844 and 1280×800, PR opened against `main`
 
 ## PR 2 — `build/02-browse-map` (from `build/01-foundation`)
 
