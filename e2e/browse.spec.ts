@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import { resetDb, sql } from './support'
+import { expectNoAxeViolations, resetDb, sql } from './support'
 
 const LLEWELLYN_ST = '5eed0000-0000-4000-8000-000000000003'
 
@@ -34,6 +34,17 @@ test('fits the map screen to the viewport, so the page never scrolls while the m
     document.documentElement.clientHeight,
   ])
   expect(scrollHeight).toBe(clientHeight)
+  await expectNoAxeViolations(page)
+})
+
+test('offers the list when the tiles fail to load', async ({ page }) => {
+  await page.route('**/*.pmtiles', (route) => route.abort())
+  await page.goto('/')
+  await expect(page.getByText("The map couldn't load.")).toHaveText("The map couldn't load. Use the list instead.")
+  await expectNoAxeViolations(page)
+  await page.getByRole('link', { name: 'Use the list instead.' }).click()
+  await expect(page).toHaveURL('/list')
+  await expect(page.getByRole('heading', { name: '14 bikes in the graveyard' })).toBeVisible()
 })
 
 test.describe('pins', () => {
@@ -83,6 +94,7 @@ test.describe('pins', () => {
     await norton.click({ force: true })
     const chooser = page.getByRole('heading', { name: '2 bikes here' })
     await expect(chooser).toBeFocused()
+    await expectNoAxeViolations(page)
     await page.keyboard.press('Escape')
     await expect(chooser).toHaveCount(0)
     expect(await page.evaluate(() => document.activeElement?.ariaLabel)).toMatch(/Leichhardt/)
@@ -91,6 +103,27 @@ test.describe('pins', () => {
     await page.getByRole('link', { name: /Marion St/ }).click()
     await expect(chooser).toHaveCount(0)
     await expect(page.getByRole('button', { name: /Marion St, Leichhardt/ })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  test('can be reached from off screen with Move map and the zoom buttons alone', async ({ page }) => {
+    // Instant camera moves, so each tap has landed before the next.
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in' }).click()
+    const balmain = page.getByRole('button', { name: /Darling St, Balmain/ })
+    await expect(balmain).not.toBeInViewport()
+
+    await page.getByRole('button', { name: 'Move map' }).click()
+    const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
+    const towardsPin = async () => {
+      const pin = (await balmain.boundingBox())!
+      if (pin.y < map.y) return 'Move up'
+      if (pin.y + pin.height > map.y + map.height) return 'Move down'
+      if (pin.x < map.x) return 'Move left'
+      if (pin.x + pin.width > map.x + map.width) return 'Move right'
+    }
+    for (let i = 0, arrow = await towardsPin(); arrow && i < 20; i++, arrow = await towardsPin())
+      await page.getByRole('button', { name: arrow, exact: true }).click()
+    await expect(balmain).toBeInViewport()
   })
 
   test('pan into view when focused off screen, without scrolling the page', async ({ page }) => {
@@ -118,6 +151,7 @@ test.describe('the tag card', () => {
     await expect(page.getByRole('heading', { name: 'Hello e-bike' })).toBeFocused()
     await expect(page.getByText('Liverpool Rd, Ashfield')).toBeVisible()
     await expect(page.getByText(/^Last seen \d+ h ago$/)).toBeVisible()
+    await expectNoAxeViolations(page)
     await page.keyboard.press('Escape')
     await expect(page.getByRole('heading', { name: 'Hello e-bike' })).toHaveCount(0)
     await expect(pin).toBeFocused()

@@ -37,6 +37,6 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${
 </svg>`
 
 const { size } = await sharp(Buffer.from(svg))
-  .webp({ quality: 80 })
+  .webp({ quality: 50, effort: 6 })
   .toFile(new URL('../public/preview.webp', import.meta.url).pathname)
 console.info(`preview.webp: ${WIDTH} × ${HEIGHT}, ${size} B`)

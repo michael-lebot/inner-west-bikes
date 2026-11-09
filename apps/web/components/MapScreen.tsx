@@ -45,13 +45,22 @@ export function MapScreen() {
   }
 
   useEffect(() => {
-    // Effects run after the server's HTML has been painted, so the map never delays first paint.
-    import('@/map/MapView').then(
-      (module) => setMapView(() => module.MapView),
-      () => setStatus('failed'),
-    )
-    const timeout = setTimeout(() => setStatus((now) => (now === 'loading' ? 'failed' : now)), READY_WITHIN_MS)
-    return () => clearTimeout(timeout)
+    let timeout: ReturnType<typeof setTimeout>
+    // Hydration can run before the first paint, so wait for a frame and then a task: the shell and the preview are on
+    // screen before the map's 300 KB starts loading. A tab opened in the background starts when it is first shown.
+    const frame = requestAnimationFrame(() => {
+      timeout = setTimeout(() => setStatus((now) => (now === 'loading' ? 'failed' : now)), READY_WITHIN_MS)
+      setTimeout(() =>
+        import('@/map/MapView').then(
+          (module) => setMapView(() => module.MapView),
+          () => setStatus('failed'),
+        ),
+      )
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      clearTimeout(timeout)
+    }
   }, [])
 
   return (

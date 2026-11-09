@@ -734,6 +734,12 @@ them.
   (`--enable-gpu`) no task passes 75 ms. Per §11.1 the `/` TBT assertion in `lighthouserc.json` is reset to
   2,500 ms; `/list` keeps 200 ms, and task 2.9 gates the interactions themselves at 200 ms. Map bundle 298,670 B
   gzipped, after task 2.1's data was rounded to 5 dp and the mask moved into the style.
+- **Revisited in task 2.9:** hydration can run before the first paint, and in the trace the map chunk's evaluation
+  held first paint back to 1.7 s, so `MapScreen` now waits a frame and then a task before `import()`, and starts
+  the 15 s clock there (a tab opened in the background starts when first shown). With the page grown by tasks 2.6
+  to 2.8, LCP reached 2,476–2,585 ms: Lighthouse's model charges the preview for every byte requested with it. The
+  preview went from WebP quality 80 (24.6 KB) to quality 50 at effort 6 (16.6 KB, no visible loss at 2×), and LCP
+  measured 2,297–2,433 ms. TBT now sits at about 2,000 ms on every run.
 - **Accept:** LCP is the preview image; swapping in the map causes no layout shift; with tiles blocked the failure
   message appears and the List link works; a pin that starts off screen can be reached with Move map and zoom taps
   only.
@@ -822,6 +828,20 @@ them.
   transferred; open a card and a zoom-button tap each ≤ 200 ms to next paint (Event Timing entries via
   `PerformanceObserver`); `/list` and `/tag/[id]` JS ≤ 150 KiB. Record the map-bundle measurement and confirm or
   reset its budget per §11.1.
+- **Measured (2026-11-09, local production build, `pixel`, CPU ×4, Lighthouse's DevTools 4G: 562.5 ms, 1.47 Mbps):**
+  map bundle 299,546 B gzipped, so the 300 KB budget stands. The map is ready in 9.1 to 9.2 s (2.6 s with only the
+  CPU slowed): page, scripts, map chunk, tiles header and tiles come one after another, each behind a 562 ms round
+  trip, and the map chunk and the first view's tiles take 3.4 s to transfer. §11.1 left this to be set from M1
+  measurements, so the gate is 10 s. First view: 5 range requests on the tiles file, 351,634 B. Opening a card
+  measured 296 to 376 ms and a zoom tap 112 to 168 ms: headless Chromium draws WebGL in software and reads the
+  canvas back to composite each frame the map takes part in. With the GPU the same steps took 48 ms and 24 ms (the
+  very first card 128 to 240 ms), so the lab gate is 500 ms and the 200 ms target is left to the real-phone check at
+  M1 (§11.4). If a real phone misses it on opening a card, lay the card over the map instead of resizing the map,
+  which measured 32 ms instead of 48 on the GPU. The "map bundle" is the map's own chunks: Zod (15.8 KB), which the
+  tag fetch loads after first paint too, is told apart by its contents. The flick test uses mouse pointer events,
+  because Playwright can't press and move a touch point and synthetic events can't take pointer capture. The axe
+  check spares only the pins from `target-size`: they sit where the bikes are, and overlapping pins open the
+  chooser, 2.5.8's "equivalent" exception (§10.5).
 - **Accept:** all green on three projects; measurements in the PR description.
 - **Files:** `e2e/{browse,perf}.spec.ts`.
 - **Verify:** `pnpm verify`.
@@ -1410,7 +1430,8 @@ everything else is in Left for Michael.
 |---|---|---|
 | Next 16's App Router baseline alone exceeds the 120 KB pre-map JS budget | Fired | Measured at M0: Next 16.4.5 + React 19.3.1 transfer 138,644 B gzipped (118,598 B Brotli) with no client components. Per §11.1 the gate in `e2e/perf.spec.ts` was reset to 150 KiB gzipped; task 2.9 re-measures |
 | MapLibre's start-up blocks the main thread for longer than the 200 ms TBT budget on `/` | Fired | Measured in task 2.5: with software WebGL, the compositor's read-back of the map canvas puts TBT on `/` at about 600 or about 2,000 ms (with a GPU, no task passes 75 ms). Per §11.1 the `/` assertion was reset to 2,500 ms. CI's runner may be slower: check its first run, and reset from that evidence if it misses |
-| MapLibre 5 + pmtiles + style data land just over 300 KB | Med | Task 2.9 measures; simplify `council.json` further for display; reset per §11.1 with evidence |
+| MapLibre 5 + pmtiles + style data land just over 300 KB | Held | Measured in task 2.9: 299,546 B after rounding the data to 5 dp and building the mask in the style. 454 B of headroom: the next map feature will need room found, or a reset with evidence |
+| Map ready and interaction gates miss their §11.1 targets in the lab | Fired | Task 2.9 measured map ready at 9.2 s and opening a card at up to 376 ms under the 4G and CPU ×4 profile; reset to 10 s and 500 ms with the evidence in `perf.spec.ts`. The M1 real-phone check decides the real numbers |
 | Headless WebKit on Linux CI lacks WebGL, so the `iphone` project sees the map-failed state | Med | If so, run the iPhone 13 descriptor on Chromium for map flows and keep WebKit for the rest; note it in the PR |
 | The pinned Protomaps build is removed | Low | Script fails with a clear message; bump the date; CI cache keeps working builds |
 | Prisma's rust-free client with the `prisma-client` generator doesn't bundle under Turbopack | Med | Task 1.5 proves it with `next build && next start` reading Postgres; fallback is `prisma-client-js` with `@prisma/client` left in `serverExternalPackages` |
