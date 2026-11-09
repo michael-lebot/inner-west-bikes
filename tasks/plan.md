@@ -23,11 +23,12 @@ and targets it. Every PR leaves the repo green (`pnpm verify`) and visibly worki
 
 Two Next.js apps sit on two internal packages. **`packages/shared`** is pure TypeScript and data, safe to import in
 the browser: configuration, Zod schemas, error codes, formatting, colour tokens and the NSW geodata with the functions
-that read it. **`packages/db`** is the server package: the Prisma schema and client, the Blob and email seams, and
-**every domain rule** (tag lifecycle, photo moderation, reports, rate limits, retention). It is the only code that
-talks to Postgres, Blob or Resend. **`apps/web`** (public) and **`apps/admin`** (protected) contain only HTTP and UI:
-route handlers parse input and call one `packages/db` function; pages read through `packages/db` and pass props to
-components. No package builds anything: both apps compile the packages' TypeScript directly (`transpilePackages`).
+that read it. **`packages/server`** runs only on the server: the Prisma schema and client, the Blob and email seams,
+and **every domain rule** (tag lifecycle, photo moderation, reports, rate limits, retention). It is the only code
+that talks to Postgres, Blob or Resend. **`apps/web`** (public) and **`apps/admin`** (protected) contain only HTTP
+and UI: route handlers parse input and call one `packages/server` function; pages read through `packages/server` and
+pass props to components. No package builds anything: both apps compile the packages' TypeScript directly
+(`transpilePackages`).
 
 ### 1.2 Directory tree
 
@@ -49,7 +50,7 @@ components. No package builds anything: both apps compile the packages' TypeScri
 │   │   │   ├── api/cron/hourly/route.ts             GET, CRON_SECRET only
 │   │   │   ├── photo/[id]/route.ts, photo/[id]/thumb/route.ts   Private photo streaming
 │   │   │   ├── layout.tsx, not-found.tsx, globals.css
-│   │   ├── components/              React components. Receive data as props; never import @iwb/db.
+│   │   ├── components/              React components. Receive data as props; never import @iwb/server.
 │   │   ├── map/                     The ONLY folder that imports maplibre-gl or pmtiles. Loaded by import() only.
 │   │   ├── lib/                     App helpers that are not components: write wrapper, BotID seam, env,
 │   │   │                            image pipeline, browser send-with-retry, live-tags hook.
@@ -64,7 +65,7 @@ components. No package builds anything: both apps compile the packages' TypeScri
 │       ├── lib/action.ts            The one wrapper for admin POSTs (same-origin check, 303 redirect)
 │       └── next.config.ts, vercel.json, .env.example
 ├── packages/
-│   ├── db/                          Server package. Everything that touches Postgres, Blob or email.
+│   ├── server/                      Server only. Everything that touches Postgres, Blob or email.
 │   │   ├── prisma/schema.prisma     The whole §5.1 data model (one initial migration in PR 1)
 │   │   ├── prisma/migrations/, prisma/seed.sql
 │   │   └── src/
@@ -109,18 +110,18 @@ components. No package builds anything: both apps compile the packages' TypeScri
 What does **not** go where:
 - No `packages/ui`, `packages/config` or `packages/core`. Shared React components are not needed (admin has its own
   few); configs live at the root.
-- No `services/`, `repositories/` or `utils/` folders. A domain rule goes in the `packages/db/src` file that owns the
-  table it writes. A helper used by one file stays in that file.
+- No `services/`, `repositories/` or `utils/` folders. A domain rule goes in the `packages/server/src` file that owns
+  the table it writes. A helper used by one file stays in that file.
 - No components inside `app/`. No route handlers outside `app/`.
 
 ### 1.3 Dependency rule (allowed imports)
 
 1. `packages/shared` imports only npm packages (`zod`, `@turf/boolean-point-in-polygon`). Never `node:*`, Prisma,
    React, Next or another workspace package.
-2. `packages/db` imports `@iwb/shared`, Prisma, `@prisma/adapter-pg`, `@vercel/blob` and `node:*`.
+2. `packages/server` imports `@iwb/shared`, Prisma, `@prisma/adapter-pg`, `@vercel/blob` and `node:*`.
 3. Apps import `@iwb/shared` (main entry anywhere; `/geo` and `/picker` only through `import()` in client code) and
-   `@iwb/db` **only from `app/**` and `lib/`** (pages, route handlers, wrappers). `components/` and `map/` never
-   import `@iwb/db`: they get data as props or over `/api/*`.
+   `@iwb/server` **only from `app/**` and `lib/`** (pages, route handlers, wrappers). `components/` and `map/` never
+   import `@iwb/server`: they get data as props or over `/api/*`.
 4. `maplibre-gl` and `pmtiles` are imported only inside `apps/web/map/`. `apps/web/map/*` is reached only through
    `import('@/map/MapView')` in `components/MapScreen.tsx`.
 5. `sharp` is imported only in `apps/web/lib/image.ts` (and the preview script). `botid` only in `lib/bot.ts`,
@@ -128,13 +129,13 @@ What does **not** go where:
 6. Apps never import each other. Packages never import apps.
 
 Enforced by ESLint `no-restricted-imports` overrides in `eslint.config.mjs` (task 1.1). A client component that
-imports `@iwb/db` also fails `next build`, because `pg` and `node:crypto` can't be bundled for the browser.
+imports `@iwb/server` also fails `next build`, because `pg` and `node:crypto` can't be bundled for the browser.
 
 ### 1.4 The write path — one shape for every public write
 
 ```ts
 // apps/web/app/api/tags/[id]/removed/route.ts — every write route is this short
-import { markRemoved } from '@iwb/db'
+import { markRemoved } from '@iwb/server'
 import { ActionBody, TagParams } from '@iwb/shared'
 import { write } from '@/lib/write'
 
@@ -161,7 +162,7 @@ export function write<P>(run: (ctx: WriteContext<P>) => Promise<object>) {
 ```
 
 ```ts
-// packages/db/src/tags.ts — one transaction; the repeat check, the count and one conditional statement
+// packages/server/src/tags.ts — one transaction; the repeat check, the count and one conditional statement
 export function markRemoved({ tagId, requestId, visitor }: TagAction) {
   return db.$transaction(async (tx) => {
     if (!(await claimRequest(tx, { requestId, tagId, type: 'removed', visitor })))
@@ -205,12 +206,12 @@ must equal the request host), run, then `303` redirect back with a `?notice=` co
 
 | Rule | Lives in |
 |---|---|
-| Tag lifecycle: create, still there, removed, undo removal, take down (§4.2) | `packages/db/src/tags.ts`. No other file writes `tags.status` or `expires_at` |
+| Tag lifecycle: create, still there, removed, undo removal, take down (§4.2) | `packages/server/src/tags.ts`. No other file writes `tags.status` or `expires_at` |
 | "Is this tag live" | `LIVE` SQL fragment in `tags.ts` (`status = 'active' AND expires_at > now()`), used by every read and transition. The browser only drops tags whose `expiresAt` has passed (`isExpired` in `format.ts`), because the API returns live tags only |
-| Photo rules: attach, serving, restore, delete, expiry deletion, uploads paused (§4.3, §4.6) | `packages/db/src/photos.ts` |
-| Reports, email timing, digest, circuit breaker (§4.6) | `packages/db/src/reports.ts` |
+| Photo rules: attach, serving, restore, delete, expiry deletion, uploads paused (§4.3, §4.6) | `packages/server/src/photos.ts` |
+| Reports, email timing, digest, circuit breaker (§4.6) | `packages/server/src/reports.ts` |
 | Limit numbers (§6 table), operators, problems, report reasons, 48 h, 25 m, 44 px, zoom 16, 50 m, 20 m, 5 min, 10 emails/day, 15 reports/hour | `packages/shared/src/config.ts` |
-| Limit enforcement | `packages/db/src/limits.ts` (`countAction`) |
+| Limit enforcement | `packages/server/src/limits.ts` (`countAction`) |
 | Retention: 30-day hashes, 48 h counters and salts (§6) | `visitors.ts` and `limits.ts`; scheduled only by `hourly.ts` |
 | Inside the council (+20 m), suburb, nearest street (§4.1) | `where()` in `packages/shared/src/geo.ts`, run in the browser and again in `createTag` on the server |
 | House-number matching (§10.3) | `matchHouseNumber()` in `packages/shared/src/picker.ts` |
@@ -234,7 +235,7 @@ must equal the request host), run, then `303` redirect back with a `?notice=` co
 - Database: tables and columns `snake_case` exactly as §5.1 (via `@@map`/`@map`); Prisma models singular
   `PascalCase` (`Tag`, `TagEvent`, `Photo`, `PhotoReport`, `RateCounter`, `DailySalt`, `SiteState`). Enum values
   `snake_case`.
-- Error codes `snake_case`. Workspace packages `@iwb/web`, `@iwb/admin`, `@iwb/db`, `@iwb/shared`. Path alias `@/` =
+- Error codes `snake_case`. Workspace packages `@iwb/web`, `@iwb/admin`, `@iwb/server`, `@iwb/shared`. Path alias `@/` =
   the app root.
 
 **Errors and HTTP.**
@@ -258,7 +259,7 @@ must equal the request host), run, then `303` redirect back with a `?notice=` co
 - All API responses carry `Cache-Control: no-store`; photo responses `private, no-cache` (§4.3).
 
 **Environment variables.**
-- `process.env` is read only in `packages/db/src/env.ts`, `apps/web/lib/env.ts` (server) and
+- `process.env` is read only in `packages/server/src/env.ts`, `apps/web/lib/env.ts` (server) and
   `apps/web/lib/public-env.ts` (literal `process.env.NEXT_PUBLIC_TILES_URL`, so Next inlines it; checked without Zod,
   which stays out of the browser bundle, to be a root-relative path or an http(s) URL, and imported by
   `next.config.ts` so a bad value fails the build). ESLint (`no-restricted-properties`) enforces this.
@@ -266,12 +267,12 @@ must equal the request host), run, then `303` redirect back with a `?notice=` co
   email switched to local), so a fresh clone runs with no app env files. On Vercel (`VERCEL=1`) a missing secret
   throws the first time the code that needs it runs (so the admin app, which never hashes or emails, doesn't need
   `HASH_SECRET` or `RESEND_API_KEY`).
-- `packages/db/.env` (from `.env.example`) exists only for the Prisma CLI. Each deployable has an `.env.example`
+- `packages/server/.env` (from `.env.example`) exists only for the Prisma CLI. Each deployable has an `.env.example`
   listing its production variables; a PR that adds a variable updates it.
 
 **Tests.**
-- Unit and integration tests: `x.test.ts` beside `x.ts`, run by Vitest. Everything in `packages/db` and the web route
-  tests use real Postgres (`iwb_test` database), run serially, and truncate tables in `beforeEach`.
+- Unit and integration tests: `x.test.ts` beside `x.ts`, run by Vitest. Everything in `packages/server` and the web
+  route tests use real Postgres (`iwb_test` database), run serially, and truncate tables in `beforeEach`.
 - End-to-end: `e2e/<flow>.spec.ts`, one root `playwright.config.ts`, projects `iphone` (iPhone 13, WebKit),
   `pixel` (Pixel 7, Chromium) and `desktop` (1280×800, Chromium). Admin specs run on `desktop` only; `perf.spec.ts`
   on `pixel` only. E2E uses the `iwb_e2e` database, reset before each test by `e2e/support.ts`.
@@ -468,7 +469,7 @@ budgets confirmed or reset.
 - **Depends:** 1.1.
 
 #### Task 1.3 — Database package: schema, migration, client, seed (M)
-- **Does:** `packages/db` with the full §5.1 model in `schema.prisma` (generator `prisma-client`, output
+- **Does:** `packages/server` with the full §5.1 model in `schema.prisma` (generator `prisma-client`, output
   `../src/generated/prisma`, `engineType = "client"`; enums `TagStatus`, `Problem`, `TagEventType`, `PhotoStatus`,
   `ReportReason`, `ReportResolution`; uuid ids with `gen_random_uuid()` defaults except `tags.id`; `numeric(9,6)`
   lat/lng; `timestamptz` everywhere; indexes on `tags(status, expires_at)`, `tag_events(tag_id)`,
@@ -486,9 +487,10 @@ budgets confirmed or reset.
 - **Accept:** `prisma migrate dev` creates one initial migration; `listLiveTags` excludes removed, taken-down and
   expired tags (integration test); an enum-parity test proves `Problem` and `ReportReason` values equal the keys in
   `config.ts`; `pnpm db:reset` loads the seed.
-- **Files:** `packages/db/{package.json,tsconfig.json,vitest.config.ts,.env.example}`, `prisma/{schema.prisma,seed.sql}`,
-  `prisma/migrations/*`, `src/{index,client,env,tags}.ts`, `src/tags.test.ts`, `test/global-setup.ts`.
-- **Verify:** `pnpm db:up && pnpm db:reset && pnpm --filter @iwb/db test`.
+- **Files:** `packages/server/{package.json,tsconfig.json,vitest.config.ts,.env.example}`,
+  `prisma/{schema.prisma,seed.sql}`, `prisma/migrations/*`, `src/{index,client,env,tags}.ts`, `src/tags.test.ts`,
+  `test/global-setup.ts`.
+- **Verify:** `pnpm db:up && pnpm db:reset && pnpm --filter @iwb/server test`.
 - **Depends:** 1.1, 1.2.
 
 #### Task 1.4 — Web app shell: layout, header, proxy (M)
@@ -818,21 +820,21 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
 
 #### Task 3.1 — Visitor identity and rate limits (M)
 - **Does:** `proxy.ts` sets the `iwb_v` cookie (random 128-bit, base64url, HttpOnly, Secure, SameSite=Lax, one
-  year) when missing, on the response and on the forwarded request (assumption 8). `packages/db/src/visitors.ts`:
+  year) when missing, on the response and on the forwarded request (assumption 8). `packages/server/src/visitors.ts`:
   `visitorFrom(cookie, ip)` → `{ visitorHash, ipHash }` (assumption 9; IPv6 reduced to /64; today's salt from
   `daily_salts`, created with `INSERT … ON CONFLICT (day) DO NOTHING` and cached per process per day).
-  `packages/db/src/limits.ts`: `countAction(tx, action, visitor, tagId?)` upserts one counter per `LIMITS` rule
+  `packages/server/src/limits.ts`: `countAction(tx, action, visitor, tagId?)` upserts one counter per `LIMITS` rule
   (`INSERT … ON CONFLICT (key) DO UPDATE SET count = rate_counters.count + 1 RETURNING count`, window start from
   Postgres) and throws `AppError('rate_limited', { retryAfter })` when any count passes its maximum.
 - **Accept:** `limits.test.ts`: §5.5 two at once — six concurrent Removed counts for one visitor give exactly three
   successes; per-IP limits apply across different cookies; "1 per tag per 12 h" for Still there; `Retry-After`
   equals the seconds to the bucket end. Raw IPs never appear in the database or logs.
-- **Files:** `apps/web/proxy.ts`, `packages/db/src/{visitors,limits,index}.ts`, `src/limits.test.ts`.
-- **Verify:** `pnpm --filter @iwb/db test`.
+- **Files:** `apps/web/proxy.ts`, `packages/server/src/{visitors,limits,index}.ts`, `src/limits.test.ts`.
+- **Verify:** `pnpm --filter @iwb/server test`.
 - **Depends:** PR 2.
 
 #### Task 3.2 — Tag lifecycle in one file (L)
-- **Does:** in `packages/db/src/tags.ts`: `claimRequest`, `createTag` (Zod-checked input; `where()` from
+- **Does:** in `packages/server/src/tags.ts`: `claimRequest`, `createTag` (Zod-checked input; `where()` from
   `@iwb/shared/geo` sets suburb and street and throws `outside_area`; `INSERT … ON CONFLICT (id) DO NOTHING
   RETURNING`; `created` event with `request_id` = tag id; `count('create')`), `confirmStillThere`
   (`last_confirmed_at = now()`, `expires_at = now() + 48 h`, `confirm_count + 1`), `markRemoved`, `undoRemoval`
@@ -843,8 +845,8 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   one removal), repeats (create, Still there and Removed with the same ID return the first result with one event and
   one count), a repeat from another visitor → 409, Still there never adds time on top, undo returns only the time
   left, take down is final.
-- **Files:** `packages/db/src/{tags,index}.ts`, `src/tags.test.ts`.
-- **Verify:** `pnpm --filter @iwb/db test`.
+- **Files:** `packages/server/src/{tags,index}.ts`, `src/tags.test.ts`.
+- **Verify:** `pnpm --filter @iwb/server test`.
 - **Depends:** 3.1.
 
 #### Task 3.3 — Write routes with BotID (M)
@@ -1015,7 +1017,7 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
 - **Accept:** a cross-origin POST is rejected; undo makes the tag live again with only its remaining time; admin
   pages pass axe.
 - **Files:** `apps/admin/lib/action.ts`, `app/tags/page.tsx`, `app/tags/[id]/page.tsx`,
-  `app/api/tags/[id]/{undo,take-down}/route.ts`, `components/*`, `packages/db/src/tags.ts`,
+  `app/api/tags/[id]/{undo,take-down}/route.ts`, `components/*`, `packages/server/src/tags.ts`,
   `e2e/{admin,admin-access}.spec.ts`.
 - **Verify:** `pnpm e2e e2e/admin.spec.ts --project=desktop`.
 - **Depends:** PR 3 (`undoRemoval`, `takeDown` in 3.2).
@@ -1030,9 +1032,9 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   `CRON_SECRET` in `lib/env.ts` (local default `dev-cron-secret`) and `.env.example`.
 - **Accept:** §5.5 access: 401 without or with a wrong token; §5.5 hourly job twice: two runs in a row and two at
   once (`Promise.all`) leave the same rows as one run.
-- **Files:** `app/api/cron/hourly/route.ts` (+ test), `packages/db/src/{hourly,visitors,limits}.ts`,
+- **Files:** `app/api/cron/hourly/route.ts` (+ test), `packages/server/src/{hourly,visitors,limits}.ts`,
   `src/hourly.test.ts`, `apps/*/vercel.json`, `apps/web/.env.example`, `lib/env.ts`.
-- **Verify:** `pnpm --filter @iwb/db test && pnpm --filter @iwb/web test`.
+- **Verify:** `pnpm --filter @iwb/server test && pnpm --filter @iwb/web test`.
 - **Depends:** PR 3.
 
 #### Task 4.6 — M2 exit E2E (M)
@@ -1080,15 +1082,15 @@ stored in a private Blob store (a local folder in dev), and streamed only while 
 hourly job deletes photos whose tag has expired and sweeps orphan files; Take down deletes the photo at once.
 
 #### Task 5.1 — Blob seam (S)
-- **Does:** `packages/db/src/blob.ts`: `putFile(path, bytes, contentType)`, `getFile(path)` (stream or `null`),
+- **Does:** `packages/server/src/blob.ts`: `putFile(path, bytes, contentType)`, `getFile(path)` (stream or `null`),
   `deleteFiles(paths)`, `listFiles()` (`{ path, uploadedAt }[]`). With `BLOB_READ_WRITE_TOKEN`, use `@vercel/blob`
   with `access: 'private'` (confirm the private read call in the Vercel Blob private-storage docs linked from the
   spec); without it, a folder at `LOCAL_BLOB_DIR` (default `<repo>/.data/blob`, resolved as `../../.data/blob` from
   each package's working directory). `env.ts` requires the token on Vercel.
 - **Accept:** `blob.test.ts` round-trips put/get/list/delete on the local folder; `deleteFiles` on a missing path
   succeeds.
-- **Files:** `packages/db/src/{blob,env}.ts`, `src/blob.test.ts`, `.gitignore`.
-- **Verify:** `pnpm --filter @iwb/db test`.
+- **Files:** `packages/server/src/{blob,env}.ts`, `src/blob.test.ts`, `.gitignore`.
+- **Verify:** `pnpm --filter @iwb/server test`.
 - **Depends:** PR 4.
 
 #### Task 5.2 — Image pipeline and bad-image tests (M)
@@ -1116,9 +1118,9 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
 - **Accept:** `photos.test.ts` covers §5.5 photo attach (refused for another visitor, a tag that isn't live, a second
   photo, and while paused) and §5.5 outside failures for Blob (`vi.spyOn` makes `putFile` throw: tag saved, no row,
   no stray files); §5.5 repeats: a repeated upload returns the first photo with one count.
-- **Files:** `packages/db/src/{photos,index}.ts`, `src/photos.test.ts`, `app/api/tags/[id]/photo/route.ts` (+ test),
+- **Files:** `packages/server/src/{photos,index}.ts`, `src/photos.test.ts`, `app/api/tags/[id]/photo/route.ts` (+ test),
   `packages/shared/src/schemas.ts`.
-- **Verify:** `pnpm --filter @iwb/db test && pnpm --filter @iwb/web test`.
+- **Verify:** `pnpm --filter @iwb/server test && pnpm --filter @iwb/web test`.
 - **Depends:** 5.2.
 
 #### Task 5.4 — Private serving routes (S)
@@ -1127,7 +1129,7 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   `Cache-Control: private, no-cache`, `X-Content-Type-Options: nosniff`.
 - **Accept:** §5.5 photo and tag together, first half: the URL returns 404 once the tag is removed, expired or taken
   down, and 200 again after an undo while the photo is still visible.
-- **Files:** `app/photo/[id]/route.ts`, `app/photo/[id]/thumb/route.ts` (+ tests), `packages/db/src/photos.ts`.
+- **Files:** `app/photo/[id]/route.ts`, `app/photo/[id]/thumb/route.ts` (+ tests), `packages/server/src/photos.ts`.
 - **Verify:** `pnpm --filter @iwb/web test`.
 - **Depends:** 5.3.
 
@@ -1156,9 +1158,9 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   private, no-store`.
 - **Accept:** §5.5 hourly job twice still holds with photos; a half-failed deletion (spy makes `deleteFiles` throw
   once) is finished by the next run; a taken-down tag's files are gone.
-- **Files:** `packages/db/src/{photos,tags,hourly}.ts`, `src/hourly.test.ts`, `apps/admin/app/photo/[id]/route.ts`,
+- **Files:** `packages/server/src/{photos,tags,hourly}.ts`, `src/hourly.test.ts`, `apps/admin/app/photo/[id]/route.ts`,
   `apps/admin/app/tags/[id]/page.tsx`.
-- **Verify:** `pnpm --filter @iwb/db test`.
+- **Verify:** `pnpm --filter @iwb/server test`.
 - **Depends:** 5.3.
 
 #### Task 5.7 — Photo E2E (S)
@@ -1208,9 +1210,9 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
 - **Accept:** §5.5 photo and tag together: report → remove → undo leaves the photo hidden; a restored photo isn't
   hidden by a later report (but the report is recorded); §5.5 repeats for reports (one row, one count); the photo URL
   is 404 on the very next request after a report.
-- **Files:** `packages/db/src/{reports,photos,index}.ts`, `src/reports.test.ts`,
+- **Files:** `packages/server/src/{reports,photos,index}.ts`, `src/reports.test.ts`,
   `app/api/photos/[id]/report/route.ts` (+ test), `packages/shared/src/schemas.ts`.
-- **Verify:** `pnpm --filter @iwb/db test && pnpm --filter @iwb/web test`.
+- **Verify:** `pnpm --filter @iwb/server test && pnpm --filter @iwb/web test`.
 - **Depends:** PR 5.
 
 #### Task 6.2 — Email: per-report alerts, digest and retry (S)
@@ -1223,9 +1225,9 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
 - **Accept:** §5.5 repeats: a repeated report sends no second email; §5.5 outside failures for Resend: a throwing
   send leaves the report saved with `notified_at` null and the next hourly run sends it in the digest; two
   overlapping hourly runs send one digest.
-- **Files:** `packages/db/src/{email,reports,hourly,env}.ts`, `src/{reports,hourly}.test.ts`,
+- **Files:** `packages/server/src/{email,reports,hourly,env}.ts`, `src/{reports,hourly}.test.ts`,
   `apps/web/.env.example`.
-- **Verify:** `pnpm --filter @iwb/db test`.
+- **Verify:** `pnpm --filter @iwb/server test`.
 - **Depends:** 6.1.
 
 #### Task 6.3 — Circuit breaker and paused uploads (S)
@@ -1236,8 +1238,8 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   automatically.
 - **Accept:** the 16th report in an hour pauses uploads and sends one email; a 17th sends no second email; attach is
   refused while paused; tagging without a photo still works.
-- **Files:** `packages/db/src/{reports,photos,index}.ts`, `src/reports.test.ts`.
-- **Verify:** `pnpm --filter @iwb/db test`.
+- **Files:** `packages/server/src/{reports,photos,index}.ts`, `src/reports.test.ts`.
+- **Verify:** `pnpm --filter @iwb/server test`.
 - **Depends:** 6.2.
 
 #### Task 6.4 — Report dialog (S)
@@ -1274,7 +1276,7 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
 - **Does:** `docs/launch.md` with two parts. **Deploy runbook**, in order: create Vercel projects `web` (root
   `apps/web`) and `admin` (root `apps/admin`) in `michael-lebot's projects`, Node 24.x, region `syd1` (from
   `vercel.json`); Neon through the Vercel Marketplace in Sydney (`aws-ap-southeast-2`), linked to both projects, with
-  branch-per-preview on; web build command `DATABASE_URL=$DATABASE_URL_UNPOOLED pnpm --filter @iwb/db migrate:deploy
+  branch-per-preview on; web build command `DATABASE_URL=$DATABASE_URL_UNPOOLED pnpm --filter @iwb/server migrate:deploy
   && pnpm turbo run build --filter=@iwb/web`; Blob: a **public** store for tiles (upload `inner-west-<build>.pmtiles`
   with a one-year immutable cache, set `NEXT_PUBLIC_TILES_URL`) and a **private** photo store connected to both
   projects as `BLOB_READ_WRITE_TOKEN`; BotID with Deep Analysis on `web`; firewall rule `POST /api/*` 20 per 60 s per

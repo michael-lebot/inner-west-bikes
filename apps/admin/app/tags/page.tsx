@@ -1,4 +1,4 @@
-import { listRecentTags } from '@iwb/db'
+import { listRecentTags } from '@iwb/server'
 import { dateTime, OPERATORS, PROBLEMS } from '@iwb/shared'
 import type { Metadata } from 'next'
 

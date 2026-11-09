@@ -1,4 +1,4 @@
-import { getLiveTag } from '@iwb/db'
+import { getLiveTag } from '@iwb/server'
 import { bikeName, TagParams } from '@iwb/shared'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'

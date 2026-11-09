@@ -19,7 +19,7 @@ export default function config(phase: string): NextConfig {
   ].join('; ')
 
   return {
-    transpilePackages: ['@iwb/db', '@iwb/shared'],
+    transpilePackages: ['@iwb/server', '@iwb/shared'],
     poweredByHeader: false,
     redirects: async () => [{ source: '/', destination: '/tags', permanent: false }],
     headers: async () => [

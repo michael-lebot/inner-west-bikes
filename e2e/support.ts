@@ -4,7 +4,7 @@ import { expect, type Page } from '@playwright/test'
 import pg from 'pg'
 
 export const E2E_DATABASE_URL = 'postgresql://iwb:iwb@localhost:54318/iwb_e2e'
-const SEED = readFileSync(new URL('../packages/db/prisma/seed.sql', import.meta.url), 'utf8')
+const SEED = readFileSync(new URL('../packages/server/prisma/seed.sql', import.meta.url), 'utf8')
 
 /** Runs SQL against the end-to-end database. */
 export async function sql(text: string) {

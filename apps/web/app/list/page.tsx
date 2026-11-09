@@ -1,4 +1,4 @@
-import { listLiveTags } from '@iwb/db'
+import { listLiveTags } from '@iwb/server'
 import { bikeCount, TAG_LIFETIME_HOURS } from '@iwb/shared'
 import type { Metadata } from 'next'
 import { Footer } from '@/components/Footer'

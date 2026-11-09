@@ -1,5 +1,5 @@
 {
-  "name": "@iwb/db",
+  "name": "@iwb/server",
   "private": true,
   "type": "module",
   "exports": {

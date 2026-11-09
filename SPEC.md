@@ -326,7 +326,7 @@ runs.
 
 | Layer | Choice (mirrors StoryCraft where sensible) |
 |---|---|
-| Repo | Turborepo monorepo: `apps/web` (public), `apps/admin` (protected), `packages/db` (Prisma schema and client), `packages/shared` (Zod schemas, boundary and buffered GeoJSON, street, corner and house-number lookups, operator and problem config) |
+| Repo | Turborepo monorepo: `apps/web` (public), `apps/admin` (protected), `packages/server` (runs only on the server: the Prisma schema and client plus every server-side rule), `packages/shared` (runs anywhere: Zod schemas, boundary and buffered GeoJSON, street, corner and house-number lookups, operator and problem config) |
 | Framework | Next.js 16 App Router, TypeScript strict, route handlers (no server actions), Tailwind 4 |
 | Database | Neon Postgres 18, Prisma 6 — **new project in Sydney (`aws-ap-southeast-2`)**, created through the **Vercel Marketplace Neon integration** in the `michael-lebot's projects` Vercel team. It then lands in the Vercel-managed org "Vercel: michael-lebot's projects", which is on the **Launch** plan (verified 2026-11-09 with `neonctl orgs list`) and billed through Vercel |
 | Functions | Vercel, **region `syd1`** (Vercel's default is Washington DC, iad1) |

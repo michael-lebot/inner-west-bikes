@@ -9,7 +9,7 @@
     "typecheck": "next typegen && tsc"
   },
   "dependencies": {
-    "@iwb/db": "workspace:*",
+    "@iwb/server": "workspace:*",
     "@iwb/shared": "workspace:*",
     "next": "catalog:",
     "react": "catalog:",
