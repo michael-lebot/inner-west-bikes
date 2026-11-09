@@ -10,14 +10,20 @@ export type Sent<T> = { ok: true; data: T } | { ok: false; error: SendError }
 
 /**
  * POSTs one action's body, made once with its request id, and tries again only what could still succeed (§5.3): a
- * dropped connection, a server error, or a 429 whose window ends within 30 seconds. Three tries at most; any other
- * answer comes back at once. The server answers a repeat with the first result, so a retry can't act twice.
+ * dropped connection, a success whose body never arrives, a server error, or a 429 whose window ends within 30
+ * seconds. Three tries at most; any other answer comes back at once. The server answers a repeat with the current
+ * state and does nothing new, so a retry can't act twice.
  */
 export async function send<T>(path: string, body: object): Promise<Sent<T>> {
   const init = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
   for (let tries = 1; ; tries++) {
-    const response = await fetch(path, init).catch(() => null)
-    if (response?.ok) return { ok: true, data: await response.json() }
+    let response = await fetch(path, init).catch(() => null)
+    if (response?.ok) {
+      // JSON is never undefined, so undefined means the body was lost on the way: a dropped connection.
+      const data: T | undefined = await response.json().catch(() => undefined)
+      if (data !== undefined) return { ok: true, data }
+      response = null
+    }
     const retryAfter = Number(response?.headers.get('Retry-After') ?? Infinity)
     const wait =
       !response || response.status >= 500

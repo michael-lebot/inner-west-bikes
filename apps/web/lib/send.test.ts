@@ -72,3 +72,21 @@ it('reads a 429 without our error body, such as the firewall’s, as the limit',
     error: { code: 'rate_limited', message: ERRORS.rate_limited.message },
   })
 })
+
+/** A 200 whose body is cut off on the way, after the server has made the change. */
+const lostBody = () => Promise.resolve(new Response('{"tag":', { status: 200 }))
+
+it('tries again when a success’s body is lost, and gives the answer of the try that gets through', async () => {
+  fetch.mockReturnValueOnce(lostBody()).mockReturnValueOnce(answer(200, { tag: null }))
+  expect((await sendAll()).result).toEqual({ ok: true, data: { tag: null } })
+  expect(fetch).toHaveBeenCalledTimes(2)
+  expect(new Set(fetch.mock.calls.map(([, init]) => init?.body))).toEqual(new Set([JSON.stringify(BODY)]))
+})
+
+it('says it couldn’t send, rather than throwing, when every success’s body is lost', async () => {
+  fetch.mockImplementation(lostBody)
+  const { result, waited } = await sendAll()
+  expect(result).toEqual({ ok: false, error: { code: 'failed', message: SEND_FAILED } })
+  expect(fetch).toHaveBeenCalledTimes(3)
+  expect(waited).toBe(500 + 1500)
+})

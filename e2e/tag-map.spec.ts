@@ -414,6 +414,36 @@ test.describe('a tag from start to end', () => {
     expect(await events(id)).toEqual(['created', 'still_there', 'removed'])
   })
 
+  test('when the tag is added but every answer is cut off, the form keeps its answers and sending again adds it once', async ({
+    page,
+    isMobile,
+  }) => {
+    await startTagging(page)
+    await placeAwayFromTags(page, isMobile)
+    await page.getByRole('button', { name: 'Use this spot' }).click()
+    await chip(page, 'Lime').click()
+    await chip(page, 'Knocked over').click()
+
+    // The server makes the change each time; the browser gets only the start of its answer.
+    let posts = 0
+    await page.route('/api/tags', async (route) => {
+      posts++
+      await route.fulfill({ response: await route.fetch(), body: '{"tag":' })
+    })
+    const add = page.getByRole('button', { name: 'Add to the map' })
+    await add.click()
+    await expect(dialog(page)).toContainText("Couldn't send. Check your connection and try again.")
+    expect(posts).toBe(3)
+    await expect(add).toBeEnabled()
+    await expect(page.getByRole('radio', { name: 'Lime' })).toBeChecked()
+    await expect(page.getByRole('radio', { name: 'Knocked over' })).toBeChecked()
+
+    await page.unroute('/api/tags')
+    await add.click()
+    await expect(page.locator('#announcer')).toHaveText('Tag added')
+    expect(await sql(`SELECT count(*)::int AS tags FROM tags`)).toEqual([{ tags: 15 }])
+  })
+
   test('offline, the form keeps its answers; back online, it adds the tag once', async ({
     page,
     context,
