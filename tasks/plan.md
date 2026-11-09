@@ -487,7 +487,8 @@ budgets confirmed or reset.
 - **Depends:** 1.1, 1.2.
 
 #### Task 1.4 — Web app shell: layout, header, proxy (M)
-- **Does:** `apps/web` Next 16 app (`next.config.ts` with `transpilePackages`, `images.unoptimized`), `globals.css`
+- **Does:** `apps/web` Next 16 app (`next.config.ts` with `transpilePackages`, `images.unoptimized`,
+  `poweredByHeader: false`), `globals.css`
   (Tailwind 4 + `@iwb/shared/theme.css` + `@font-face` for Atkinson Hyperlegible 400/700 Latin woff2,
   `font-display: swap`, `color-scheme: light`), the two woff2 files plus the OFL licence in `public/fonts/` (copy once
   from the `@fontsource/atkinson-hyperlegible` tarball; ≤ 60 KB together), `layout.tsx` (`lang="en-AU"`,
@@ -500,12 +501,12 @@ budgets confirmed or reset.
   `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: geolocation=(self)`; matcher skips
   `_next/static`, `fonts`, `glyphs`, `tiles`, `preview.webp`. `lib/env.ts`, `lib/public-env.ts`, `.env.example`.
   `/` renders the static shell: header, a fixed-size map frame, the sheet with a reserved count line and the
-  `Map | List` toggle.
+  `Map | List` toggle (`ViewToggle.tsx`, also on `/list`).
 - **Accept:** `next build && next start` serves `/` with the CSP header and a nonce on every Next script; no CSP
   errors in the console; a 3 px focus ring shows on the header link; the page reflows at 320 px with no horizontal
   scroll.
 - **Files:** `apps/web/{package.json,tsconfig.json,next.config.ts,postcss.config.mjs,proxy.ts,.env.example}`,
-  `app/{layout,page,not-found}.tsx`, `app/globals.css`, `components/{Header,Announcer}.tsx`,
+  `app/{layout,page,not-found}.tsx`, `app/globals.css`, `components/{Header,Announcer,ViewToggle}.tsx`,
   `lib/{env,public-env}.ts`, `public/fonts/*`.
 - **Verify:** `pnpm --filter @iwb/web build && pnpm --filter @iwb/web start` then
   `curl -sI localhost:3000 | grep -i content-security-policy`.

@@ -1,5 +1,5 @@
 /* The interface colours, from docs/mockups/graveyard-v3.html, and the focus style. Both apps import this file.
-   The default Tailwind palette is switched off, so every colour on screen is a token checked by contrast.test.ts. */
+   The default Tailwind palette is switched off, so every colour class is a token checked by contrast.test.ts. */
 @theme {
   --color-*: initial;
   --color-white: #ffffff;
