@@ -29,6 +29,21 @@ describe('matchHouseNumber', () => {
   it('takes a typed letter as it is, in either case', () => {
     expect(matchHouseNumber([at('12'), at('12A'), at('12B')], ' 12b ')).toEqual(at('12B'))
   })
+
+  it('matches a typed letter only to that letter, never to another house', () => {
+    expect(matchHouseNumber([at('12'), at('12A'), at('10-14')], '12C')).toBeNull()
+  })
+
+  it('matches nothing for a number with anything else in it', () => {
+    for (const typed of ['12xyz', '12.5', '12/3', '1 2'])
+      expect(matchHouseNumber([at('12'), at('12A')], typed)).toBeNull()
+  })
+
+  it('takes a bare number to its lettered house before a range that holds it, ignoring leading zeros', () => {
+    expect(matchHouseNumber([at('10-14'), at('12A')], '12')).toEqual(at('12A'))
+    expect(matchHouseNumber([at('10-14'), at('12A'), at('12')], '012')).toEqual(at('12'))
+    expect(matchHouseNumber([at('120'), at('10-14')], '12')).toEqual(at('10-14'))
+  })
 })
 
 describe('searchStreets', () => {

@@ -1148,7 +1148,9 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   just outside the 20 m strip, where the server would refuse them, so each takes the nearest grid point inside it,
   about a metre away; none is left out. A test reads every committed corner and house back and checks it. `picker.ts` exports `searchStreets`,
   `loadHouseNumbers(street)` (one street's numbers from its suburb's file) and `matchHouseNumber`; each entry carries
-  its corners, so there is no `cornersOf`. Measured: 53,513 house numbers on 1,479 streets in their suburbs (1,058
+  its corners, so there is no `cornersOf`. `matchHouseNumber` reads what is typed as digits and perhaps letters,
+  and nothing else. A typed letter must match exactly (12C finds no 12A); a bare number with no house of its own
+  takes its lettered house (12A) before a range that holds it (10-14), the rule PR 4's review proposed. Measured: 53,513 house numbers on 1,479 streets in their suburbs (1,058
   names), in 29 suburb files, the largest 30,475 B gzipped (Marrickville) and the median 5,420 B; `picker.json` has
   2,007 streets and 6,716 corners in 75,950 B gzipped.
 - **Accept:** totals close to §4.1's measurement (about 53,548 numbers on about 1,482 streets) are logged and

@@ -49,16 +49,21 @@ export async function loadHouseNumbers({ street, suburb }: Street) {
 }
 
 /**
- * The house a typed number names (§10.3): the same number, or else a lettered one (12A) or a range that holds it
- * (10-14). Null when there is none.
+ * The house a typed number names (§10.3): the same number, letter and all. A bare number with no house of its own
+ * takes its lettered house (12A), or else a range that holds it (10-14). Anything else, such as a letter no house
+ * has, finds nothing rather than another house.
  */
 export function matchHouseNumber(numbers: Place[], typed: string) {
   const wanted = typed.trim().toUpperCase()
-  const n = parseInt(wanted)
-  if (!n) return null
+  const [, digits, letters] = wanted.match(/^(\d+)([A-Z]*)$/) ?? []
+  if (!digits) return null
+  const n = Number(digits)
+  const exact = numbers.find(([number]) => number === `${n}${letters}`)
+  if (exact || letters) return exact ?? null
+  const lettered = numbers.find(([number]) => /^\d+[A-Z]+$/.test(number) && parseInt(number) === n)
   const holds = (number: string) => {
-    const [from = NaN, to = from] = number.split('-').map((end) => parseInt(end))
-    return from <= n && n <= to
+    const [from, to] = number.split('-').map((end) => parseInt(end))
+    return to !== undefined && from! <= n && n <= to
   }
-  return numbers.find(([number]) => number === wanted) ?? numbers.find(([number]) => holds(number)) ?? null
+  return lettered ?? numbers.find(([number]) => holds(number)) ?? null
 }
