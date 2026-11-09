@@ -740,8 +740,8 @@ dependency versions. If Next.js and MapLibre alone don't fit, the budgets are re
 | Largest Contentful Paint (LCP) | ≤ 2.5 s |
 | Cumulative Layout Shift (CLS) | ≤ 0.1 |
 | Total Blocking Time (the lab stand-in for INP) | ≤ 200 ms on pages without the map (set in PR 2: headless Chrome draws the map in software, and TBT on the map page measured 4.7 to 7 s in CI, while with a GPU opening a card takes 48 ms; the scripted interactions gate the map page instead) |
-| Scripted interactions: open a card, pick a chip, zoom, open the form | Each ≤ 200 ms to the next paint |
-| **Map ready for placement:** tiles, labels and pins drawn, and taps accepted | ≤ 6 s (to be set properly from M1 measurements) |
+| Scripted interactions: open a card, pick a chip, zoom, open the form | Each ≤ 200 ms to the next paint (the lab gate is 600 ms on the map page, set in PR 2: headless Chrome reads its software-drawn canvas back each frame, and with a GPU opening a card takes 48 ms; the M1 real-phone check holds 200 ms) |
+| **Map ready for placement:** tiles, labels and pins drawn, and taps accepted | ≤ 6 s (to be set properly from M1 measurements; the lab gate is 14.5 s over the 4G profile, set in PR 2 from 8.2 s measured: 960 KB behind four round trips) |
 | JavaScript before the map loads (gzip, as transferred) | ≤ 150 KiB (reset at M0: the framework alone is 139 KB gzip, 119 KB Brotli) |
 | Map bundle: MapLibre + `pmtiles` + style (compressed, as transferred) | ≤ 300 KB, loaded after first paint |
 | First map view | ≤ 40 tile requests, ≤ 1.5 MB |
@@ -811,8 +811,9 @@ under 100 visits a day there may be too little data to judge these, so they are 
 - **Every PR, in GitHub Actions,** against a production build served with compression:
   - **Lighthouse CI** (mobile preset, throttled) asserts LCP, CLS and Total Blocking Time. Lighthouse loads a page
     without touching it, so it can't measure INP.
-  - **Playwright** with CPU throttling times the scripted interactions and "map ready". From its network log it also
-    asserts the transfer sizes, and the tile count and bytes of the first map view.
+  - **Playwright** times the scripted interactions and "map ready" (with the CPU at full speed since PR 2, as the map
+    is drawn in software). From its network log it also asserts the transfer sizes, and the tile count and bytes of
+    the first map view.
 - **Real users:** Vercel Speed Insights on the web project, if the Pro plan includes it at this volume (check at M0).
   It is the only source for INP and the other field targets. Without it, the lab gates stand alone.
 - **M0:** measure the bare build, then confirm or reset the budgets (§11.1).
