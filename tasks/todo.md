@@ -27,7 +27,7 @@ acceptance criteria pass and `pnpm verify` is green.
 - [x] 2.7 Pins: HTML marker buttons, accessible names, tab order, focus pan, crowd chooser, bob
 - [x] 2.8 Sheet, tag card (handle, tap and flick) and desktop side panel
 - [x] 2.9 Browse E2E, axe states, map perf gates; map-bundle budget confirmed or reset
-- [ ] Checkpoint: CI green, browser verification at both sizes, PR opened against `build/01-foundation`
+- [x] Checkpoint: CI green, browser verification at both sizes, PR opened against `build/01-foundation`
 
 ## PR 3 — `build/03-tag-on-map` (from `build/02-browse-map`)
 
