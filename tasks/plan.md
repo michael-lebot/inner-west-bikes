@@ -443,8 +443,8 @@ budgets confirmed or reset.
 - **Depends:** none.
 
 #### Task 1.2 — Shared config, tokens and the contrast test (M)
-- **Does:** `packages/shared` with `package.json` exports (`"."`, `"./geo"`, `"./picker"`, `"./data/*"`,
-  `"./theme.css"`), `config.ts` (operators Lime/Hello/Ario/Not sure with key, label, letter, `active`; the six
+- **Does:** `packages/shared` with `package.json` exports (`"."` and `"./theme.css"`; tasks 2.1 and 4.1 add
+  `"./geo"`, `"./data/*"` and `"./picker"` with the files they point at), `config.ts` (operators Lime/Hello/Ario/Not sure with key, label, letter, `active`; the six
   problems; four report reasons; `LIMITS` exactly as the §6 table; the constants listed in §1.5), `errors.ts`
   (§1.6 table), `format.ts` (bike count "1 bike / N bikes in the graveyard", "Last seen 17 h ago", "Disappears in
   31 h", absolute "3:40 pm Tuesday" in `Australia/Sydney`, `isExpired`), `theme.css` (UI tokens from the mockup:
