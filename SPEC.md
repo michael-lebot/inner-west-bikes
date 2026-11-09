@@ -1,8 +1,12 @@
 # SPEC — The Inner West E-bike Graveyard
 
-> Status: **draft for review, rev 2** · Author: Michael Levot (with Claude) · 2026-11-09
-> Rev 2 adds the name and the chosen visual direction. It drops the cost tracker and contributions, records the
-> verified Neon plan, and adds the boundary buffer. Sources are listed at the end.
+> Status: **draft for review, rev 3** · Author: Michael Levot (with Claude) · 2026-11-09
+> - **Rev 2** added the name and the chosen visual direction. It dropped the cost tracker and contributions,
+>   recorded the verified Neon plan, and added the boundary buffer.
+> - **Rev 3** removes every pixel and dot-matrix font and keeps the retro look in the map art only. It also adds the
+>   accessibility (§10), performance (§11) and mobile usability (§12) plans.
+>
+> Sources are listed at the end.
 
 ## 1. What we're building
 
@@ -25,7 +29,8 @@ operators, and has no reporting channel of its own.
 | Topic | Decision |
 |---|---|
 | Name | **The Inner West E-bike Graveyard** |
-| Visual direction | **Overworld Quest**, with the interface around the map toned down for legibility and easy navigation (§9) |
+| Visual direction | The **Overworld** palette and pixel-art textures appear in the **map artwork only**. The interface is plain, and **no pixel or dot-matrix fonts are used anywhere**, including map labels (§9) |
+| Accessibility target | **WCAG 2.2 AA**, plus a list view that works as a full alternative to the map (§10) |
 | Bike type | Share-scheme bikes and e-bikes only (Lime, Hello, Ario, plus "Not sure") |
 | Who acts on tags | **Public visibility only** in v1. No operator or council integrations |
 | Map realism | **Real streets and real street names, with a retro game skin**. Must be accurate enough to walk to |
@@ -43,20 +48,22 @@ operators, and has no reporting channel of its own.
 
 ## 3. Core user flows
 
-The three main screens are shown in `docs/mockups/graveyard-overworld-v2.html`.
+The three main screens are shown in `docs/mockups/graveyard-v3.html`.
 
 1. **Browse.** The map opens on the whole council area, with everything outside it greyed out and active tags shown as
-   pixel pins.
+   pins.
    - Each pin is coloured by operator and also carries a letter (L/H/A/?), so colour is never the only cue.
    - The panel below the map shows "N bikes in the graveyard", the operator key and one primary action.
    - Visitors can zoom down to street level.
+   - A **List** toggle shows the same tags as a list grouped by suburb (§10.3).
 2. **Tag a bike.**
-   1. Tap "Tag a dumped bike", then tap the spot. The pin drops there, a hint names the street ("Pin dropped on
-      Llewellyn St, Marrickville. Tap the map to move it."), and taps outside the council plus 20 m are rejected with
-      a friendly message.
-   2. Choose **Whose bike?** (Lime / Hello / Ario / Not sure) and **What's wrong?**, optionally add a photo, then tap
-      **Add to the map**.
-   3. If an active tag already exists within about 25 m, the app asks "Is it this one?" and offers **Still there** on
+   1. Tap "Tag a dumped bike". If the map is zoomed out, it zooms in to street level (zoom 16) first.
+   2. Tap the spot, or use "Jump to street". The pin drops there and a hint names the street ("Pin dropped on
+      Llewellyn St, Marrickville. Tap the map to move it."). Taps outside the council plus 20 m are rejected with a
+      friendly message.
+   3. The form sheet expands over a short map strip. Choose **Whose bike?** (Lime / Hello / Ario / Not sure) and
+      **What's wrong?**, optionally add a photo, then tap **Add to the map**.
+   4. If an active tag already exists within about 25 m, the app asks "Is it this one?" and offers **Still there** on
       that tag instead of creating a duplicate.
 3. **Confirm.** Tap a pin to open a card showing:
    - the photo, operator, problem and street;
@@ -79,15 +86,20 @@ The three main screens are shown in `docs/mockups/graveyard-overworld-v2.html`.
     - Its styling can't change fonts or pixelate the map.
     - Its terms forbid restyling tiles beyond colours, caching, re-hosting, and using it alongside non-Google maps.
     - It would cost about US$140/month at 30K loads, against about $0 for PMTiles.
-- **Overworld look**, as prototyped in the mockups:
+- **Overworld map art** (the map only):
   - a custom MapLibre style with the Overworld palette (§9);
-  - an open-licence pixel font for labels (as PBF glyphs, or a web font on MapLibre ≥ 5.11);
-  - `pixelRatio: 0.5` with `image-rendering: pixelated` on the canvas, so the map draws at half resolution and is
-    scaled up in hard pixels;
-  - pixel-art PNG pins.
-
-  **Risk:** label legibility on real phones. Labels need to be at least about 8 canvas pixels (about 16 CSS pixels).
-  This is the first thing to prototype (milestone M1).
+  - texture from `fill-pattern` sprites authored as pixel art at 2× (grass tufts, trees, a dithered grey outside the
+    council);
+  - pixel-art pin images.
+- **Map text:** rendered at the device's full resolution. There is no `pixelRatio` downscale, because that would
+  pixelate every label.
+  - Labels use **Atkinson Hyperlegible** glyphs (PBF, ranges 0–255): 13–16 px, bold where needed, with a 2 px white
+    halo or white label boxes.
+  - No pixel, bitmap or dot-matrix font is used anywhere.
+- **Pins are MapLibre HTML markers** (`<button>`s), not a symbol layer, so they're focusable and have accessible names
+  (§10.4).
+- **Risk:** pattern fills at native resolution may look less "game-like" than the chunky mockups. Judge this on real
+  phones in M1.
 - **Mask:** a fill layer with a local rectangle as the outer ring and the council boundary as the hole. Check the ring
   winding, or MapLibre will grey out the council area too.
   - Greyscale with a dither pattern.
@@ -118,10 +130,7 @@ The three main screens are shown in `docs/mockups/graveyard-overworld-v2.html`.
   - Street names come from the nearest named road segment, using the same NSW data bundled as a small lookup.
 - **Inside-the-council check:** turf `booleanPointInPolygon` against the buffered polygon, run in the browser for
   instant feedback and again on the server as the rule that counts. PostGIS isn't needed in v1.
-- **Accessibility:**
-  - A keyboard placement mode: arrow keys move the crosshair, Enter places the tag.
-  - Pins carry letters as well as colours.
-  - The bobbing animation for the selected or new pin respects `prefers-reduced-motion`.
+- **Accessibility, performance and mobile behaviour** of the map are specified in §10–§12.
 
 ### 4.2 Tags
 
@@ -228,6 +237,10 @@ rate_counters   key (action:subject:window) PK · count · window_start
 
 | Route | Notes |
 |---|---|
+| `/` | Map page: server-rendered shell + static council preview; MapLibre loads after first paint (§11.2) |
+| `/list` | All active tags grouped by suburb, server-rendered; never loads MapLibre (§10.3) |
+| `/tag/[id]` | One tag, server-rendered, shareable; used by the list and the map card |
+| `/why`, `/accessibility`, `/privacy`, `/terms` | Static pages |
 | `GET /api/tags` | Active tags. Cached at the CDN under a `tags` cache tag and refreshed whenever a tag is created or changed. This keeps the database mostly asleep. The client hides tags locally as they pass `expires_at` |
 | `POST /api/tags` | BotID → rate limit → Zod validation → buffered-boundary check → duplicate check (~25 m) → insert |
 | `POST /api/tags/:id/still-there` | BotID → rate limit → reset expiry |
@@ -307,30 +320,234 @@ mobile users share one IP.
 - **Other:** Resend $0. BotID Deep Analysis about US$0.30–2/month. Domain: `.com.au` or `.au`, about A$20–40/year
   (to confirm at purchase).
 
-## 9. Visual direction — Overworld, toned down
+## 9. Visual direction — Overworld map, plain interface
 
-The reference is **`docs/mockups/graveyard-overworld-v2.html`**. The five original explorations are kept in
+The reference is **`docs/mockups/graveyard-v3.html`**. The five original explorations are kept in
 `docs/mockups/explorations/` for the record.
 
-- **The map keeps the full Overworld treatment:**
+- **The retro look lives in the map art only:**
   - grass-green council and sandy roads with brown edging;
-  - dashed suburb borders and a gold council wall;
-  - tree and tuft stamps, with greyscale and dither outside the council;
-  - Press Start 2P suburb labels;
-  - street names on cream signpost boxes;
-  - chunky black-outlined pins with operator letters.
-- **The interface around the map is calm:**
-  - parchment panels (`#fbf6e6`) with dark-ink text (`#2b2116`) and a night-slate header (`#1f2a36`) carrying a pixel
-    headstone icon;
-  - **Pixelify Sans** only for the name, headings and buttons; **Atkinson Hyperlegible** for body and meta text;
-  - one gold primary button per screen, with 44 px buttons and 36 px zoom controls;
-  - selected options marked with a tick as well as a colour;
-  - the operator key in the panel, not on the map;
-  - "Why this page exists" in the same header position on every screen.
+  - dashed suburb borders and a gold council line;
+  - tree and tuft patterns, with greyscale and dither outside the council;
+  - black-outlined pixel-art pins.
+  - These are graphics, not text.
+- **Everything you read is plain:**
+  - one typeface, Atkinson Hyperlegible (400 and 700), for the interface, map labels and pin letters;
+  - no pixel, bitmap or dot-matrix fonts anywhere;
+  - suburb labels in dark text with a white halo, and street names in white label boxes.
+- **Interface:**
+  - a white bottom sheet with a night-slate header (`#1f2a36`) holding the name, a small pixel headstone icon
+    (decorative) and "Why this page exists";
+  - one green primary button per screen (`#1d6b2a` with white text, about 6.9:1 contrast);
+  - secondary buttons outlined;
+  - option chips with a tick and a tinted fill when selected;
+  - no game windows, bevels or 3D shadows.
 - **Copy tone:** plain and friendly — "14 bikes in the graveyard", "Disappears in 31 h", "Is it still there?".
-- Check contrast for every text and background pair against WCAG AA during M1.
 
-## 10. Open questions
+## 10. Accessibility plan
+
+**Target: WCAG 2.2 Level AA** on every public page and state, and on the admin app. The section numbers in brackets
+are WCAG success criteria.
+
+### 10.1 Type and text
+
+- One typeface: **Atkinson Hyperlegible** 400 and 700, self-hosted as woff2.
+  - No pixel, bitmap or dot-matrix fonts anywhere: interface, map labels, pin letters or name.
+  - The headstone icon is decorative (`alt=""`).
+- **Sizes:**
+  - body 16 px, secondary text at least 14 px;
+  - map labels at least 13 px, bold where needed, with a 2 px halo;
+  - line height at least 1.4.
+- **Scaling:**
+  - Sizes are set in `rem`.
+  - The layout holds at 200% browser zoom and at the largest iOS and Android text sizes (1.4.4).
+  - It reflows at 320 CSS px wide with no horizontal scrolling (1.4.10).
+  - Text-spacing overrides don't clip anything (1.4.12).
+- Map text is rendered at full device resolution, never upscaled (§4.1).
+
+### 10.2 Colour and contrast
+
+- **Text:** at least 4.5:1 contrast.
+- **Large text and interface parts:** at least 3:1 (1.4.3, 1.4.11). That covers buttons, chip borders, the focus ring,
+  pins against the map, and the council line against both the inside and the greyed outside.
+- **Tested:** a unit test computes the contrast of every declared foreground/background pair in the colour tokens and
+  fails CI on a regression.
+- **Never colour alone (1.4.1):**
+  - pins carry operator letters;
+  - selected chips carry a tick;
+  - outside the council is greyed *and* bounded by a line;
+  - errors are always stated in text.
+- **Dark mode:** `color-scheme: light` is declared, so OS dark mode doesn't half-invert form controls. A real dark
+  mode is out of scope for v1.
+
+### 10.3 The map is never the only way
+
+- **List view** (`/list`, plus a toggle on the map screen):
+  - Every active tag, server-rendered and grouped by suburb.
+  - Each item shows street, operator, problem, last seen and disappears-in, with **Still there** and **Removed**
+    buttons.
+  - Reading works without JavaScript.
+  - This is the main path for screen-reader and keyboard users (1.1.1, 2.1.1).
+- **Tag pages** (`/tag/[id]`): each tag has its own server-rendered, shareable page, which both the list and the map
+  card use.
+- **Placing a tag without precise pointing:**
+  - **Keyboard crosshair:** arrow keys move 10 m, Shift+arrows 50 m, Enter places the tag, Esc cancels.
+  - **Jump to street:** a search over the street names inside the council, built from the bundled NSW data, so no
+    geocoding API is needed. It centres the map on that street, ready to place.
+  - The placement is read back as "Pin on Llewellyn St, Marrickville".
+
+### 10.4 Keyboard, focus and screen readers
+
+- **Pins** are `<button>` HTML markers with a full accessible name, for example "Lime e-bike, blocking footpath,
+  Denison St, Newtown, disappears in 31 hours". Their tab order follows suburb and then street. A canvas symbol layer
+  would be invisible to assistive technology.
+- **The map region** is labelled, with a one-line summary ("Map of the Inner West with 14 tagged bikes. A list view is
+  available.") and a skip link to the list.
+- **The open bottom sheet behaves as a modal dialog** (2.4.3):
+  - focus moves to its heading;
+  - Tab stays inside it;
+  - Esc closes it;
+  - focus returns to the pin or button that opened it.
+- **Visible focus:** a 3 px outline at 3:1 contrast that is never removed (2.4.7). Focused items are never hidden
+  behind the sheet (2.4.11).
+- **Forms:**
+  - Option chips are native radio inputs in `<fieldset>`/`<legend>` groups.
+  - Results and errors ("Tag added", "Marked still there", "Photo reported and hidden", "That spot is outside the
+    Inner West") are announced through one polite `aria-live` region (4.1.3).
+- **Times:** relative times include the absolute time in their accessible name ("disappears at 3:40 pm Tuesday").
+- **Photos:**
+  - Alt text is generated from the tag's fields ("Photo of a Lime e-bike reported as blocking the footpath").
+  - A hidden photo is replaced by text, never a broken image.
+- **Page structure:** `lang="en-AU"`, one `<h1>` per page, headings in order, plain-language copy.
+
+### 10.5 Motion and input
+
+- **Motion:**
+  - Transitions are 200 ms or less, and nothing loops by default.
+  - The pin bob plays only under `prefers-reduced-motion: no-preference` and stops after two cycles.
+  - Nothing flashes (2.3.1).
+- **Touch targets:** at least 44 × 44 CSS px with 8 px spacing, well above the 24 px minimum in 2.5.8.
+- **No gesture-only actions:**
+  - +/− buttons for zoom (2.5.1);
+  - no dragging required, because placement is tap, click or keyboard (2.5.7);
+  - map rotation is off.
+- **No time limits** on any action (2.2.1).
+
+### 10.6 Testing and ownership
+
+- **Automated:**
+  - `@axe-core/playwright` runs in the Playwright suite on every page and state: map, list, tag page, open sheet,
+    form errors, empty state and admin. Any serious or critical violation fails CI.
+  - The contrast unit test from §10.2.
+- **Manual, at every milestone:**
+  - VoiceOver on iOS Safari and TalkBack on Android Chrome;
+  - keyboard only on desktop;
+  - 200% zoom, and 320 px width.
+  - The checklist lives in `docs/accessibility-checklist.md`.
+- **Accessibility statement** at `/accessibility`, with a contact address and known limits (the map artwork is
+  visual-only; the list view is its equivalent).
+
+## 11. Performance plan
+
+Assumptions: phones on 4G, with a mid-range Android (Moto G class) as the reference device, and under 100 visits a
+day.
+
+### 11.1 Budgets (75th percentile, mobile)
+
+| Measure | Budget |
+|---|---|
+| Largest Contentful Paint (LCP) | ≤ 2.5 s |
+| Interaction to Next Paint (INP) | ≤ 200 ms |
+| Cumulative Layout Shift (CLS) | ≤ 0.1 |
+| JavaScript before the map loads (gzip) | ≤ 120 KB |
+| Map bundle (MapLibre + `pmtiles` + style, gzip) | ≤ 300 KB, loaded after first paint |
+| First map view | ≤ 40 tile requests, ≤ 1.5 MB |
+| Fonts | 2 woff2 files (400 and 700), Latin subset, ≤ 60 KB total |
+| `GET /api/tags` response | ≤ 15 KB for 100 tags |
+
+### 11.2 Loading
+
+- **First paint:**
+  - Server-render the shell: header, sheet and bike count.
+  - Show a **static preview image** of the council (a pre-rendered WebP of about 40 KB, regenerated at build). It is
+    the page's largest element, so it sets LCP.
+  - MapLibre is loaded with a dynamic import after first paint and replaces the preview once its first frame draws.
+    The map container has a fixed size, so nothing shifts.
+- **`/list` and `/tag/[id]`** never load MapLibre.
+- **Fonts:** self-hosted with `font-display: swap`, and the 400 weight preloaded. Map glyphs for the same font are
+  served as PBF ranges 0–255 only.
+- **PMTiles:**
+  - versioned filename with `Cache-Control: public, max-age=31536000, immutable`;
+  - byte-range requests cached at the CDN;
+  - `maxBounds` and a minimum zoom of 12, so no out-of-area tiles are fetched.
+
+### 11.3 Data and runtime
+
+- **Tag data:** `GET /api/tags` is cached at the CDN and invalidated on every write (§5.2). There's no polling: it
+  refetches when the tab regains focus, and every 5 minutes while visible.
+- **Markers:** at most 200 HTML markers (fewer than 100 are expected).
+  `shortcut: HTML markers, switch to a clustered symbol layer plus the list if active tags pass 200.`
+- **Map settings:**
+  - one map instance;
+  - no pitch, 3D or rotation;
+  - `fadeDuration: 0` and a modest tile cache;
+  - no continuous animation, to save battery.
+- **Photos:**
+  - 320 px WebP thumbnails (about 20 KB) load only when a card opens; the full size loads on tap;
+  - explicit width and height, so nothing shifts.
+- **Writes:**
+  - The database's cold start (about 0.5 s after 5 idle minutes) only affects writes.
+  - The interface updates optimistically and then reconciles.
+  - Uploads are resized in the browser to at most 2048 px (about 1 MB) before sending.
+
+### 11.4 Measuring
+
+- **Every PR:** Lighthouse CI in GitHub Actions on the mobile preset with throttling, using the budgets above as
+  assertions. `next build` output is checked against the bundle budgets.
+- **Real users:** Vercel Speed Insights on the web project, if the Pro plan includes it at this volume. Check at M0;
+  otherwise rely on Lighthouse CI.
+- **M1 exit:** a test on a real mid-range Android over throttled 4G.
+
+## 12. Mobile usability plan
+
+- **Mobile first,** designed for 320–430 px. At 768 px and wider, the bottom sheet becomes a side panel.
+- **Layout:**
+  - The map fills the viewport below the header (`100dvh`).
+  - The sheet has three snap points:
+    - **peek:** count and primary button;
+    - **half:** a tag card;
+    - **full:** the tagging form over a short map strip.
+  - The page itself never scrolls while the map is visible, so scrolling and panning never fight. `touch-action` is
+    set on the map only.
+- **Safe areas:** `viewport-fit=cover` and `env(safe-area-inset-*)` padding for notches and the home indicator.
+- **Thumb reach:** primary actions sit in the bottom 40% of the screen. The header holds only the name and "Why this
+  page exists".
+- **Accurate placement:**
+  - Placing a tag needs zoom 16 or closer, at about 2 m per screen pixel. "Tag a dumped bike" zooms there first.
+  - The pin's tip sits exactly on the tapped point, and a hint says "Tap the map to move it".
+  - Tags up to 20 m outside the boundary are accepted (§4.1).
+- **Gestures:**
+  - pinch, double-tap zoom and one-finger pan, plus +/− buttons;
+  - rotation and pitch are off, so the map can't land in a confusing state;
+  - browser page zoom is never disabled.
+- **Forms:**
+  - native radio inputs styled as 44 px chips;
+  - no typing anywhere in the tagging flow, by design;
+  - the photo input lets iOS and Android offer camera or library.
+- **Poor connections:**
+  - Each write carries a client-generated ID, so a retry can't create duplicates.
+  - Failed requests retry with backoff, and the form keeps its state.
+  - The error reads "Couldn't send. Check your connection and try again."
+  - There is no offline queue in v1.
+- **Browsers:** iOS Safari 16.4+, plus the last two versions of Chrome for Android and Samsung Internet.
+  - Older browsers, such as iOS 15, get the list view instead of the map. Their PMTiles range requests trigger a
+    pre-check that Blob rejects.
+- **Orientation:** portrait first. Landscape uses the side-panel layout.
+- **Testing:**
+  - Playwright mobile projects (iPhone 13 and Pixel 7 emulation) for every flow.
+  - Manual checks at every milestone on a small iPhone (SE size), a current iPhone and a mid-range Android.
+
+## 13. Open questions
 
 1. **"Why this page exists" copy:** to be supplied by Michael; launch is blocked until then.
 2. **Operator report links:** should the tag card show a small "Report to Lime" contact link? It's still
@@ -338,21 +555,22 @@ The reference is **`docs/mockups/graveyard-overworld-v2.html`**. The five origin
 3. **Domain:** which one to buy, for example a `.com.au` or `.au` built on "ebikegraveyard". Availability hasn't been
    checked.
 
-## 11. Milestones
+## 14. Milestones
 
 | Milestone | Scope | Exit criteria |
 |---|---|---|
-| **M0 Infra** | GitHub repo; Turborepo skeleton; Vercel projects (`web`, `admin`) in `michael-lebot's projects`, region `syd1`; Neon via the Vercel Marketplace (Sydney); Blob stores (public and private); Resend; CI (lint, typecheck, Vitest); spend alert | Empty apps deploy; Prisma migration runs on Neon |
-| **M1 Map prototype** | PMTiles extract on Blob; Overworld MapLibre style; mask and gold wall; pixel font; pins; tested on real iPhone and Android | Street names legible at street zoom on a 390 px phone; tile requests per load measured; AA contrast checked |
-| **M2 Tags** | Tag placement (buffered boundary), still-there, removed, expiry, duplicate check, BotID, rate limits, CDN cache and refresh | Playwright: create → confirm → remove → admin undo |
-| **M3 Photos and moderation** | Upload pipeline, private serving, reports, email, admin queue, circuit breaker | Reported photo returns 404 on the next request; restore works |
-| **M4 Launch** | `/why` page, terms, privacy note, eSafety self-assessment, domain, OSM and NSW attribution, launch checklist | Michael signs off |
+| **M0 Infra** | GitHub repo; Turborepo skeleton; Vercel projects (`web`, `admin`) in `michael-lebot's projects`, region `syd1`; Neon via the Vercel Marketplace (Sydney); Blob stores (public and private); Resend; CI (lint, typecheck, Vitest, axe, Lighthouse CI with §11.1 budgets, contrast test); spend alert | Empty apps deploy; Prisma migration runs on Neon; CI gates run |
+| **M1 Map prototype** | PMTiles extract on Blob; Overworld MapLibre style with pattern sprites; mask and gold council line; Atkinson Hyperlegible glyphs; HTML-marker pins; static preview image; bottom sheet with snap points | On a real mid-range Android over 4G, the §11.1 budgets pass; street names are legible at zoom 16 on a 320 px screen; VoiceOver and TalkBack can reach every pin; contrast test passes |
+| **M2 Tags** | Placement (zoom ≥ 16, buffered boundary, keyboard crosshair, Jump to street), still-there, removed, expiry, duplicate check, BotID, rate limits, CDN cache and refresh; `/list` and `/tag/[id]` | Playwright (desktop and mobile projects): create → confirm → remove → admin undo, by touch and by keyboard; axe has no serious or critical issues |
+| **M3 Photos and moderation** | Upload pipeline, private serving, reports, email, admin queue, circuit breaker | Reported photo returns 404 on the next request; restore works; generated alt text is present; the admin app passes axe |
+| **M4 Launch** | `/why`, `/accessibility`, `/privacy`, `/terms`; eSafety self-assessment; domain; OSM and NSW attribution; manual assistive-technology pass (§10.6); launch checklist | Michael signs off |
 
-## 12. Out of scope for v1
+## 15. Out of scope for v1
 
 Hosting-cost tracker and contributions (deferred, §4.5); accounts; free-text notes; automated image moderation; GPS or
 photo-location placement; operator or council integrations and notifications; multiple photos per tag; a stats or
-heat-map page (the data is kept for later); other councils.
+heat-map page (the data is kept for later); dark mode; an offline queue and installable-app (PWA) support; other
+councils.
 
 ## Appendix A — Cost tracking and contributions research (parked)
 
@@ -407,6 +625,13 @@ Kept so the feature can be revived quickly if costs grow.
   - [Vercel Sydney pricing](https://vercel.com/docs/pricing/regional-pricing/syd1)
   - [Neon plans](https://neon.com/docs/introduction/plans)
   - [Neon pricing](https://neon.com/pricing)
+- **Accessibility and performance:**
+  - [WCAG 2.2](https://www.w3.org/TR/WCAG22/)
+  - [Core Web Vitals thresholds](https://web.dev/articles/vitals)
+  - [axe-core for Playwright](https://github.com/dequelabs/axe-core-npm/tree/develop/packages/playwright)
+  - [Lighthouse CI](https://github.com/GoogleChrome/lighthouse-ci)
+  - [MapLibre Marker](https://maplibre.org/maplibre-gl-js/docs/API/classes/Marker/)
+  - [Atkinson Hyperlegible](https://www.brailleinstitute.org/freefont/)
 - **Security:**
   - [Vercel BotID](https://vercel.com/docs/botid)
   - [Vercel Blob private storage](https://vercel.com/docs/vercel-blob/private-storage)
