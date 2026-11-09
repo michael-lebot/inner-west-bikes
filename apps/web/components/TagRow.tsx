@@ -1,9 +1,7 @@
 import { clockTime, duration, OPERATORS, PROBLEMS, type PublicTag } from '@iwb/shared'
 import Link from 'next/link'
+import { FOCUS_RING_ON_HOVER } from './buttons'
 import { PinIcon } from './PinIcon'
-
-/** Hover shows the keyboard focus ring, and nothing else (§13). */
-export const HOVER_RING = 'hover:outline-3 hover:outline-offset-2 hover:outline-focus hover:shadow-[0_0_0_2px_white]'
 
 /** A tag's row, linking to its page. With `onSelect`, a click picks the tag instead, as the map's lists do. */
 export function TagRow({ tag, now, onSelect }: { tag: PublicTag; now: Date; onSelect?: (tag: PublicTag) => void }) {
@@ -17,7 +15,7 @@ export function TagRow({ tag, now, onSelect }: { tag: PublicTag; now: Date; onSe
           onSelect(tag)
         })
       }
-      className={`flex min-h-14 items-center gap-3 rounded-[10px] border border-line px-3 py-2 ${HOVER_RING}`}
+      className={`flex min-h-14 items-center gap-3 rounded-[10px] border border-line px-3 py-2 ${FOCUS_RING_ON_HOVER}`}
     >
       <PinIcon operator={tag.operator} />
       <span className="flex min-w-0 flex-1 flex-col leading-snug">

@@ -7,7 +7,7 @@ import { Protocol } from 'pmtiles'
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { PinIcon } from '@/components/PinIcon'
-import { HOVER_RING } from '@/components/TagRow'
+import { FOCUS_RING_ON_HOVER } from '@/components/buttons'
 import { MapControls } from './MapControls'
 import { IMAGES } from './patterns'
 import { overworldStyle } from './style'
@@ -330,7 +330,7 @@ function Pin({
       aria-label={label}
       aria-expanded={selected}
       tabIndex={placing ? -1 : undefined}
-      className={`flex size-11 cursor-pointer items-end justify-center ${HOVER_RING} ${selected ? SELECTED : ''}`}
+      className={`flex size-11 cursor-pointer items-end justify-center ${FOCUS_RING_ON_HOVER} ${selected ? SELECTED : ''}`}
       // A click from Enter or Space has no pointer position, so detail is 0.
       onClick={(event) => onPick(tag, event.currentTarget, event.detail === 0)}
       // Focusing a pin off the edge of the map, as Tab does, brings it into view (§4.1).

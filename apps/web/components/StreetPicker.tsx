@@ -2,11 +2,10 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { announce } from './Announcer'
-import { PRIMARY, SECONDARY, SMALL } from './buttons'
+import { FOCUS_RING_ON_HOVER, PRIMARY, SECONDARY, SMALL } from './buttons'
 import { Dialog } from './Dialog'
 import { ErrorText } from './ErrorText'
 import type { Spot } from './Placement'
-import { HOVER_RING } from './TagRow'
 
 type Picker = typeof import('@iwb/shared/picker')
 type Where = (typeof import('@iwb/shared/geo'))['where']
@@ -16,7 +15,7 @@ type Place = import('@iwb/shared/picker').Place
 /** The most streets listed at once: typing more narrows them. */
 const SHOWN = 8
 const FIELD = 'min-h-12 min-w-0 rounded-[10px] border border-edge px-3'
-const CHOICE = `flex min-h-11 w-full items-center rounded-[10px] border border-line px-3 py-2 text-left ${HOVER_RING}`
+const CHOICE = `flex min-h-11 w-full items-center rounded-[10px] border border-line px-3 py-2 text-left ${FOCUS_RING_ON_HOVER}`
 
 /** "near Marrickville Rd", or "near Edwin St (1 of 2)" where the cross street meets this one twice. */
 function cornerName(corners: Place[], corner: Place) {
