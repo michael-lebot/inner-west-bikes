@@ -6,7 +6,6 @@ import { isStreetNear, where } from '@iwb/shared/geo'
 import { db } from './client'
 import { Prisma, type TagEventType, type TagStatus } from './generated/prisma/client'
 import { countAction } from './limits'
-import { deleteTagPhoto } from './photos'
 import type { Visitor } from './visitors'
 
 /** Live: active, and its time has not run out by the database's clock. Expiry is never stored (§4.2). */
@@ -181,6 +180,8 @@ export async function takeDown(tagId: string) {
       Prisma.sql`UPDATE tags SET status = 'taken_down' WHERE id = ${tagId}::uuid AND status <> 'taken_down'`,
     ),
   )
+  // Imported here, so the modules depend one way: photos.ts on this one, for LIVE and getLiveTag.
+  const { deleteTagPhoto } = await import('./photos')
   await deleteTagPhoto(tagId)
   return taken === 1
 }

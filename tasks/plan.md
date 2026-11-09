@@ -1422,7 +1422,8 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   private, no-store`.
   As built: one `deletePhotos(which)` in `photos.ts` marks the rows and then deletes the files, for both
   `deleteExpiredPhotos` and `deleteTagPhoto`. `takeDown` calls it after its update every time, so a repeat finishes a
-  take down whose file deletion failed; until then the sweep would (assumption 16). The sweep compares the listed
+  take down whose file deletion failed; until then the sweep would (assumption 16). `takeDown` imports `photos.ts`
+  inside the function, so the static dependency runs one way, from photos to tags, with no cycle. The sweep compares the listed
   files' times with Postgres's `now()`, in one query over `unnest`. `AdminTag` has `photo: { id, status }` in any
   state instead of `photoId`, so the admin tag page names a hidden or deleted photo and shows any that isn't deleted,
   through `openAnyPhoto`. Closing the reports on a deleted photo stays with task 6.1, as PR 5 has none.
