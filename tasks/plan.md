@@ -846,6 +846,14 @@ them.
   because Playwright can't press and move a touch point and synthetic events can't take pointer capture. The axe
   check spares only the pins from `target-size`: they sit where the bikes are, and overlapping pins open the
   chooser, 2.5.8's "equivalent" exception (§10.5).
+- **Reset in PR 2's review:** on GitHub's runner (CI run 42586706684) the map was ready in 10.6 s and a card opened
+  in 728 ms. The runner draws WebGL in software on a slower CPU, and the ×4 slowdown stacked on top of that. So the
+  two time gates now leave the CPU at full speed, a departure from §11.3's "with CPU throttling": map ready keeps the
+  4G profile, and the byte and request gates keep CPU ×4 and 4G. Map ready is still bound by the network: 970 KB
+  move before it (5.2 s at 1.47 Mbps), behind four 562 ms round trips. Measured on a laptop: map ready 8,427 to
+  8,461 ms, so the gate is 14.5 s; opening a card 232 to 304 ms, where a trace puts 160 ms of the 215 ms frame in the
+  canvas read-back, so the gate is 600 ms; a zoom tap 96 to 168 ms. Each is under 60% of its gate. Fetching the
+  tiles' header alongside the map chunk, dropping unused tile layers or fewer glyph bytes would bring map ready down.
 - **Accept:** all green on three projects; measurements in the PR description.
 - **Files:** `e2e/{browse,perf}.spec.ts`.
 - **Verify:** `pnpm verify`.
@@ -1435,7 +1443,7 @@ everything else is in Left for Michael.
 | Next 16's App Router baseline alone exceeds the 120 KB pre-map JS budget | Fired | Measured at M0: Next 16.4.5 + React 19.3.1 transfer 138,644 B gzipped (118,598 B Brotli) with no client components. Per §11.1 the gate in `e2e/perf.spec.ts` was reset to 150 KiB gzipped; task 2.9 re-measures |
 | MapLibre's start-up blocks the main thread for longer than the 200 ms TBT budget on `/` | Fired | Measured in task 2.5: with software WebGL, the compositor's read-back of the map canvas puts TBT on `/` at about 600 or about 2,000 ms (with a GPU, no task passes 75 ms). Per §11.1 the `/` assertion was reset to 2,500 ms. CI's runner may be slower: check its first run, and reset from that evidence if it misses |
 | MapLibre 5 + pmtiles + style data land just over 300 KB | Held | Measured in task 2.9: 299,546 B after rounding the data to 5 dp and building the mask in the style. 454 B of headroom: the next map feature will need room found, or a reset with evidence |
-| Map ready and interaction gates miss their §11.1 targets in the lab | Fired | Task 2.9 measured map ready at 9.2 s and opening a card at up to 376 ms under the 4G and CPU ×4 profile; reset to 10 s and 500 ms with the evidence in `perf.spec.ts`. The M1 real-phone check decides the real numbers |
+| Map ready and interaction gates miss their §11.1 targets in the lab | Fired | Task 2.9 measured map ready at 9.2 s and opening a card at up to 376 ms under the 4G and CPU ×4 profile; reset to 10 s and 500 ms with the evidence in `perf.spec.ts`. CI missed both: PR 2's review took the CPU slowdown off the two time gates and reset them to 14.5 s and 600 ms from the network log and a trace (task 2.9). The M1 real-phone check decides the real numbers |
 | Headless WebKit on Linux CI lacks WebGL, so the `iphone` project sees the map-failed state | Med | If so, run the iPhone 13 descriptor on Chromium for map flows and keep WebKit for the rest; note it in the PR |
 | The pinned Protomaps build is removed | Low | Script fails with a clear message; bump the date; CI cache keeps working builds |
 | Prisma's rust-free client with the `prisma-client` generator doesn't bundle under Turbopack | Med | Task 1.5 proves it with `next build && next start` reading Postgres; fallback is `prisma-client-js` with `@prisma/client` left in `serverExternalPackages` |
