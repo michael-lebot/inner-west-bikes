@@ -118,6 +118,16 @@ test('refuses a post from another site, or with no origin, and changes nothing',
   expect(response.headers().location).toBe(`/tags/${LLEWELLYN}?notice=undone`)
 })
 
+test('answers 404 to a post for an id that is not a tag id', async ({ request }) => {
+  for (const action of ['undo', 'take-down']) {
+    const response = await request.post(`/api/tags/not-a-uuid/${action}`, {
+      headers: { origin: 'http://localhost:3001' },
+      maxRedirects: 0,
+    })
+    expect(response.status(), action).toBe(404)
+  }
+})
+
 test('opens a tag from its id or its public link, and says when there is no id', async ({ page }) => {
   await page.goto('/tags')
   const lookup = page.getByRole('textbox', { name: 'Tag id or link' })
