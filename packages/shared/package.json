@@ -2,9 +2,13 @@
   "name": "@iwb/shared",
   "private": true,
   "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
   "exports": {
     ".": "./src/index.ts",
     "./geo": "./src/geo.ts",
+    "./palette": "./src/palette.ts",
     "./data/*": "./data/*",
     "./theme.css": "./theme.css"
   },

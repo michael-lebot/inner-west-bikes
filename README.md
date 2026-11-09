@@ -71,6 +71,9 @@ pnpm exec playwright install chromium webkit            # once, for the end-to-e
 
 - **Council, suburbs and streets:** the committed files in `packages/shared/data/` come from NSW Spatial Services.
   `pnpm --filter @iwb/shared data:fetch` downloads them again and `data:build` rebuilds the files.
+- **Preview image:** `pnpm dev` and `pnpm build` first draw `apps/web/public/preview.webp` (git-ignored) from that
+  data with [`apps/web/scripts/build-preview.ts`](apps/web/scripts/build-preview.ts). The map screen shows it until
+  the map is ready, and keeps it if the map can't load.
 
 ## Data attribution
 

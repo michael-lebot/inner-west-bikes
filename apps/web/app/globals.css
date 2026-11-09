@@ -20,3 +20,10 @@
 @theme {
   --font-sans: 'Atkinson Hyperlegible', system-ui, sans-serif;
 }
+
+/* The map screen's side-panel layout: 768 px and wider, and phones held sideways (§12, §13). */
+@custom-variant wide {
+  @media (width >= 48rem), (orientation: landscape) {
+    @slot;
+  }
+}

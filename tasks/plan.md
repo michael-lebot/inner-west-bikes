@@ -452,7 +452,9 @@ budgets confirmed or reset.
 
 #### Task 1.2 — Shared config, tokens and the contrast test (M)
 - **Does:** `packages/shared` with `package.json` exports (`"."` and `"./theme.css"`; tasks 2.1 and 4.1 add
-  `"./geo"`, `"./data/*"` and `"./picker"` with the files they point at), `config.ts` (operators Lime/Hello/Ario/Not sure with key, label, letter, `active`; the six
+  `"./geo"`, `"./data/*"` and `"./picker"` with the files they point at; task 2.5 adds `"./palette"` for the preview
+  script, which runs in Node and so can't follow `index.ts`'s extensionless imports, and `"sideEffects": ["*.css"]`,
+  so a client component that imports one colour doesn't carry the Zod schemas), `config.ts` (operators Lime/Hello/Ario/Not sure with key, label, letter, `active`; the six
   problems; four report reasons; `LIMITS` exactly as the §6 table; the constants listed in §1.5), `errors.ts`
   (§1.6 table), `format.ts` (bike count "1 bike / N bikes in the graveyard", "Last seen 17 h ago", "Disappears in
   31 h", absolute "3:40 pm Tuesday" in `Australia/Sydney`, `isExpired`), `theme.css` (UI tokens from the mockup:
@@ -712,17 +714,25 @@ them.
   suburb lines) from the shared data and writes `public/preview.webp` (≈ 40 KB) with sharp; `dev` and `build` run it
   first. `components/MapScreen.tsx` (client): the preview `<img>` with fixed size and `fetchpriority="high"` plus a
   "Loading map…" status; after first paint, `import('@/map/MapView')`. `map/MapView.tsx`: one map,
-  `maplibregl.addProtocol('pmtiles', …)`, `maxBounds`, `minZoom: 12`, `maxZoom: 18`, rotation and pitch off
+  `maplibregl.addProtocol('pmtiles', …)`, `maxBounds`, `minZoom: 11` (MapLibre counts zoom in 512 px tiles, so the whole council fits a 412 px phone at
+  about 11.7 and minimum 12 would crop it), `maxZoom: 18`, rotation and pitch off
   (`dragRotate`, `touchZoomRotate.disableRotation()`, `pitchWithRotate: false`), `fadeDuration: 0`, a modest
   `maxTileCacheSize`, `attributionControl: false`; `performance.mark('map-ready')` and `data-map-ready` on the
   container at the first `idle` after markers are added. Failure: constructor throws (no WebGL), style or tile
-  `error`, or not ready after 15 s → keep the preview and show "The map couldn't load. Use the list instead." with a
+  `error`, or not ready 15 s after `MapScreen` starts the import → keep the preview and show "The map couldn't load. Use the list instead." with a
   link. `map/MapControls.tsx`: + and − buttons; Move map opens four arrow buttons that `panBy` half the visible map;
   all 44×44 px, 8 px apart. The map region: labelled, a one-line summary ("Map of the Inner West with 14 tagged
   bikes. A list view is available.") and a skip link to the list. An "i" button opens a small panel with
   "© OpenStreetMap contributors", "© State of New South Wales (Spatial Services, DCS NSW), CC BY 4.0" and the
-  Accessibility, Privacy and Terms links. Map padding follows the sheet height so camera moves centre in the visible
-  area.
+  Accessibility, Privacy and Terms links. At peek height the sheet sits below the map in the page's flow, so the
+  map's own box is the visible area; map padding follows only the part of a taller sheet that covers the map (2.8).
+- **Measured (local production build, Lighthouse mobile preset, 3 runs):** `/` LCP 2,399–2,415 ms (the preview),
+  CLS 0. TBT on `/` comes out at about 600 ms or about 2,000 ms from run to run. A trace shows why: the long task is
+  Chrome's compositor waiting up to 310 ms in `GLES2::ReadPixels`, because headless Chrome draws WebGL in software
+  (SwiftShader) and reads each frame back to composite it, and Lighthouse multiplies that by 4. With the Mac's GPU
+  (`--enable-gpu`) no task passes 75 ms. Per §11.1 the `/` TBT assertion in `lighthouserc.json` is reset to
+  2,500 ms; `/list` keeps 200 ms, and task 2.9 gates the interactions themselves at 200 ms. Map bundle 298,670 B
+  gzipped, after task 2.1's data was rounded to 5 dp and the mask moved into the style.
 - **Accept:** LCP is the preview image; swapping in the map causes no layout shift; with tiles blocked the failure
   message appears and the List link works; a pin that starts off screen can be reached with Move map and zoom taps
   only.
@@ -1375,6 +1385,7 @@ everything else is in Left for Michael.
 | Risk | Impact | Mitigation |
 |---|---|---|
 | Next 16's App Router baseline alone exceeds the 120 KB pre-map JS budget | Fired | Measured at M0: Next 16.4.5 + React 19.3.1 transfer 138,644 B gzipped (118,598 B Brotli) with no client components. Per §11.1 the gate in `e2e/perf.spec.ts` was reset to 150 KiB gzipped; task 2.9 re-measures |
+| MapLibre's start-up blocks the main thread for longer than the 200 ms TBT budget on `/` | Fired | Measured in task 2.5: with software WebGL, the compositor's read-back of the map canvas puts TBT on `/` at about 600 or about 2,000 ms (with a GPU, no task passes 75 ms). Per §11.1 the `/` assertion was reset to 2,500 ms. CI's runner may be slower: check its first run, and reset from that evidence if it misses |
 | MapLibre 5 + pmtiles + style data land just over 300 KB | Med | Task 2.9 measures; simplify `council.json` further for display; reset per §11.1 with evidence |
 | Headless WebKit on Linux CI lacks WebGL, so the `iphone` project sees the map-failed state | Med | If so, run the iPhone 13 descriptor on Chromium for map flows and keep WebKit for the rest; note it in the PR |
 | The pinned Protomaps build is removed | Low | Script fails with a clear message; bump the date; CI cache keeps working builds |

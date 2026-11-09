@@ -7,11 +7,24 @@
       "startServerReadyPattern": "Ready in"
     },
     "assert": {
-      "assertions": {
-        "largest-contentful-paint": ["error", { "maxNumericValue": 2500, "aggregationMethod": "median" }],
-        "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1, "aggregationMethod": "median" }],
-        "total-blocking-time": ["error", { "maxNumericValue": 200, "aggregationMethod": "median" }]
-      }
+      "assertMatrix": [
+        {
+          "matchingUrlPattern": "/$",
+          "assertions": {
+            "largest-contentful-paint": ["error", { "maxNumericValue": 2500, "aggregationMethod": "median" }],
+            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1, "aggregationMethod": "median" }],
+            "total-blocking-time": ["error", { "maxNumericValue": 2500, "aggregationMethod": "median" }]
+          }
+        },
+        {
+          "matchingUrlPattern": "/list$",
+          "assertions": {
+            "largest-contentful-paint": ["error", { "maxNumericValue": 2500, "aggregationMethod": "median" }],
+            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1, "aggregationMethod": "median" }],
+            "total-blocking-time": ["error", { "maxNumericValue": 200, "aggregationMethod": "median" }]
+          }
+        }
+      ]
     },
     "upload": { "target": "filesystem", "outputDir": ".lighthouseci" }
   }

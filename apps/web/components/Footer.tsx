@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
-const LINKS = [
+/** The pages about the site itself, linked from every page's footer and from the map's "i" panel. */
+export const ABOUT_LINKS = [
   { href: '/accessibility', label: 'Accessibility' },
   { href: '/privacy', label: 'Privacy' },
   { href: '/terms', label: 'Terms' },
@@ -11,7 +12,7 @@ export function Footer() {
     <footer className="border-t border-line">
       {/* The small text is set on the links: on the nav it would shrink its 70ch and pull it out of line with <main>. */}
       <nav aria-label="About this site" className="mx-auto flex max-w-[70ch] flex-wrap gap-x-6 px-4 py-2">
-        {LINKS.map(({ href, label }) => (
+        {ABOUT_LINKS.map(({ href, label }) => (
           <Link
             key={href}
             href={href}

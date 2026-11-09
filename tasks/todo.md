@@ -22,7 +22,7 @@ acceptance criteria pass and `pnpm verify` is green.
 - [x] 2.2 Tiles: pinned extract script, local range serving, CI cache
 - [x] 2.3 Overworld style: base layers, labels, Atkinson PBF glyphs, `within` filters
 - [x] 2.4 Map art: pattern sprites, mask, gold wall with dark casing; contrast test extended
-- [ ] 2.5 Map screen: preview image, lazy MapLibre, ready mark, failure fallback, zoom and Move map, "i" panel
+- [x] 2.5 Map screen: preview image, lazy MapLibre, ready mark, failure fallback, zoom and Move map, "i" panel
 - [ ] 2.6 Live tags: `GET /api/tags`, refresh hook parsing through the `PublicTag` schema, count and legend
 - [ ] 2.7 Pins: HTML marker buttons, accessible names, tab order, focus pan, crowd chooser, bob
 - [ ] 2.8 Sheet, tag card (handle, tap and flick) and desktop side panel

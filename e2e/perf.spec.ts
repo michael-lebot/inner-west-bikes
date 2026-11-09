@@ -15,17 +15,20 @@ for (const path of ['/', '/list']) {
   test(`${path} stays inside the JavaScript and font budgets`, async ({ page }) => {
     const responses: Response[] = []
     page.on('response', (response) => responses.push(response))
-    await page.goto(path, { waitUntil: 'networkidle' })
+    const html = await (await page.goto(path, { waitUntil: 'networkidle' }))?.text()
 
     const sized = await Promise.all(
       responses.map(async (response) => ({
         type: response.request().resourceType(),
+        // The page's own scripts are named in its HTML; the map's arrive later, through import().
+        beforeMap: html?.includes(new URL(response.url()).pathname),
         bytes: (await response.request().sizes()).responseBodySize,
       })),
     )
     const total = (type: string) => sized.filter((r) => r.type === type).reduce((sum, r) => sum + r.bytes, 0)
 
-    expect(total('script'), 'JavaScript bytes').toBeLessThanOrEqual(JS_BEFORE_MAP)
+    const beforeMap = sized.filter((r) => r.type === 'script' && r.beforeMap).reduce((sum, r) => sum + r.bytes, 0)
+    expect(beforeMap, 'JavaScript bytes before the map').toBeLessThanOrEqual(JS_BEFORE_MAP)
     expect(sized.filter((r) => r.type === 'font')).toHaveLength(FONT_FILES)
     expect(total('font'), 'font bytes').toBeLessThanOrEqual(FONT_BYTES)
   })
