@@ -34,7 +34,7 @@ export function TagList({
             {group.map((tag) => (
               <li key={tag.id} className="flex flex-col gap-2">
                 <TagRow tag={tag} now={now} onSelect={onSelect} />
-                {!onSelect && <TagActions id={tag.id} />}
+                {!onSelect && <TagActions id={tag.id} outlined />}
               </li>
             ))}
           </ul>

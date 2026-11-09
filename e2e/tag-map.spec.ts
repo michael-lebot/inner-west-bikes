@@ -56,6 +56,14 @@ async function placeBesideLlewellynSt(page: Page, isMobile: boolean) {
 }
 
 const dialog = (page: Page) => page.getByRole('dialog')
+/** The green primary buttons and links showing: §9 allows one a screen. */
+const greenButtons = (page: Page) =>
+  page.evaluate(
+    () =>
+      [...document.querySelectorAll('button, a')].filter(
+        (element) => element.checkVisibility() && getComputedStyle(element).backgroundColor === 'rgb(29, 107, 42)',
+      ).length,
+  )
 /** A chip's label, which is what a visitor taps; the radio inside it is visually hidden. */
 const chip = (page: Page, name: string) => page.getByRole('radio', { name }).locator('..')
 
@@ -316,6 +324,7 @@ test.describe('Still there and Removed', () => {
     await page.keyboard.press('Enter')
     const card = page.getByRole('region', { name: 'Lime e-bike' })
     await expect(card).toContainText(/Disappears in (39|40) h/)
+    expect(await greenButtons(page)).toBe(1)
     await expectNoAxeViolations(page)
 
     await card.getByRole('button', { name: 'Still there' }).click()
@@ -340,6 +349,8 @@ test.describe('Still there and Removed', () => {
     await row(page, 'Llewellyn St').getByRole('button', { name: 'Still there' }).click()
     await expect(page.locator('#announcer')).toHaveText('Marked still there')
     await expect(row(page, 'Llewellyn St').getByRole('link')).toContainText(`${RESTARTED} left`)
+    // Every row has Still there, so none is the screen's one green button.
+    expect(await greenButtons(page)).toBe(0)
     await expectNoAxeViolations(page)
 
     for (const street of ['Llewellyn St', 'Norton St', 'Marion St']) {
@@ -358,6 +369,7 @@ test.describe('Still there and Removed', () => {
 
   test("on a tag's page: Still there, then Removed", async ({ page }) => {
     await page.goto(`/tag/${LLEWELLYN_ST}`)
+    expect(await greenButtons(page)).toBe(1)
     await page.getByRole('button', { name: 'Still there' }).click()
     await expect(page.getByText(`Disappears in ${RESTARTED}`)).toBeVisible()
     await page.getByRole('button', { name: 'Removed' }).click()

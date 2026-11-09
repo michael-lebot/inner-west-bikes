@@ -24,9 +24,18 @@ export async function tagAction(id: string, action: keyof typeof DONE) {
 /**
  * "Is it still there?" (§3) on the card, a /list row or a tag's page. `onDone` gets the tag as it now is, or null
  * once it has gone. Without it, Still there refreshes the page from the server, and a tag that has gone keeps its
- * place until the next load, so the next row's buttons don't slide under a finger.
+ * place until the next load, so the next row's buttons don't slide under a finger. `outlined` is for a list of them,
+ * where no row's Still there is the screen's one green button (§9).
  */
-export function TagActions({ id, onDone }: { id: string; onDone?: (tag: TagJson | null) => void }) {
+export function TagActions({
+  id,
+  outlined = false,
+  onDone,
+}: {
+  id: string
+  outlined?: boolean
+  onDone?: (tag: TagJson | null) => void
+}) {
   const router = useRouter()
   const [error, setError] = useState<string>()
   const [gone, setGone] = useState<string>()
@@ -63,7 +72,7 @@ export function TagActions({ id, onDone }: { id: string; onDone?: (tag: TagJson 
           Is it still there?
         </p>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" className={PRIMARY} onClick={() => act('still-there')}>
+          <button type="button" className={outlined ? SECONDARY : PRIMARY} onClick={() => act('still-there')}>
             Still there
           </button>
           <button type="button" className={SECONDARY} onClick={() => act('removed')}>

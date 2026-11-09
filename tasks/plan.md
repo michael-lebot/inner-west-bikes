@@ -1063,7 +1063,8 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   from the server; a tag that has gone keeps its place until the next load, with a focused "Removed." or "This tag
   has already gone." where its buttons were, so focus never drops and the next row's buttons don't slide under a
   finger. The buttons sit after the row's link in `TagList` (24 px between rows on `/list`), so `TagRow` is
-  unchanged. The same file's `tagAction()` also sends "Yes, this bike".
+  unchanged. The same file's `tagAction()` also sends "Yes, this bike". On `/list` both buttons are outlined, as every
+  row has them and §9 allows one green button a screen; the card and the tag page keep Still there green.
 - **Accept:** reading `/list` still works without JavaScript; actions work from all three places.
 - **Files:** `components/{TagActions,TagCard,TagRow}.tsx`, `app/list/page.tsx`, `app/tag/[id]/page.tsx`.
 - **Verify:** `pnpm e2e e2e/tag-map.spec.ts`.
