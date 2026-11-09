@@ -1,16 +1,20 @@
-import { clockTime, duration, PROBLEMS, TAG_LIFETIME_HOURS, type PublicTag } from '@iwb/shared'
+import { clockTime, duration, photoAlt, PROBLEMS, TAG_LIFETIME_HOURS, type PublicTag } from '@iwb/shared'
+import { TagPhoto } from './TagPhoto'
 
-/** What is wrong, where, and how long the tag has left. The page or card gives it a heading. */
+/** Its photo, what is wrong, where, and how long the tag has left. The page or card gives it a heading. */
 export function TagDetails({ tag, now }: { tag: PublicTag; now: Date }) {
   const left = (tag.expiresAt.getTime() - now.getTime()) / (TAG_LIFETIME_HOURS * 3_600_000)
 
   return (
     <div className="flex flex-col gap-3">
-      <div>
-        <p>{PROBLEMS[tag.problem]}</p>
-        <p className="text-sm text-muted">
-          {tag.street}, {tag.suburb}
-        </p>
+      <div className="flex items-start gap-3">
+        {tag.photoId && <TagPhoto key={tag.photoId} id={tag.photoId} alt={photoAlt(tag)} />}
+        <div>
+          <p>{PROBLEMS[tag.problem]}</p>
+          <p className="text-sm text-muted">
+            {tag.street}, {tag.suburb}
+          </p>
+        </div>
       </div>
       <div className="flex flex-col gap-1.5">
         <p className="flex flex-wrap justify-between gap-x-3 text-sm text-muted">

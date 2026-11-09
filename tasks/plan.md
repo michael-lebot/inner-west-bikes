@@ -292,7 +292,7 @@ a flick threshold, stay beside the behaviour they control.
 **Server and client components.**
 - Server components by default. `'use client'` only on interactive leaves: `MapScreen`, `Sheet`, `TagCard`,
   `TagActions`, `TagFlow`, `Dialog`, `TagForm`, `MatchDialog`, `StreetPicker`, `LocateButton`, `ListTagButton`,
-  `ReportDialog`, `PhotoInput`, `Announcer`, and everything in `map/`.
+  `ReportDialog`, `PhotoInput`, `TagPhoto`, `Announcer`, and everything in `map/`.
 - `TagRow`, `TagList`, `TagDetails`, `PinIcon` have no `'use client'` and no server-only imports, so they render on
   the server (`/list`, `/tag/[id]`) and inside client islands (chooser, desktop panel) alike.
 - Every page is rendered per request (`await connection()` in the root layout), because the nonce-based CSP needs it
@@ -1397,6 +1397,15 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   reported as blocking the footpath"); a photo that 404s is replaced by text, never a broken image.
 - **Accept:** the tag exists even when the photo fails; Try again attaches to the same tag; no layout shift when the
   thumbnail loads.
+  As built: the thumbnail sits in a fixed 96 × 72 px box (`object-cover`), and is a link to the full size in a new
+  tab, so the card or page stays as it was. `TagPhoto` is the one client leaf inside `TagDetails`, swapping the image
+  for "Photo no longer shown" when it fails to load. The alt text uses the problem's label as it is: "Photo of a Lime
+  e-bike reported as blocking footpath". `send()` passes a `FormData` body as it is. While the photo is sent, the new
+  tag is already among the live tags, so `TagFlow` leaves it out of the "is this the same bike?" question. The Terms
+  link opens a new tab, so the form keeps what is filled in. The form learns of a pause from `GET /api/tags` on the
+  map and from the server render on `/list`. A 12 MP, 3.4 MB JPEG is re-encoded in about 0.3 s on the Pixel
+  project (1.3 s on the desktop one) into a 2048 × 1536 JPEG of 675 KB; the server keeps a 1600 × 1200 WebP of
+  195 KB and a 3.4 KB thumbnail.
 - **Files:** `components/{PhotoInput,TagForm,TagFlow,TagDetails}.tsx`, `lib/photo.ts`,
   `packages/shared/src/format.ts`.
 - **Verify:** `pnpm e2e e2e/photos.spec.ts`.

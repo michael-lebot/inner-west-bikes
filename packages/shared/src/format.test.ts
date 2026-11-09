@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { bikeCount, bikeName, byPlace, clockTime, dateTime, duration, isExpired, parseTag, pinLabel } from './format'
+import {
+  bikeCount,
+  bikeName,
+  byPlace,
+  clockTime,
+  dateTime,
+  duration,
+  isExpired,
+  parseTag,
+  photoAlt,
+  pinLabel,
+} from './format'
 import type { PublicTag } from './schemas'
 
 describe('bikeCount', () => {
@@ -119,5 +130,16 @@ describe('parseTag', () => {
       photoId: '0f0f0000-0000-4000-8000-000000000001',
     }
     expect(parseTag(JSON.parse(JSON.stringify(tag)))).toEqual(tag)
+  })
+})
+
+describe('photoAlt', () => {
+  it("describes a tag's photo by the bike and its problem", () => {
+    expect(photoAlt({ operator: 'lime', problem: 'blocking_footpath' })).toBe(
+      'Photo of a Lime e-bike reported as blocking footpath',
+    )
+    expect(photoAlt({ operator: 'not_sure', problem: 'in_waterway' })).toBe(
+      'Photo of a share e-bike reported as in waterway',
+    )
   })
 })

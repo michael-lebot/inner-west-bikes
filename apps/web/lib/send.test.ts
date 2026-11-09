@@ -90,3 +90,16 @@ it('says it couldn’t send, rather than throwing, when every success’s body i
   expect(fetch).toHaveBeenCalledTimes(3)
   expect(waited).toBe(500 + 1500)
 })
+
+it('sends a form as it is, for the browser to mark as multipart, and the same form again on a retry', async () => {
+  const form = new FormData()
+  form.append('photo', new Blob(['jpeg']), 'photo.jpg')
+  fetch.mockReturnValueOnce(answer(500, {})).mockReturnValueOnce(answer(200, { tag: null }))
+  const result = send('/api/tags/x/photo', form)
+  await vi.runAllTimersAsync()
+  expect(await result).toEqual({ ok: true, data: { tag: null } })
+  expect(fetch.mock.calls.map(([, init]) => init)).toEqual([
+    { method: 'POST', body: form },
+    { method: 'POST', body: form },
+  ])
+})

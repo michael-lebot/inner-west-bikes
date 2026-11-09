@@ -1,27 +1,34 @@
 'use client'
 import { type Operator, OPERATORS, type Problem, PROBLEMS, type TagJson } from '@iwb/shared'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { send } from '@/lib/send'
 import { announce } from './Announcer'
-import { PRIMARY, SECONDARY, SMALL } from './buttons'
+import { FOCUS_RING_WITHIN, PRIMARY, SECONDARY, SMALL } from './buttons'
 import { Dialog } from './Dialog'
 import { ErrorText } from './ErrorText'
+import { PhotoInput } from './PhotoInput'
 import { pinOn, type Spot } from './Placement'
 
 /** What the visitor has said so far, kept across Change location. The id is the tag's until it is added (§5.3). */
-export type Draft = { id: string; operator?: Operator; problem?: Problem }
+export type Draft = { id: string; operator?: Operator; problem?: Problem; photo?: Blob }
 
 const OPERATOR_CHOICES = (Object.keys(OPERATORS) as Operator[])
   .filter((key) => OPERATORS[key].active)
   .map((key) => [key, OPERATORS[key].label] as const)
 const PROBLEM_CHOICES = (Object.keys(PROBLEMS) as Problem[]).map((key) => [key, PROBLEMS[key]] as const)
 const MISSING = { operator: 'Choose whose bike it is.', problem: "Choose what's wrong." }
+const PHOTO_FAILED = "Tag added, but the photo didn't upload."
 
-/** The tag form (§3): the spot, whose bike and what's wrong, then Add to the map. No free text (§6). */
+/**
+ * The tag form (§3): the spot, whose bike, what's wrong and an optional photo, then Add to the map. No free text (§6).
+ * The tag is sent first and its photo after it, so a photo that fails leaves the tag added, and Try again sends the
+ * photo alone (§4.3).
+ */
 export function TagForm({
   spot,
   draft,
   onDraft,
+  uploadsPaused,
   apply,
   onChangeLocation,
   onClose,
@@ -29,14 +36,43 @@ export function TagForm({
   spot: Spot
   draft: Draft
   onDraft: (draft: Draft) => void
+  uploadsPaused: boolean
   apply: (id: string, tag: TagJson | null) => void
   onChangeLocation: () => void
   onClose: () => void
 }) {
   const [checked, setChecked] = useState(false)
   const [failure, setFailure] = useState<string>()
+  // Why the photo of a tag already added didn't upload.
+  const [photoFailure, setPhotoFailure] = useState<string>()
   const [sending, setSending] = useState(false)
+  const status = useRef<HTMLParagraphElement>(null)
   const missing = (['operator', 'problem'] as const).filter((field) => !draft[field])
+
+  // The form has made way for the line saying the photo failed, which takes the focus.
+  useEffect(() => status.current?.focus(), [photoFailure])
+
+  const done = (message: string) => {
+    announce(message)
+    onClose()
+  }
+
+  /** Sends the photo to the tag. Sent again, it can't add a second: a tag has one photo (§5.3). */
+  const attach = async () => {
+    if (sending) return
+    setSending(true)
+    const body = new FormData()
+    body.append('photo', draft.photo!, 'photo.jpg')
+    const sent = await send<{ tag: TagJson | null }>(`/api/tags/${draft.id}/photo`, body)
+    setSending(false)
+    if (sent.ok) {
+      apply(draft.id, sent.data.tag)
+      done(photoFailure ? 'Photo added' : 'Tag added')
+    } else {
+      setPhotoFailure(sent.error.message)
+      announce(`${PHOTO_FAILED} ${sent.error.message}`)
+    }
+  }
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -59,17 +95,34 @@ export function TagForm({
       ...(spot.picked && { street: spot.street }),
     })
     setSending(false)
-    if (sent.ok) {
-      apply(id, sent.data.tag)
-      announce('Tag added')
-      onClose()
-    } else {
+    if (!sent.ok) {
       // The answers stay, and so does the id, so sending again can't add the tag twice.
       setFailure(sent.error.message)
       announce(sent.error.message)
+    } else {
+      apply(id, sent.data.tag)
+      if (draft.photo) await attach()
+      else done('Tag added')
     }
   }
 
+  if (photoFailure)
+    return (
+      <Dialog title="Tag a dumped bike" onCancel={onClose}>
+        <p ref={status} tabIndex={-1} className="font-bold">
+          {PHOTO_FAILED}
+        </p>
+        <ErrorText>{photoFailure}</ErrorText>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={`${SECONDARY} grow`} onClick={onClose}>
+            Skip
+          </button>
+          <button type="button" className={`${PRIMARY} grow`} onClick={attach}>
+            {sending ? 'Sending…' : 'Try again'}
+          </button>
+        </div>
+      </Dialog>
+    )
   return (
     <Dialog title="Tag a dumped bike" onCancel={onClose}>
       <form noValidate onSubmit={submit} className="flex flex-col gap-4">
@@ -95,6 +148,11 @@ export function TagForm({
           error={checked && !draft.problem ? MISSING.problem : undefined}
           onChange={(problem) => onDraft({ ...draft, problem })}
         />
+        {uploadsPaused ? (
+          <p>Photos are switched off for now.</p>
+        ) : (
+          <PhotoInput photo={draft.photo} onPhoto={(photo) => onDraft({ ...draft, photo })} />
+        )}
         {failure && <ErrorText>{failure}</ErrorText>}
         {/* Side by side where both fit; at large text sizes, one above the other, each the full width. */}
         <div className="flex flex-wrap gap-2">
@@ -134,7 +192,7 @@ function Chips<K extends string>({
         {choices.map(([key, label]) => (
           <label
             key={key}
-            className="flex min-h-11 cursor-pointer items-center gap-1.5 rounded-[10px] border border-edge px-3 has-checked:border-2 has-checked:border-brand has-checked:bg-tint has-checked:font-bold has-focus-visible:shadow-[0_0_0_2px_white] has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus"
+            className={`flex min-h-11 cursor-pointer items-center gap-1.5 rounded-[10px] border border-edge px-3 has-checked:border-2 has-checked:border-brand has-checked:bg-tint has-checked:font-bold ${FOCUS_RING_WITHIN}`}
           >
             <input
               type="radio"

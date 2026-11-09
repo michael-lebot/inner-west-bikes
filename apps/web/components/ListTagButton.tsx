@@ -13,7 +13,7 @@ const TagFlow = lazy(() => import('./TagFlow').then((module) => ({ default: modu
  * "Tag a dumped bike" on /list (§10.3): the placement step without the map, then the usual dialogs. The page never
  * loads MapLibre. A new tag shows once the page refreshes from the server.
  */
-export function ListTagButton({ tags, now }: { tags: PublicTag[]; now: Date }) {
+export function ListTagButton({ tags, now, uploadsPaused }: { tags: PublicTag[]; now: Date; uploadsPaused: boolean }) {
   const router = useRouter()
   const [tagging, setTagging] = useState<'place' | 'describe'>()
   const [spot, setSpot] = useState<Spot>()
@@ -68,6 +68,7 @@ export function ListTagButton({ tags, now }: { tags: PublicTag[]; now: Date }) {
           spot={tagging === 'describe' ? spot : undefined}
           tags={tags}
           now={now}
+          uploadsPaused={uploadsPaused}
           apply={() => router.refresh()}
           onChangeLocation={() => {
             // The dialog has to close first: until then the bar is inert and can't take the focus.
