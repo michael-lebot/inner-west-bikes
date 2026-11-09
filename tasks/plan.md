@@ -259,8 +259,9 @@ must equal the request host), run, then `303` redirect back with a `?notice=` co
 
 **Environment variables.**
 - `process.env` is read only in `packages/db/src/env.ts`, `apps/web/lib/env.ts` (server) and
-  `apps/web/lib/public-env.ts` (literal `process.env.NEXT_PUBLIC_TILES_URL`, so Next inlines it). ESLint
-  (`no-restricted-properties`) enforces this.
+  `apps/web/lib/public-env.ts` (literal `process.env.NEXT_PUBLIC_TILES_URL`, so Next inlines it; checked without Zod,
+  which stays out of the browser bundle, to be a root-relative path or an http(s) URL, and imported by
+  `next.config.ts` so a bad value fails the build). ESLint (`no-restricted-properties`) enforces this.
 - Each is Zod-parsed once. Off Vercel every variable has a safe local default (Docker URL, fixed dev secrets, Blob and
   email switched to local), so a fresh clone runs with no app env files. On Vercel (`VERCEL=1`) a missing secret
   throws the first time the code that needs it runs (so the admin app, which never hashes or emails, doesn't need

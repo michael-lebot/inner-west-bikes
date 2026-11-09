@@ -1,4 +1,6 @@
 import type { NextConfig } from 'next'
+// Validates the public settings when the app builds or starts.
+import './lib/public-env'
 
 export default {
   // The workspace packages are TypeScript source; Next compiles them with the app.
