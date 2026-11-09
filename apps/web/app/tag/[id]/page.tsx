@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { cache } from 'react'
 import { Footer } from '@/components/Footer'
 import { PinIcon } from '@/components/PinIcon'
+import { TagActions } from '@/components/TagActions'
 import { TagDetails } from '@/components/TagDetails'
 
 /** The live tag the URL names, or null. Cached for the request, so the title and the page read the database once. */
@@ -31,6 +32,7 @@ export default async function TagPage({ params }: PageProps<'/tag/[id]'>) {
           {bikeName(tag.operator)}
         </h1>
         <TagDetails tag={tag} now={new Date()} />
+        <TagActions id={tag.id} />
       </main>
       <Footer />
     </>

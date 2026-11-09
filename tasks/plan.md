@@ -1049,6 +1049,12 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   sending one action; success announces "Marked still there" or "Removed" and updates the card; `tag_gone` announces
   "This tag has already gone" and drops the tag; `rate_limited` shows the message. Used in `TagCard`, on each `/list`
   row and on `/tag/[id]`.
+  As built: on the card, `TagActions` hands the result to the live tags' `apply`, and MapScreen already closes a card
+  whose tag has gone and gives its focus to the count. On `/list` and the tag page, Still there refreshes the page
+  from the server; a tag that has gone keeps its place until the next load, with a focused "Removed." or "This tag
+  has already gone." where its buttons were, so focus never drops and the next row's buttons don't slide under a
+  finger. The buttons sit after the row's link in `TagList` (24 px between rows on `/list`), so `TagRow` is
+  unchanged. The same file's `tagAction()` also sends "Yes, this bike".
 - **Accept:** reading `/list` still works without JavaScript; actions work from all three places.
 - **Files:** `components/{TagActions,TagCard,TagRow}.tsx`, `app/list/page.tsx`, `app/tag/[id]/page.tsx`.
 - **Verify:** `pnpm e2e e2e/tag-map.spec.ts`.

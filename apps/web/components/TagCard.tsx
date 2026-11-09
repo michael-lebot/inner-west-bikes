@@ -1,7 +1,8 @@
 'use client'
-import { bikeName, PROBLEMS, type PublicTag } from '@iwb/shared'
+import { bikeName, PROBLEMS, type PublicTag, type TagJson } from '@iwb/shared'
 import { useEffect, useRef, useState } from 'react'
 import { PinIcon } from './PinIcon'
+import { TagActions } from './TagActions'
 import { TagDetails } from './TagDetails'
 
 /** A vertical swipe at least this long on the handle shrinks or expands the card (§12). */
@@ -11,7 +12,17 @@ const FLICK_PX = 30
  * A live tag's card (§3, §10.4). Not a dialog: the map stays usable beside it. On a phone its handle shrinks it to
  * one line and back, by tap or by flick; in the side panel there is nothing to uncover, so there is no handle (§13).
  */
-export function TagCard({ tag, now, onClose }: { tag: PublicTag; now: Date; onClose: () => void }) {
+export function TagCard({
+  tag,
+  now,
+  onDone,
+  onClose,
+}: {
+  tag: PublicTag
+  now: Date
+  onDone: (tag: TagJson | null) => void
+  onClose: () => void
+}) {
   const [shrunk, setShrunk] = useState(false)
   const heading = useRef<HTMLHeadingElement>(null)
   // shortcut: flick on release, upgrade to a card that follows the finger if this feels stiff on phones at M1.
@@ -67,8 +78,9 @@ export function TagCard({ tag, now, onClose }: { tag: PublicTag; now: Date; onCl
         </button>
       </div>
       {/* Shrunk, the rest is out of reach of pointer and keyboard; the panel never shrinks it. */}
-      <div className={shrunk ? 'hidden wide:block' : ''}>
+      <div className={`flex flex-col gap-4 ${shrunk ? 'hidden wide:flex' : ''}`}>
         <TagDetails tag={tag} now={now} />
+        <TagActions id={tag.id} onDone={onDone} />
       </div>
     </section>
   )

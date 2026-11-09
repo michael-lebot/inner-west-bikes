@@ -1,11 +1,10 @@
 'use client'
 import { bikeName, bikes, type PublicTag, type TagJson } from '@iwb/shared'
 import { useState } from 'react'
-import { send } from '@/lib/send'
-import { announce } from './Announcer'
 import { SECONDARY } from './buttons'
 import { Dialog } from './Dialog'
 import { PinIcon } from './PinIcon'
+import { tagAction } from './TagActions'
 import { TagDetails } from './TagDetails'
 
 /**
@@ -28,19 +27,11 @@ export function MatchDialog({
   const [error, setError] = useState<string>()
 
   const yes = async (tag: PublicTag) => {
-    const sent = await send<{ tag: TagJson | null }>(`/api/tags/${tag.id}/still-there`, {
-      requestId: crypto.randomUUID(),
-    })
-    if (sent.ok) {
-      apply(tag.id, sent.data.tag)
-      announce('Marked still there')
-      onClose()
-      return
-    }
+    const { tag: updated, message } = await tagAction(tag.id, 'still-there')
+    if (updated === undefined) return setError(message)
     // A tag that has gone leaves the list, and the form follows once none is left.
-    if (sent.error.code === 'tag_gone') apply(tag.id, null)
-    else setError(sent.error.message)
-    announce(sent.error.message)
+    apply(tag.id, updated)
+    if (updated) onClose()
   }
 
   return (

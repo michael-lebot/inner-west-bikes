@@ -211,7 +211,7 @@ export function MapScreen() {
         {crowded?.length ? (
           <CrowdChooser tags={crowded} now={now} onSelect={select} onClose={closeChooser} />
         ) : card ? (
-          <TagCard key={card.id} tag={card} now={now} onClose={closeCard} />
+          <TagCard key={card.id} tag={card} now={now} onDone={(tag) => apply(card.id, tag)} onClose={closeCard} />
         ) : tagging ? (
           <>
             <Placement spot={spot} outside={outside} onUse={() => setTagging('describe')} onCancel={endTagging} />

@@ -260,3 +260,82 @@ test.describe('the dialogs', () => {
     })
   })
 })
+
+test.describe('Still there and Removed', () => {
+  const LLEWELLYN_ST = '5eed0000-0000-4000-8000-000000000003'
+  const status = () => sql(`SELECT status FROM tags WHERE id = '${LLEWELLYN_ST}'`).then(([tag]) => tag.status)
+  // Times are shown in whole hours, rounded down: just restarted, 48 hours read as 47.
+  const RESTARTED = '47 h'
+  const row = (page: Page, street: string) =>
+    page.getByRole('listitem').filter({ has: page.getByRole('link', { name: new RegExp(street) }) })
+
+  test('on the card: Still there restarts the 48 hours, and Removed takes the pin away', async ({
+    page,
+    browserName,
+  }) => {
+    await page.goto('/')
+    await expect(page.locator('[data-map-ready]')).toBeAttached()
+    // By keyboard, as on a phone this pin overlaps others and a tap opens the chooser.
+    await page.getByRole('button', { name: /Llewellyn St, Marrickville/ }).focus()
+    await page.keyboard.press('Enter')
+    const card = page.getByRole('region', { name: 'Lime e-bike' })
+    await expect(card).toContainText(/Disappears in (39|40) h/)
+    await expectNoAxeViolations(page)
+
+    await card.getByRole('button', { name: 'Still there' }).click()
+    await expect(page.locator('#announcer')).toHaveText('Marked still there')
+    await expect(card).toContainText(`Disappears in ${RESTARTED}`)
+    // Focus stays in the sheet: on the button, or, as Safari doesn't focus a tapped button, on the sheet around it.
+    expect(await page.locator('#sheet').evaluate((sheet) => sheet.contains(document.activeElement))).toBe(true)
+
+    await card.getByRole('button', { name: 'Removed' }).click()
+    await expect(page.locator('#announcer')).toHaveText('Removed.')
+    await expect(card).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Llewellyn St, Marrickville/ })).toHaveCount(0)
+    const count = page.getByRole('heading', { name: '13 bikes in the graveyard' })
+    await expect(count).toBeVisible()
+    // The count takes the focus the button had. Safari never gave it to the button, so it stays on the sheet.
+    if (browserName !== 'webkit') await expect(count).toBeFocused()
+    expect(await status()).toBe('removed')
+  })
+
+  test('on /list: each row has both, and the fourth removal of the day meets the limit', async ({ page }) => {
+    await page.goto('/list')
+    await row(page, 'Llewellyn St').getByRole('button', { name: 'Still there' }).click()
+    await expect(page.locator('#announcer')).toHaveText('Marked still there')
+    await expect(row(page, 'Llewellyn St').getByRole('link')).toContainText(`${RESTARTED} left`)
+    await expectNoAxeViolations(page)
+
+    for (const street of ['Llewellyn St', 'Norton St', 'Marion St']) {
+      await row(page, street).getByRole('button', { name: 'Removed' }).click()
+      await expect(row(page, street).getByText('Removed.')).toBeFocused()
+    }
+    await row(page, 'Illawarra Rd').getByRole('button', { name: 'Removed' }).click()
+    await expect(row(page, 'Illawarra Rd')).toContainText("You've reached the limit for now. Try again later.")
+    await expect(page.locator('#announcer')).toHaveText("You've reached the limit for now. Try again later.")
+    await expectNoAxeViolations(page)
+
+    await page.reload()
+    await expect(page.getByRole('heading', { name: '11 bikes in the graveyard' })).toBeVisible()
+    await expect(row(page, 'Illawarra Rd')).toHaveCount(1)
+  })
+
+  test("on a tag's page: Still there, then Removed", async ({ page }) => {
+    await page.goto(`/tag/${LLEWELLYN_ST}`)
+    await page.getByRole('button', { name: 'Still there' }).click()
+    await expect(page.getByText(`Disappears in ${RESTARTED}`)).toBeVisible()
+    await page.getByRole('button', { name: 'Removed' }).click()
+    await expect(page.getByText('Removed.')).toBeFocused()
+    expect(await status()).toBe('removed')
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'This tag has gone' })).toBeVisible()
+  })
+
+  test('say so when the tag has already gone', async ({ page }) => {
+    await page.goto(`/tag/${LLEWELLYN_ST}`)
+    await sql(`UPDATE tags SET expires_at = now() WHERE id = '${LLEWELLYN_ST}'`)
+    await page.getByRole('button', { name: 'Still there' }).click()
+    await expect(page.getByText('This tag has already gone.')).toBeFocused()
+    await expect(page.locator('#announcer')).toHaveText('This tag has already gone.')
+  })
+})
