@@ -36,6 +36,9 @@
                       border-radius: 10px; font: 700 22px "Atkinson Hyperlegible"; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
   .m .hint { position: absolute; left: 8px; top: 8px; right: 60px; z-index: 3; background: rgba(31,42,54,.94); color: #fff;
              border-radius: 10px; padding: 8px 10px; font-size: 14px; }
+    #map-place .hint { right: 8px; display: flex; align-items: center; gap: 10px; }
+    .hint .chg { margin-left: auto; flex: none; min-height: 44px; display: grid; place-items: center; padding: 0 12px;
+                 border: 1px solid rgba(255,255,255,.75); border-radius: 8px; font-weight: 700; }
   .m .bob { position: absolute; z-index: 4; animation: bob 1s steps(2) infinite; pointer-events: none; }
   @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
   @media (prefers-reduced-motion: reduce) { .m .bob { animation: none; } }
@@ -102,7 +105,7 @@
       <a class="why">Why this page exists</a>
     </div>
     <div class="map" id="map-place"><canvas class="base"></canvas><canvas class="over"></canvas>
-      <div class="hint">Pin dropped on <b id="placeLabel"></b>. Tap the map to move it.</div>
+      <div class="hint"><span>Pin on <b id="placeLabel"></b></span><span class="chg">Change location</span></div>
       </div>
     <div class="panel">
       <h2>Tag a dumped bike</h2>
@@ -114,7 +117,7 @@
       <div class="btn photo-btn">＋ Add a photo (optional)</div>
       <div class="row"><div class="btn">Cancel</div><div class="btn primary">Add to the map</div></div>
     </div>
-  </div></div><figcaption>2 · Tagging: after you tap, the form takes over and the map shrinks to a strip showing your pin.</figcaption></figure>
+  </div></div><figcaption>2 · Tagging: once you choose the spot, the form opens over a strip showing your pin. Change location goes back to the map.</figcaption></figure>
 
   <figure><div class="phone"><div class="m">
     <div class="bar">
@@ -148,6 +151,8 @@
     <li><b>Larger touch targets:</b> 48 px buttons, 44 px option chips and 44 px zoom buttons. The tagging form is a tall sheet over a short map strip, so nothing is cramped.</li>
     <li><b>Kept:</b> the Overworld map art (grass, sandy roads, gold council line, trees, greyed-out surroundings), the pixel-art pins and the headstone icon.
     These are graphics, not text.</li>
+    <li><b>Updated for spec rev 4:</b> the tagging screen has a Change location button in place of the old "Tap the map to move it" hint.
+    The placement step, the Move map buttons and the street picker described in the spec are not drawn here.</li>
   </ul>
 </div>
 <script>

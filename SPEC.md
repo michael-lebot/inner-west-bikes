@@ -1,10 +1,16 @@
 # SPEC — The Inner West E-bike Graveyard
 
-> Status: **draft for review, rev 3** · Author: Michael Levot (with Claude) · 2026-11-09
+> Status: **draft for review, rev 4** · Author: Michael Levot (with Claude) · 2026-11-09
 > - **Rev 2** added the name and the chosen visual direction. It dropped the cost tracker and contributions,
 >   recorded the verified Neon plan, and added the boundary buffer.
-> - **Rev 3** removes every pixel and dot-matrix font and keeps the retro look in the map art only. It also adds the
+> - **Rev 3** removed every pixel and dot-matrix font and kept the retro look in the map art only. It also added the
 >   accessibility (§10), performance (§11) and mobile usability (§12) plans.
+> - **Rev 4** applies an independent review of rev 3 (gpt-6-astra, 22 findings).
+>   - It sets out what each action may do and when (§4.2, §4.3), and makes retried requests safe (§5.3).
+>   - It drops the CDN cache for tag data (§11.3) and protects the hourly job (§5.4).
+>   - It fixes the placement, dialog and sheet behaviour that conflicted with the accessibility target (§3, §10,
+>     §12).
+>   - Rulings applied provisionally, which need Michael's confirmation, are listed in §13.
 >
 > Sources are listed at the end.
 
@@ -16,7 +22,7 @@ tap the map to tag a dumped or badly parked **share bike** (Lime, Hello, Ario), 
 - A tag disappears automatically **48 hours** after it was last confirmed.
 - Other visitors can mark a tag **Still there**, which restarts the 48 hours, or **Removed**, which hides the tag
   straight away.
-- Anyone can report a photo. It is hidden immediately and queued for Michael to restore or delete.
+- Anyone can report a photo. It stops being shown straight away and is queued for Michael to restore or delete.
 - A **"Why this page exists"** link leads to a page whose copy Michael will supply.
 
 **Why now.** NSW's shared e-bike laws took effect on 14 August 2026. They let councils set parking rules and fine
@@ -30,14 +36,14 @@ operators, and has no reporting channel of its own.
 |---|---|
 | Name | **The Inner West E-bike Graveyard** |
 | Visual direction | The **Overworld** palette and pixel-art textures appear in the **map artwork only**. The interface is plain, and **no pixel or dot-matrix fonts are used anywhere**, including map labels (§9) |
-| Accessibility target | **WCAG 2.2 AA**, plus a list view that works as a full alternative to the map (§10) |
+| Accessibility target | **WCAG 2.2 AA**, plus a list view and a street picker, so neither reading nor tagging needs the map (§10) |
 | Bike type | Share-scheme bikes and e-bikes only (Lime, Hello, Ario, plus "Not sure") |
 | Who acts on tags | **Public visibility only** in v1. No operator or council integrations |
 | Map realism | **Real streets and real street names, with a retro game skin**. Must be accurate enough to walk to |
-| Placing a tag | **Tap the map** only. Tags up to **20 m outside the council boundary** are accepted (§4.1) |
-| Tag fields | Operator picker + problem pick-list + optional photo. **No free text** |
-| "Removed" | Instant, but **rate-limited per visitor**. Every removal is logged so the admin can undo it |
-| Photo screening | **Published instantly**. Community reports are the safety net; no automated scan |
+| Placing a tag | **Tap the map**, or pick a street and its nearest corner (the route that needs no map, §10.3). No GPS. Tags up to **20 m outside the council boundary** are accepted (§4.1) |
+| Tag fields | Operator picker + problem pick-list + optional photo. **No free text** is stored or published |
+| "Removed" | Instant, but **rate-limited per visitor**. Every removal is logged so the admin can undo it, until the tag's 48 hours run out (§4.2) |
+| Photo screening | **Published instantly**. Community reports are the safety net; no automated scan. The risk this leaves is recorded in §6 |
 | Report review | **Email alert + a protected admin page** |
 | Hosting | New projects inside StoryCraft's existing Vercel team and its **Vercel-managed Neon organisation, which is on the paid Launch plan** (verified, §5) |
 | Cost tracker and contributions | **Dropped.** Estimated running cost is about A$1.50–4 a week. Revisit only if that changes (§4.5) |
@@ -50,29 +56,37 @@ operators, and has no reporting channel of its own.
 
 The three main screens are shown in `docs/mockups/graveyard-v3.html`.
 
-1. **Browse.** The map opens on the whole council area, with everything outside it greyed out and active tags shown as
-   pins.
+1. **Browse.** The map opens on the whole council area, with everything outside it greyed out and live tags shown as
+   pins. A tag is live until it is removed or its 48 hours run out (§4.2).
    - Each pin is coloured by operator and also carries a letter (L/H/A/?), so colour is never the only cue.
    - The panel below the map shows "N bikes in the graveyard", the operator key and one primary action.
    - Visitors can zoom down to street level.
+   - Where pins overlap, tapping them opens a short list to choose from (§4.1).
    - A **List** toggle shows the same tags as a list grouped by suburb (§10.3).
-2. **Tag a bike.**
-   1. Tap "Tag a dumped bike". If the map is zoomed out, it zooms in to street level (zoom 16) first.
-   2. Tap the spot, or use "Jump to street". The pin drops there and a hint names the street ("Pin dropped on
-      Llewellyn St, Marrickville. Tap the map to move it."). Taps outside the council plus 20 m are rejected with a
-      friendly message.
-   3. The form sheet expands over a short map strip. Choose **Whose bike?** (Lime / Hello / Ario / Not sure) and
+2. **Tag a bike.** Going back a step never loses what was already entered.
+   1. **Start.** Tap "Tag a dumped bike". If the map is zoomed out, it zooms in to street level (zoom 16) first.
+   2. **Place.** The whole map stays usable. Tap the spot, or use **Choose by street** to pick a street and its
+      nearest corner without the map (§10.3).
+      - The pin drops and a bar under the map reads "Pin on Llewellyn St, Marrickville", with **Use this spot** and
+        **Cancel**. Tapping somewhere else moves the pin.
+      - Spots outside the council plus 20 m are rejected with a friendly message.
+   3. **Check for a match.** If live tags sit within about 25 m, the app asks "Is it one of these?" and lists them.
+      **Yes, this bike** marks that tag Still there. **No, it's another bike** carries on. Nearby tags never block a
+      new one (§4.2).
+   4. **Describe.** The form opens as a dialog over a short map strip. It shows the chosen street with a **Change
+      location** button, which goes back to step 2. Choose **Whose bike?** (Lime / Hello / Ario / Not sure) and
       **What's wrong?**, optionally add a photo, then tap **Add to the map**.
-   4. If an active tag already exists within about 25 m, the app asks "Is it this one?" and offers **Still there** on
-      that tag instead of creating a duplicate.
+   5. **Photo.** The tag is saved first and the photo is sent after it. If the photo fails, the tag stays and the
+      photo can be retried on its own (§4.3).
 3. **Confirm.** Tap a pin to open a card showing:
    - the photo, operator, problem and street;
    - "Last seen Xh ago · Disappears in Yh", with a timer bar;
    - "Is it still there?" with **Still there** and **Removed** buttons;
    - a low-key **Report this photo** link.
-4. **Report a photo.** Choose a reason. The photo is hidden for everyone at once, and Michael gets an email.
-5. **Admin (Michael).** Review the queue of reported photos and restore or delete each one. Review recent removals and
-   undo any that were malicious.
+4. **Report a photo.** Choose a reason. The photo stops loading for everyone from their next request, and Michael gets
+   an email. A page that already had it open drops it at its next refresh (§4.3).
+5. **Admin (Michael).** Review the queue of reported photos and restore or delete each one. Undo removals that were
+   malicious, and take down tags that are malicious themselves (§4.6).
 
 ## 4. Functional requirements
 
@@ -98,6 +112,10 @@ The three main screens are shown in `docs/mockups/graveyard-v3.html`.
   - No pixel, bitmap or dot-matrix font is used anywhere.
 - **Pins are MapLibre HTML markers** (`<button>`s), not a symbol layer, so they're focusable and have accessible names
   (§10.4).
+  - **Crowded pins:** pins sit where the bikes are, so at the council-wide zoom two of them can overlap. Tapping a
+    pin whose centre is within 44 px of another opens "N bikes here", a short list built from the same rows as the
+    list view, to choose from.
+  - Focusing a pin with the keyboard pans the map to bring it into view.
 - **Risk:** pattern fills at native resolution may look less "game-like" than the chunky mockups. Judge this on real
   phones in M1.
 - **Mask:** a fill layer with a local rectangle as the outer ring and the council boundary as the hole. Check the ring
@@ -128,6 +146,7 @@ The three main screens are shown in `docs/mockups/graveyard-v3.html`.
   - The bundled suburb set must include the neighbouring suburbs that touch the buffer. A pin on the far side of
     King St is in Newtown's City of Sydney half, but it is still "Newtown".
   - Street names come from the nearest named road segment, using the same NSW data bundled as a small lookup.
+  - The same build step lists every corner where two named streets meet, for the street picker (§10.3).
 - **Inside-the-council check:** turf `booleanPointInPolygon` against the buffered polygon, run in the browser for
   instant feedback and again on the server as the rule that counts. PostGIS isn't needed in v1.
 - **Accessibility, performance and mobile behaviour** of the map are specified in §10–§12.
@@ -136,19 +155,42 @@ The three main screens are shown in `docs/mockups/graveyard-v3.html`.
 
 - **Fields:** location (lat/lng, computed suburb, nearest street), operator, problem, optional photo, timestamps.
 - **Operators:** Lime, Hello (HelloBike), Ario, Not sure. All three operate in the Inner West per the council page
-  updated 2 October 2026. The list lives in config, so operators can be added or retired without a deploy.
+  updated 2 October 2026.
+  - The list is a small static config file. Each operator has a short text key and an active or retired flag.
+  - Adding or retiring an operator is a config change and a deploy. A retired operator stays in the file, so old
+    records still display.
 - **Problems (pick-list):** Blocking footpath · Knocked over · Blocking ramp / driveway · In waterway ·
   In park or reserve · Damaged.
-- **Expiry:** `expires_at = last_confirmed_at + 48h`.
-  - Reads filter on `status = 'active' AND expires_at > now()`, so tags vanish on time even if a scheduled job is late.
-  - An hourly cron job marks them expired and deletes their photos.
-- **Still there:** sets `last_confirmed_at = now()`, which resets the expiry to 48h from now; it never adds time on
-  top. Limited to one per tag per visitor per 12h.
-- **Removed:** sets `status = 'removed'` and hides the tag at once. The removal is logged with the visitor's hashed
-  identifiers so the admin can undo it. Its photo is hidden at once and deleted after 7 days unless the tag is
-  restored.
-- **History:** expired and removed tags keep only location, suburb, operator, problem and timestamps. Event logs that
-  hold hashed visitor identifiers are purged after 30 days.
+- **Nearby tags are a suggestion, never a block.** Two dumped bikes can sit a metre apart.
+  - When a visitor picks a spot within about 25 m of live tags, the app lists those tags and asks "Is it one of
+    these?"
+  - **Yes, this bike** marks that tag Still there. **No, it's another bike** carries on to the form.
+  - The check runs in the browser against the tags already loaded. The server never refuses a tag for being near
+    another.
+
+**What each action may do.** A tag is **live** when `status = 'active'` and `expires_at > now()`. Expiry is never
+stored as a status. A tag simply stops being live when its time passes, so nothing depends on when a scheduled job
+runs.
+
+| Action | Who | Allowed when | Effect |
+|---|---|---|---|
+| Create | Visitor | The spot is inside the buffered boundary | A new `active` tag with `expires_at` = now + 48h |
+| Still there | Visitor | The tag is live | `last_confirmed_at` = now and `expires_at` = now + 48h. It resets the clock; it never adds time on top |
+| Removed | Visitor | The tag is live | `status = 'removed'`. `expires_at` is left alone |
+| Undo removal | Admin | The tag is `removed` and `expires_at > now()` | `status = 'active'`. The tag gets back only the time it had left, because an undo is not a new sighting |
+| Take down | Admin | The tag isn't already taken down | `status = 'taken_down'` and its photo is deleted. Final: no action brings it back |
+| Expire | Time | `expires_at` has passed | Nothing is written. The tag is no longer live, for good |
+
+- **One statement per write.** Each write is a single conditional update that tests the "Allowed when" column in the
+  same statement, for example `UPDATE … WHERE id = $1 AND status = 'active' AND expires_at > now()`.
+  - If no row matches, nothing changes. The visitor is told "This tag has already gone" and it leaves their map.
+  - So a tag can't be confirmed back to life a minute after it expired, and an undo can't report success on a tag
+    that stays invisible. The admin sees "Expired, can't undo" instead.
+- **Reads** return live tags only, so tags vanish on time with no scheduled job involved.
+- **Limits:** Still there is limited to one per tag per visitor per 12h. Removed is rate-limited per visitor (§6).
+  Every removal is logged with the visitor's hashed identifiers, so the admin can see who did it and undo it.
+- **History:** tags that are no longer live keep only location, suburb, operator, problem and timestamps. Hashed
+  visitor identifiers are cleared after 30 days (§6).
 
 ### 4.3 Photos
 
@@ -156,6 +198,8 @@ The three main screens are shown in `docs/mockups/graveyard-v3.html`.
   - The file input uses `accept="image/jpeg,image/png,image/webp"`, which makes iOS convert HEIC to JPEG.
   - A canvas shrinks the photo to at most 2048 px before upload (about 1 MB).
   - **Verify on current iOS before launch.**
+  - Beside the photo input: "Photos are public. Leave out people, faces and number plates.", with a link to the
+    terms (§7).
 - **Server route** (multipart, through an API route, never uploaded straight to Blob):
   1. Reject anything over 4 MB.
   2. Check the magic bytes; ignore the Content-Type header.
@@ -164,10 +208,34 @@ The three main screens are shown in `docs/mockups/graveyard-v3.html`.
      and GPS data and defeats polyglot files.
   5. Store under random UUID paths in a **private** Vercel Blob store (needs `@vercel/blob` ≥ 2.3; a store's access
      mode can't be changed after creation).
-- **Serving:** `/photo/[id]` and `/photo/[id]/thumb` check that the photo is visible in Postgres, then stream it with
-  `Cache-Control: private, no-cache`. No Vercel image optimisation (`unoptimized`). The result is that a hidden photo
-  stops loading on the very next request, and restoring it is just a status flip.
-- **One photo per tag** in v1, uploaded when the tag is created.
+  6. Save the two files first, then insert the photo row. If the insert fails, delete the files. The hourly job
+     also deletes any stored file more than an hour old that has no row (§5.4).
+- **One photo per tag** in v1. To the visitor it is one form. Underneath it is two requests: the tag is saved first,
+  then the photo is attached to it.
+  - **Attaching is allowed when** the tag is live and has no photo, the request comes from the visitor who created
+    the tag, and uploads aren't paused (§4.6). There is no deadline.
+  - **If the photo fails,** the tag is still saved. The visitor sees "Tag added, but the photo didn't upload", with
+    **Try again** and **Skip**. Try again sends only the photo, to the same tag.
+- **A photo's status records moderation only:** `visible`, `hidden` (reported and waiting for Michael) or `deleted`.
+  It never changes because its tag changed.
+  - **Report:** `visible` → `hidden`.
+  - **Admin restore:** `hidden` → `visible`. Later reports on a restored photo still reach Michael but don't hide it
+    again, so one person can't keep hiding a legitimate photo.
+  - **Admin delete:** any status → `deleted`. This is final, and the files are removed.
+- **Serving:** `/photo/[id]` and `/photo/[id]/thumb` stream a photo only when it is `visible` **and** its tag is
+  live. Otherwise they return 404. Responses carry `Cache-Control: private, no-cache`, and Vercel image optimisation
+  is off (`unoptimized`).
+  - A reported photo, and the photo of a removed or expired tag, therefore stops loading on the very next request.
+  - Undoing a removal makes the tag live again. Its photo comes back only if it is still `visible`, so an undo can
+    never republish a reported photo.
+  - A page that already had the photo open keeps showing it until that page next refreshes its data: when the tab
+    regains focus, or within 5 minutes while it is visible (§11.3). The refresh removes hidden photos and tags that
+    are no longer live.
+- **Deleting the files:** the hourly job deletes a photo once its tag's `expires_at` has passed, whatever the tag's
+  status. Take down and admin delete remove it straight away.
+  - The row is marked `deleted` first and the files are removed second, so a half-deleted photo is never served.
+  - A tag past `expires_at` can never become live again (§4.2), so deletion can't collide with an undo or a restore.
+  - Reports still open on a photo deleted this way are closed as `expired`.
 - **Report reasons:** Not a share bike · Shows a person, face or number plate (privacy) · Offensive or inappropriate ·
   Other.
 
@@ -194,21 +262,35 @@ The three main screens are shown in `docs/mockups/graveyard-v3.html`.
   - The public app has **no** admin endpoints.
   - Both apps share the Neon database and the Blob stores.
 - **Screens:**
-  - **Reported photos:** photo, reasons, report count and tag, with Restore and Delete buttons.
-  - **Removals log:** with Undo.
-  - **Abuse dashboard:** top hashed visitors and IPs by action.
+  - **Reported photos:** photo, reasons, report count, and the tag with its recent events. Restore and Delete
+    buttons.
+  - **Tags:** recent tags and removals, plus lookup by tag ID or tag URL. Each tag shows its events, and how many
+    actions the same hashed visitor or IP made that day. Two buttons:
+    - **Undo removal**, available until the tag's 48 hours run out (§4.2);
+    - **Take down**, for a tag that is malicious itself, such as a made-up tag outside someone's house. It is final.
+  - **Photo uploads switch**, shown on both screens: Pause or Resume.
+  - There is no separate abuse dashboard and no visitor blocking in v1. Rate limits cap what one visitor can do. Add
+    blocking only if a repeat abuser turns up.
 - **Email alerts (Resend):**
-  - One email per report for the first 10 each day, then an hourly digest, so a flood can't use up the free tier
-    (3,000/month, 100/day).
+  - One email per report for the first 10 each day. After that, reports go into an hourly digest, so a flood can't
+    use up the free tier (3,000/month, 100/day).
+  - Each report records when its email went out. The hourly job sends a digest of every report not yet emailed, so a
+    failed send is retried within the hour (§5.4).
   - Until the domain is verified, send from `onboarding@resend.dev`, which can only email the account owner. That's
     fine, because Michael is the only recipient.
-- **Circuit breaker:** if more than 15 reports arrive site-wide in an hour, pause new photo uploads and alert Michael.
+- **Pausing photo uploads:**
+  - **Circuit breaker:** if more than 15 reports arrive site-wide in an hour, photo uploads pause and Michael is
+    emailed.
+  - Uploads stay paused until Michael presses **Resume**, so a person has looked before photos flow again.
+  - Michael can also pause uploads by hand, for example before going away (§7).
+  - While uploads are paused, tagging without a photo works as normal, and the form says photos are switched off for
+    now.
 
 ## 5. Architecture
 
 | Layer | Choice (mirrors StoryCraft where sensible) |
 |---|---|
-| Repo | Turborepo monorepo: `apps/web` (public), `apps/admin` (protected), `packages/db` (Prisma schema and client), `packages/shared` (Zod schemas, boundary and buffered GeoJSON, operator and problem config) |
+| Repo | Turborepo monorepo: `apps/web` (public), `apps/admin` (protected), `packages/db` (Prisma schema and client), `packages/shared` (Zod schemas, boundary and buffered GeoJSON, street and corner lookups, operator and problem config) |
 | Framework | Next.js 16 App Router, TypeScript strict, route handlers (no server actions), Tailwind 4 |
 | Database | Neon Postgres 18, Prisma 6 — **new project in Sydney (`aws-ap-southeast-2`)**, created through the **Vercel Marketplace Neon integration** in the `michael-lebot's projects` Vercel team. It then lands in the Vercel-managed org "Vercel: michael-lebot's projects", which is on the **Launch** plan (verified 2026-11-09 with `neonctl orgs list`) and billed through Vercel |
 | Functions | Vercel, **region `syd1`** (Vercel's default is Washington DC, iad1) |
@@ -216,39 +298,103 @@ The three main screens are shown in `docs/mockups/graveyard-v3.html`.
 | Map | MapLibre GL JS + `pmtiles` protocol + custom Overworld pixel style |
 | Bot defence | Vercel BotID (Basic free; Deep Analysis on) |
 | Email | Resend |
-| Tests | Vitest (unit and integration) + Playwright (end-to-end), as in StoryCraft |
+| Tests | Vitest (unit, and integration against a real Postgres) + Playwright (end-to-end), as in StoryCraft. Required cases are in §5.5 |
 
 ### 5.1 Data model (first cut)
 
 ```
-tags            id uuid · lat/lng numeric(9,6) · suburb · street · operator enum · problem enum
-                status enum(active, removed, expired) · created_at · last_confirmed_at · expires_at
+tags            id uuid (made in the browser, so a retried create can't make a second tag)
+                lat/lng numeric(9,6) · suburb · street · operator text · problem enum
+                status enum(active, removed, taken_down) · created_at · last_confirmed_at · expires_at
                 removed_at · confirm_count
-tag_events      id · tag_id · type enum(created, still_there, removed, restored, expired) · at
-                visitor_hash · ip_hash            ← hashes purged after 30 days
+tag_events      id · tag_id · type enum(created, still_there, removed, restored, taken_down) · at
+                request_id uuid unique · visitor_hash · ip_hash       ← hashes cleared after 30 days
 photos          id uuid · tag_id (unique) · blob_path · thumb_path · width · height · bytes
                 status enum(visible, hidden, deleted) · created_at · hidden_at · deleted_at
-photo_reports   id · photo_id · reason enum · created_at · visitor_hash · ip_hash
-                resolved_at · resolution enum(restored, deleted)
-rate_counters   key (action:subject:window) PK · count · window_start
+photo_reports   id · photo_id · reason enum · request_id uuid unique · created_at
+                visitor_hash · ip_hash                                ← hashes cleared after 30 days
+                notified_at · resolved_at · resolution enum(restored, deleted, expired)
+rate_counters   key (action:subject:window) PK · count · window_start ← row deleted 48h after window_start
+daily_salts     day date PK · salt                                    ← row deleted after 48h
+site_state      one row: uploads_paused_at · uploads_paused_reason
 ```
+
+- There is no `expired` status. A tag is expired when `expires_at` has passed (§4.2).
+- `operator` is a short text key checked against the config file, not a database enum, so adding an operator needs
+  no migration (§4.2).
+- `photos.status` is moderation state only (§4.3).
 
 ### 5.2 Endpoints (`apps/web`)
 
 | Route | Notes |
 |---|---|
-| `/` | Map page: server-rendered shell + static council preview; MapLibre loads after first paint (§11.2) |
-| `/list` | All active tags grouped by suburb, server-rendered; never loads MapLibre (§10.3) |
-| `/tag/[id]` | One tag, server-rendered, shareable; used by the list and the map card |
+| `/` | Map page: a static shell and a static council preview. The count and pins arrive from one `GET /api/tags` request, and MapLibre loads after first paint (§11.2) |
+| `/list` | All live tags grouped by suburb, rendered on the server for each request; never loads MapLibre (§10.3) |
+| `/tag/[id]` | One tag, rendered on the server for each request, shareable; used by the list and the map card |
 | `/why`, `/accessibility`, `/privacy`, `/terms` | Static pages |
-| `GET /api/tags` | Active tags. Cached at the CDN under a `tags` cache tag and refreshed whenever a tag is created or changed. This keeps the database mostly asleep. The client hides tags locally as they pass `expires_at` |
-| `POST /api/tags` | BotID → rate limit → Zod validation → buffered-boundary check → duplicate check (~25 m) → insert |
-| `POST /api/tags/:id/still-there` | BotID → rate limit → reset expiry |
-| `POST /api/tags/:id/removed` | BotID → rate limit → soft remove and log |
-| `POST /api/tags/:id/photo` | Accepted only within a few minutes of creating the tag, from the same visitor. Then the §4.3 pipeline |
-| `GET /photo/:id[/thumb]` | Visibility check, then stream from the private store |
+| `GET /api/tags` | Live tags, read from the database on every request (`Cache-Control: no-store`). There is no CDN cache, so nothing needs clearing when the admin app changes a tag (§11.3) |
+| `POST /api/tags` | BotID → rate limit → Zod validation → buffered-boundary check → insert. The browser supplies the tag's ID (§5.3) |
+| `POST /api/tags/:id/still-there` | BotID → rate limit → conditional update (§4.2) |
+| `POST /api/tags/:id/removed` | BotID → rate limit → conditional update and log (§4.2) |
+| `POST /api/tags/:id/photo` | BotID → rate limit → the attach rules and pipeline in §4.3. No deadline |
+| `GET /photo/:id[/thumb]` | Streams from the private store only if the photo is `visible` and its tag is live (§4.3) |
 | `POST /api/photos/:id/report` | BotID → rate limit → hide → log → email |
-| `GET /api/cron/expire` (hourly) | Expire tags, delete photos due for deletion, purge old hashes and salts |
+| `GET /api/cron/hourly` | Needs the `CRON_SECRET` bearer token; anything else gets 401 (§5.4) |
+
+### 5.3 Safe retries
+
+A phone on a poor connection can lose the reply to a write that actually worked. Sending it again must return the
+first result, not act twice.
+
+- **Every write carries an ID made in the browser.**
+  - **Create:** the ID is the tag's own `id`. The insert uses `ON CONFLICT (id) DO NOTHING`, and a repeat returns the
+    existing tag.
+  - **Still there, Removed, Report:** the ID is a `request_id`, held under a unique constraint on the event or
+    report row. That row is inserted first, inside the write's transaction.
+  - **Photo:** a tag has at most one photo (`tag_id` is unique), so a repeat returns the photo already attached.
+- **A repeat does nothing new.** If the ID is already stored, the server returns the tag's or photo's current state.
+  It adds nothing to a rate limit, writes no second event and sends no second email.
+- **A repeat only counts from the same visitor.** The same ID from a different visitor gets a 409.
+- **The browser retries only what could succeed:** network failures, 5xx replies, and 429 replies after waiting for
+  `Retry-After`. It tries at most three times with backoff, never retries any other 4xx reply, and keeps the form
+  filled in.
+
+### 5.4 The hourly job
+
+`GET /api/cron/hourly` is called by Vercel Cron, which sends `Authorization: Bearer $CRON_SECRET`. A request without
+that token gets 401 and does nothing. The route skips BotID, because the caller isn't a browser.
+
+Every step acts only on rows still in their "before" state. Running the job twice, or two runs overlapping, gives the
+same result as running it once.
+
+1. Delete photos whose tag's `expires_at` has passed: mark each row `deleted`, then remove its files (§4.3). Close any
+   reports still open on them as `expired`.
+2. Delete stored files more than an hour old that have no photo row.
+3. Clear visitor and IP hashes older than 30 days from `tag_events` and `photo_reports` (§6).
+4. Delete `rate_counters` rows and `daily_salts` rows older than 48h.
+5. Email a digest of the reports that haven't been emailed yet (§4.6).
+
+### 5.5 Tests beyond the happy path
+
+These are exit criteria for M2 and M3 (§14). They run in Vitest against a real Postgres unless marked Playwright.
+
+- **Expiry edges:** Still there and Removed work one second before `expires_at` and change nothing one second after.
+  Undo is refused after `expires_at`.
+- **Two at once:** two simultaneous requests can't take a visitor past a rate limit. Two simultaneous Removed
+  requests write one removal.
+- **Repeats:** sending each kind of write again with the same ID returns the first result, with one event, one
+  rate-limit count and one email.
+- **Photo and tag together:** report → remove → undo leaves the photo hidden. A photo URL returns 404 once its tag
+  is removed, expired or taken down. A restored photo isn't hidden by a later report.
+- **Photo attach:** refused for another visitor, for a tag that isn't live, for a second photo, and while uploads are
+  paused. A failed attach leaves the tag saved and no stray files.
+- **Bad images:** oversized files, wrong magic bytes, truncated files, decompression bombs and polyglot files are all
+  rejected.
+- **Outside failures:** a Blob failure and a Resend failure each leave the database consistent. The unsent report
+  goes out in the next digest.
+- **Access:** the hourly job returns 401 without the token. The admin app can't be reached without Vercel
+  Authentication (Playwright, against a preview deployment).
+- **Hourly job twice:** two runs in a row, and two runs at once, give the same result as one.
 
 ## 6. Abuse protection and privacy
 
@@ -256,35 +402,57 @@ rate_counters   key (action:subject:window) PK · count · window_start
 - BotID runs first on every write route.
 - Then a Vercel WAF rule: at most 20 `POST /api/*` requests per 60 seconds per IP, else 429.
 - Then per-action counters in Postgres, updated in the same transaction as the write
-  (`INSERT … ON CONFLICT DO UPDATE … RETURNING count`).
+  (`INSERT … ON CONFLICT DO UPDATE … RETURNING count`). A repeat of an earlier request isn't counted (§5.3).
+- The hourly job is not a browser route. It is protected by `CRON_SECRET` instead (§5.4).
 
 **Starting limits** (to be tuned from real usage). The per-IP limits are about 3× the per-visitor limits, because many
 mobile users share one IP.
 
 | Action | Per visitor | Per IP | Extra |
 |---|---|---|---|
-| Create tag | 5/hour, 15/day | 40/day | Duplicate check within ~25 m |
-| Upload photo | 1 per tag, 10/day | 25/day | Paused by the circuit breaker |
+| Create tag | 5/hour, 15/day | 40/day | Nearby tags are suggested, never blocked (§4.2) |
+| Upload photo | 1 per tag, 10/day | 25/day | Stops while uploads are paused (§4.6) |
 | Still there | 1 per tag per 12h, 30/day | 60/day | Resets to 48h; never adds time |
-| Removed | 3/day | 8/day | Soft delete; admin can undo |
-| Report | 5/day | 10/day | More than 15/hour site-wide: alert Michael and pause uploads |
+| Removed | 3/day | 8/day | Soft delete; admin can undo until the tag's 48h run out |
+| Report | 5/day | 10/day | More than 15/hour site-wide: uploads pause until Michael resumes them |
 
 **Visitor identity without accounts:**
 - **Cookie:** a random 128-bit HttpOnly cookie (Secure, SameSite=Lax). Only a keyed hash of it is stored.
 - **IP:** stored as HMAC-SHA256 with a daily salt (the /64 prefix for IPv6). Each salt is deleted after 48h, and raw
   IPs are never logged.
-- **Retention:** all hashes are purged from events after 30 days.
+
+**What is kept, and for how long.** Every place that holds a visitor identifier is listed here. The hourly job does
+the clearing (§5.4).
+
+| Where | What | Kept for |
+|---|---|---|
+| `tag_events` | Visitor and IP hashes | Cleared after 30 days. The anonymous event stays |
+| `photo_reports` | Visitor and IP hashes | Cleared after 30 days. The anonymous report and its outcome stay |
+| `rate_counters` | A hash inside the row's key | The whole row is deleted 48h after its window starts |
+| `daily_salts` | The day's IP salt | Deleted after 48h. IP hashes from that day can't be tied to an IP after that |
+| Photo store | Image files | Deleted when the tag's 48 hours run out, on take down, or on admin delete (§4.3) |
 
 **Other measures:**
 - Security headers: strict CSP (map tiles from our own Blob domain only), `X-Content-Type-Options: nosniff`, and
   `Referrer-Policy: strict-origin-when-cross-origin`.
 - All input is validated with Zod at the boundary.
-- No user-generated text exists anywhere, by design.
+- No visitor-written text is stored or published, by design. The street search box (§10.3) is typed into, but its
+  text never leaves the browser.
+
+**Known risk, accepted.** Photos publish instantly, so an unsuitable photo is public until someone reports it or
+Michael sees it. Reporting stops it loading from then on, but can't undo views or downloads that already happened.
+- **What limits the damage:** one photo per tag, 10 uploads a day per visitor, the circuit breaker, and deletion when
+  the tag's 48 hours run out.
+- **Fallback if this proves too loose:** hold photos for Michael's approval before they show.
 
 ## 7. Legal and content (not legal advice)
 
 - **Terms:**
   - Photos must show share bikes; people and number plates must not be the subject.
+    - That rule is a request to the uploader. It is not consent from anyone who ends up in a photo, which is why a
+      report of "Shows a person, face or number plate" hides the photo at once.
+  - The notice beside the photo input (§4.3) links to these terms, so "photos are public" and the licence are seen
+    before anything is submitted.
   - Visitors grant a licence to display their uploads, and we may remove anything.
   - The site isn't affiliated with Lime, Hello, Ario, Inner West Council or Transport for NSW.
 - **Privacy note:**
@@ -299,7 +467,18 @@ mobile users share one IP.
 - **eSafety:**
   - Keep the report button and a monitored contact email, and be able to delete within hours. A removal notice must
     be met within 24h.
-  - Keep a one-page self-assessment placing the site in the lowest risk tier (Tier 3).
+  - **Do the classification for real.** Before launch, work out which online-safety codes or standards apply to an
+    anonymous site that publishes visitors' photos. Cover both the unlawful-material rules and the
+    age-restricted-material rules, using eSafety's guidance as it stands at the time
+    ([overview](https://www.esafety.gov.au/industry/codes)). Write down the category and risk tier that result,
+    with the reasons.
+    - The lowest tier is the expected answer, not an assumed one. If the assessment lands anywhere else, the extra
+      obligations become launch blockers.
+  - **A one-page response procedure,** kept with the assessment:
+    - who receives notices: the contact address, forwarded to Michael's phone;
+    - how to remove something urgently: Take down or Delete in the admin app (§4.6);
+    - what happens while Michael is away: he pauses photo uploads before leaving (§4.6). Reported photos stay hidden
+      until reviewed, and every photo is deleted when its tag's 48 hours run out.
 - **Attribution:** © OpenStreetMap contributors (collapsible "i" button); © State of NSW (Spatial Services), CC BY 4.0.
 - **Name:** "Graveyard" is tongue-in-cheek. The `/why` copy should make clear the site is about getting bikes
   collected, not shaming operators or riders.
@@ -308,8 +487,10 @@ mobile users share one IP.
 
 - **No hard pauses.** The Hobby and Neon Free limits discussed in the interview don't apply.
 - **Neon (Launch):**
-  - compute about 40–50 CU-hours/month thanks to scale-to-zero and CDN-cached reads, at US$0.106 per CU-hour,
-    roughly US$4–5/month;
+  - compute is billed only while the database is awake, and it sleeps after 5 idle minutes;
+  - tag reads are no longer cached (§11.3), so each visit can wake it for about 5 minutes. At 100 visits a day that
+    is at most about 65 CU-hours a month at the smallest size: roughly US$5–7 a month at US$0.106 per CU-hour;
+  - this stays inside the A$1.50–4 a week estimate in §4.5;
   - storage well under 1 GB.
 - **Vercel:**
   - functions and CDN usage are tiny at under 100 visits a day;
@@ -347,7 +528,7 @@ The reference is **`docs/mockups/graveyard-v3.html`**. The five original explora
 ## 10. Accessibility plan
 
 **Target: WCAG 2.2 Level AA** on every public page and state, and on the admin app. The section numbers in brackets
-are WCAG success criteria.
+are WCAG success criteria. Where our own rule is stricter than the criterion, the text says so.
 
 ### 10.1 Type and text
 
@@ -371,7 +552,8 @@ are WCAG success criteria.
 - **Large text and interface parts:** at least 3:1 (1.4.3, 1.4.11). That covers buttons, chip borders, the focus ring,
   pins against the map, and the council line against both the inside and the greyed outside.
 - **Tested:** a unit test computes the contrast of every declared foreground/background pair in the colour tokens and
-  fails CI on a regression.
+  fails CI on a regression. It also checks pin and label colours against every colour used in the map's patterns,
+  because those sit on textured backgrounds.
 - **Never colour alone (1.4.1):**
   - pins carry operator letters;
   - selected chips carry a tick;
@@ -383,17 +565,30 @@ are WCAG success criteria.
 ### 10.3 The map is never the only way
 
 - **List view** (`/list`, plus a toggle on the map screen):
-  - Every active tag, server-rendered and grouped by suburb.
+  - Every live tag, rendered on the server and grouped by suburb.
   - Each item shows street, operator, problem, last seen and disappears-in, with **Still there** and **Removed**
     buttons.
   - Reading works without JavaScript.
   - This is the main path for screen-reader and keyboard users (1.1.1, 2.1.1).
+  - The List toggle stays on screen while the map loads and if the map fails (§11.2).
 - **Tag pages** (`/tag/[id]`): each tag has its own server-rendered, shareable page, which both the list and the map
   card use.
-- **Placing a tag without precise pointing:**
+- **Tagging without the map: Choose by street.** A VoiceOver user on a phone has no arrow keys and can't judge a spot
+  on a canvas, so tagging has its own complete route. It opens from the placement step on the map screen, and from
+  "Tag a dumped bike" on `/list`.
+  1. **Street:** a labelled search box over the streets inside the council, each shown with its suburb ("Llewellyn
+     St, Marrickville"). Typing narrows the list. The typed text is never stored or sent.
+  2. **Nearest corner:** the cross streets along that street, in order ("near Marrickville Rd"). This is what tells
+     one end of a long road from the other.
+  3. **Confirm:** the spot is read back as "Near the corner of Llewellyn St and Marrickville Rd, Marrickville", with
+     **Use this spot**. The usual form follows.
+  - The pin lands on the corner. Accuracy to the nearest corner is accepted on this route.
+  - On the map screen the map also centres there, so a sighted visitor can tap to fine-tune the spot.
+  - The corner list is built from the bundled NSW road data (§4.1) and loaded only when the picker opens. No
+    geocoding API is needed.
+- **Placing on the map without precise pointing:**
   - **Keyboard crosshair:** arrow keys move 10 m, Shift+arrows 50 m, Enter places the tag, Esc cancels.
-  - **Jump to street:** a search over the street names inside the council, built from the bundled NSW data, so no
-    geocoding API is needed. It centres the map on that street, ready to place.
+  - **Move map buttons** pan the map with single taps (§10.5).
   - The placement is read back as "Pin on Llewellyn St, Marrickville".
 
 ### 10.4 Keyboard, focus and screen readers
@@ -401,15 +596,25 @@ are WCAG success criteria.
 - **Pins** are `<button>` HTML markers with a full accessible name, for example "Lime e-bike, blocking footpath,
   Denison St, Newtown, disappears in 31 hours". Their tab order follows suburb and then street. A canvas symbol layer
   would be invisible to assistive technology.
+  - Overlapping pins open a chooser, and a focused pin is panned into view (§4.1).
 - **The map region** is labelled, with a one-line summary ("Map of the Inner West with 14 tagged bikes. A list view is
   available.") and a skip link to the list.
-- **The open bottom sheet behaves as a modal dialog** (2.4.3):
-  - focus moves to its heading;
-  - Tab stays inside it;
-  - Esc closes it;
-  - focus returns to the pin or button that opened it.
-- **Visible focus:** a 3 px outline at 3:1 contrast that is never removed (2.4.7). Focused items are never hidden
-  behind the sheet (2.4.11).
+- **Which sheets are dialogs:**
+  - **Not dialogs:** the browse panel and the placement bar. The map stays usable beside them, by pointer and by
+    keyboard alike.
+  - **Non-modal:** the tag card. Focus moves to its heading, Esc or its Close button closes it, and focus returns to
+    the pin. The map stays usable.
+  - **Modal dialogs** (2.4.3): the tag form, the report form, the "Is it one of these?" question and the street
+    picker.
+    - Focus moves to the heading, and Tab stays inside.
+    - The rest of the page is `inert`, so pointer and keyboard users are held to the same rule.
+    - Esc or a visible Cancel button closes the dialog, and focus returns to the control that opened it.
+  - The tag form never asks anyone to reach past it to the map. Its **Change location** button goes back to the
+    placement step and keeps the answers already given.
+- **Visible focus** (2.4.7). Our own rule is stricter than the criterion: a 3 px outline at 3:1 contrast that is never
+  removed.
+- **Focus not hidden** (2.4.11). The criterion asks that a focused item is not entirely hidden. Our own rule is that
+  the sheet never covers any part of it.
 - **Forms:**
   - Option chips are native radio inputs in `<fieldset>`/`<legend>` groups.
   - Results and errors ("Tag added", "Marked still there", "Photo reported and hidden", "That spot is outside the
@@ -426,67 +631,107 @@ are WCAG success criteria.
   - Transitions are 200 ms or less, and nothing loops by default.
   - The pin bob plays only under `prefers-reduced-motion: no-preference` and stops after two cycles.
   - Nothing flashes (2.3.1).
-- **Touch targets:** at least 44 × 44 CSS px with 8 px spacing, well above the 24 px minimum in 2.5.8.
-- **No gesture-only actions:**
-  - +/− buttons for zoom (2.5.1);
-  - no dragging required, because placement is tap, click or keyboard (2.5.7);
-  - map rotation is off.
-- **No time limits** on any action (2.2.1).
+- **Touch targets:** at least 44 × 44 CSS px, well above the 24 px minimum in 2.5.8. Interface controls sit at least
+  8 px apart. Pins can't promise that spacing, because they sit where the bikes are; overlapping pins open a chooser
+  (§4.1).
+- **Nothing needs a drag or a multi-finger gesture** (2.5.1, 2.5.7):
+  - **Zoom:** + and − buttons.
+  - **Pan:** a **Move map** button opens four arrow buttons, and each tap moves the map half a screen. Keyboard
+    arrows alone don't meet 2.5.7, because a touch user who can't drag has no keyboard.
+  - **Placing:** tap, keyboard, or Choose by street (§10.3).
+  - **The sheet is not draggable.** Its height follows what it is showing (§12), and it closes with a button.
+  - Map rotation is off.
+- **No time limits** on any action (2.2.1). That includes the photo: the server sets no deadline for attaching it
+  (§4.3).
 
 ### 10.6 Testing and ownership
 
 - **Automated:**
-  - `@axe-core/playwright` runs in the Playwright suite on every page and state: map, list, tag page, open sheet,
-    form errors, empty state and admin. Any serious or critical violation fails CI.
+  - `@axe-core/playwright` runs in the Playwright suite on every page and state: map, list, tag page, open card,
+    each dialog, form errors, empty state, the map-failed state and admin. **Any** violation of a WCAG A or AA rule
+    fails CI, whatever severity axe gives it.
   - The contrast unit test from §10.2.
+- **Automated checks are not proof of AA.** axe covers only part of WCAG, so the manual pass below is a release gate
+  too. Any A or AA failure it finds blocks the release until it is fixed.
 - **Manual, at every milestone:**
-  - VoiceOver on iOS Safari and TalkBack on Android Chrome;
+  - VoiceOver on iOS Safari and TalkBack on Android Chrome, including tagging a bike from start to finish with Choose
+    by street;
   - keyboard only on desktop;
-  - 200% zoom, and 320 px width.
+  - touch without dragging: reach a spot that starts off screen and tag it using taps alone;
+  - 200% zoom, 320 px width, and the largest system text size on an SE-sized phone, checking that each form's
+    submit and cancel buttons can be reached;
+  - label and pin contrast judged on the real map on a phone, not only in the token test.
   - The checklist lives in `docs/accessibility-checklist.md`.
 - **Accessibility statement** at `/accessibility`, with a contact address and known limits (the map artwork is
-  visual-only; the list view is its equivalent).
+  visual-only; the list view and Choose by street are its equivalents).
 
 ## 11. Performance plan
 
 Assumptions: phones on 4G, with a mid-range Android (Moto G class) as the reference device, and under 100 visits a
 day.
 
-### 11.1 Budgets (75th percentile, mobile)
+### 11.1 Budgets
+
+Every number here is **provisional until M0**. That milestone measures a bare production build with pinned
+dependency versions. If Next.js and MapLibre alone don't fit, the budgets are reset from that evidence.
+
+**Lab gates.** Measured in CI on every PR; a miss fails the build (§11.4).
 
 | Measure | Budget |
 |---|---|
 | Largest Contentful Paint (LCP) | ≤ 2.5 s |
-| Interaction to Next Paint (INP) | ≤ 200 ms |
 | Cumulative Layout Shift (CLS) | ≤ 0.1 |
-| JavaScript before the map loads (gzip) | ≤ 120 KB |
-| Map bundle (MapLibre + `pmtiles` + style, gzip) | ≤ 300 KB, loaded after first paint |
+| Total Blocking Time (the lab stand-in for INP) | ≤ 200 ms |
+| Scripted interactions: open a card, pick a chip, zoom, open the form | Each ≤ 200 ms to the next paint |
+| **Map ready for placement:** tiles, labels and pins drawn, and taps accepted | ≤ 6 s (to be set properly from M1 measurements) |
+| JavaScript before the map loads (compressed, as transferred) | ≤ 120 KB |
+| Map bundle: MapLibre + `pmtiles` + style (compressed, as transferred) | ≤ 300 KB, loaded after first paint |
 | First map view | ≤ 40 tile requests, ≤ 1.5 MB |
 | Fonts | 2 woff2 files (400 and 700), Latin subset, ≤ 60 KB total |
-| `GET /api/tags` response | ≤ 15 KB for 100 tags |
+| `GET /api/tags` response (compressed) | ≤ 15 KB for 100 tags |
+| Corner list for the street picker (compressed) | ≤ 100 KB, loaded only when the picker opens |
+
+**Field targets.** For real visitors on mobile at the 75th percentile: LCP ≤ 2.5 s, INP ≤ 200 ms, CLS ≤ 0.1. With
+under 100 visits a day there may be too little data to judge these, so they are watched, not gated.
 
 ### 11.2 Loading
 
 - **First paint:**
-  - Server-render the shell: header, sheet and bike count.
+  - The shell is static: header, sheet and a reserved space for the bike count.
   - Show a **static preview image** of the council (a pre-rendered WebP of about 40 KB, regenerated at build). It is
     the page's largest element, so it sets LCP.
-  - MapLibre is loaded with a dynamic import after first paint and replaces the preview once its first frame draws.
-    The map container has a fixed size, so nothing shifts.
+  - MapLibre is loaded with a dynamic import after first paint and replaces the preview once the map is ready. The
+    map container has a fixed size, so nothing shifts.
+  - The count and pins come from one `GET /api/tags` request, so first paint never waits for the database.
+- **A fast preview must not hide a slow or broken map.**
+  - "Map ready for placement" has its own budget (§11.1), separate from LCP.
+  - While the map loads, the preview carries a "Loading map…" status and the List toggle already works.
+  - If WebGL is missing, a style or tile request fails, or the map isn't ready after 15 s, the preview stays and a
+    message offers the way round: "The map couldn't load. Use the list instead." Tagging still works from the list,
+    through Choose by street (§10.3).
 - **`/list` and `/tag/[id]`** never load MapLibre.
 - **Fonts:** self-hosted with `font-display: swap`, and the 400 weight preloaded. Map glyphs for the same font are
   served as PBF ranges 0–255 only.
 - **PMTiles:**
   - versioned filename with `Cache-Control: public, max-age=31536000, immutable`;
   - byte-range requests cached at the CDN;
-  - `maxBounds` and a minimum zoom of 12, so no out-of-area tiles are fetched.
+  - `maxBounds` and a minimum zoom of 12, so no out-of-area tiles are fetched;
+  - before M1 exit, check on the deployed Blob store that range requests return 206, that the CORS and cache headers
+    are right, and that repeat requests come from cache. Do this on the oldest supported Safari and on current
+    Android Chrome ([Protomaps' hosting notes](https://docs.protomaps.com/pmtiles/cloud-storage)).
 
 ### 11.3 Data and runtime
 
-- **Tag data:** `GET /api/tags` is cached at the CDN and invalidated on every write (§5.2). There's no polling: it
-  refetches when the tab regains focus, and every 5 minutes while visible.
+- **Tag data:** `GET /api/tags` reads the database on every request, with no CDN cache.
+  - **Why:** admin changes happen in a separate Vercel project, which can't clear the public project's cache. At
+    under 100 visits a day, a direct read is simpler than building that link. `/list` and `/tag/[id]` read directly
+    too, so every page agrees.
+  - `shortcut: uncached reads, add a CDN cache of a few seconds if traffic passes a few thousand visits a day.`
+  - **Refresh:** the page fetches again when the tab regains focus, after each of its own writes, and every 5 minutes
+    while it is visible. Each refresh drops tags that are no longer live and photos that have been hidden.
+  - Between refreshes, the browser hides tags itself as they pass `expires_at`.
 - **Markers:** at most 200 HTML markers (fewer than 100 are expected).
-  `shortcut: HTML markers, switch to a clustered symbol layer plus the list if active tags pass 200.`
+  `shortcut: HTML markers, switch to a clustered symbol layer plus the list if live tags pass 200.`
 - **Map settings:**
   - one map instance;
   - no pitch, 3D or rotation;
@@ -495,57 +740,82 @@ day.
 - **Photos:**
   - 320 px WebP thumbnails (about 20 KB) load only when a card opens; the full size loads on tap;
   - explicit width and height, so nothing shifts.
+- **Database wake-up:** the database sleeps after 5 idle minutes and takes about 0.5 s to wake. That delay can land
+  on the first read or write after a quiet spell. The static shell and preview don't wait for it. The count, the
+  pins, `/list` and `/tag/[id]` do.
 - **Writes:**
-  - The database's cold start (about 0.5 s after 5 idle minutes) only affects writes.
   - The interface updates optimistically and then reconciles.
   - Uploads are resized in the browser to at most 2048 px (about 1 MB) before sending.
 
 ### 11.4 Measuring
 
-- **Every PR:** Lighthouse CI in GitHub Actions on the mobile preset with throttling, using the budgets above as
-  assertions. `next build` output is checked against the bundle budgets.
-- **Real users:** Vercel Speed Insights on the web project, if the Pro plan includes it at this volume. Check at M0;
-  otherwise rely on Lighthouse CI.
-- **M1 exit:** a test on a real mid-range Android over throttled 4G.
+- **Every PR, in GitHub Actions,** against a production build served with compression:
+  - **Lighthouse CI** (mobile preset, throttled) asserts LCP, CLS and Total Blocking Time. Lighthouse loads a page
+    without touching it, so it can't measure INP.
+  - **Playwright** with CPU throttling times the scripted interactions and "map ready". From its network log it also
+    asserts the transfer sizes, and the tile count and bytes of the first map view.
+- **Real users:** Vercel Speed Insights on the web project, if the Pro plan includes it at this volume (check at M0).
+  It is the only source for INP and the other field targets. Without it, the lab gates stand alone.
+- **M0:** measure the bare build, then confirm or reset the budgets (§11.1).
+- **M1 exit:** a test on a real mid-range Android over throttled 4G, plus the PMTiles checks in §11.2.
 
 ## 12. Mobile usability plan
 
 - **Mobile first,** designed for 320–430 px. At 768 px and wider, the bottom sheet becomes a side panel.
 - **Layout:**
   - The map fills the viewport below the header (`100dvh`).
-  - The sheet has three snap points:
-    - **peek:** count and primary button;
+  - The sheet has three heights, set by what it is showing and never by dragging:
+    - **peek:** the count and primary button, or the placement bar;
     - **half:** a tag card;
-    - **full:** the tagging form over a short map strip.
+    - **full:** any of the dialogs in §10.4, over a short map strip. The strip is for reference only and can't be
+      touched.
   - The page itself never scrolls while the map is visible, so scrolling and panning never fight. `touch-action` is
     set on the map only.
+  - **The sheet scrolls inside itself.** Its height is capped at the space left under the header and inside the safe
+    areas, and its content scrolls vertically (`overflow-y: auto`, `overscroll-behavior: contain`). A form made
+    taller by large text, wrapped chips or an error message can always be scrolled to its buttons.
+  - Every card and dialog has a visible Close or Cancel button at the top, and the focused control is scrolled into
+    view.
+  - **On-screen keyboard:** only the street search opens one. Its input sits at the top of the dialog with the
+    results directly beneath, and the dialog is sized to the visual viewport so the keyboard doesn't cover them.
+    `100dvh` alone doesn't handle this.
 - **Safe areas:** `viewport-fit=cover` and `env(safe-area-inset-*)` padding for notches and the home indicator.
 - **Thumb reach:** primary actions sit in the bottom 40% of the screen. The header holds only the name and "Why this
   page exists".
 - **Accurate placement:**
   - Placing a tag needs zoom 16 or closer, at about 2 m per screen pixel. "Tag a dumped bike" zooms there first.
-  - The pin's tip sits exactly on the tapped point, and a hint says "Tap the map to move it".
+  - Placement is its own step with the whole map usable. The pin's tip sits exactly on the tapped point, tapping
+    somewhere else moves it, and **Use this spot** opens the form (§3).
+  - From the form, **Change location** comes back to this step.
   - Tags up to 20 m outside the boundary are accepted (§4.1).
 - **Gestures:**
-  - pinch, double-tap zoom and one-finger pan, plus +/− buttons;
+  - pinch, double-tap zoom and one-finger pan, each with a button that does the same: +/− and Move map (§10.5);
   - rotation and pitch are off, so the map can't land in a confusing state;
   - browser page zoom is never disabled.
 - **Forms:**
   - native radio inputs styled as 44 px chips;
-  - no typing anywhere in the tagging flow, by design;
+  - no typing is needed to tag a bike. The street search (§10.3) is the only text box;
   - the photo input lets iOS and Android offer camera or library.
 - **Poor connections:**
-  - Each write carries a client-generated ID, so a retry can't create duplicates.
-  - Failed requests retry with backoff, and the form keeps its state.
+  - Every write carries an ID made in the browser, and the server returns the first result for a repeat, so a retry
+    can't act twice (§5.3).
+  - Network failures and server errors are retried up to three times with backoff, and the form keeps its state.
+  - The tag and its photo are sent separately. If only the photo fails, the tag is kept and the photo can be retried
+    on its own (§4.3).
   - The error reads "Couldn't send. Check your connection and try again."
   - There is no offline queue in v1.
 - **Browsers:** iOS Safari 16.4+, plus the last two versions of Chrome for Android and Samsung Internet.
   - Older browsers, such as iOS 15, get the list view instead of the map. Their PMTiles range requests trigger a
     pre-check that Blob rejects.
+  - If the map fails to load on a supported browser, the list is offered in its place (§11.2).
 - **Orientation:** portrait first. Landscape uses the side-panel layout.
 - **Testing:**
   - Playwright mobile projects (iPhone 13 and Pixel 7 emulation) for every flow.
-  - Manual checks at every milestone on a small iPhone (SE size), a current iPhone and a mid-range Android.
+  - Manual checks at every milestone on a small iPhone (SE size), a current iPhone and a mid-range Android:
+    - the largest system text size, landscape, and the browser's toolbar both expanded and collapsed;
+    - the street search with the on-screen keyboard open;
+    - a real photo from the camera and one from the library, on both iOS and Android;
+    - the map on the oldest supported Safari (16.4).
 
 ## 13. Open questions
 
@@ -554,23 +824,35 @@ day.
    public-visibility only, but it helps the bike actually get moved. The contact details are in Appendix B.
 3. **Domain:** which one to buy, for example a `.com.au` or `.au` built on "ebikegraveyard". Availability hasn't been
    checked.
+4. **Rulings applied provisionally in rev 4.** Each is written into the spec as if decided. Michael to confirm or
+   reverse:
+   - **Undo after expiry:** an undo gives a tag back only the time it had left, and can't revive it once its 48 hours
+     have run out. A fresh sighting is needed instead (§4.2).
+   - **"Hidden immediately":** a reported photo stops loading from the next request. Pages that already had it open
+     catch up within 5 minutes (§4.3).
+   - **Bikes close together:** a nearby tag is a suggestion, and the visitor can always say "No, it's another bike"
+     (§4.2).
+   - **Instant photos:** kept, with the risk written down in §6.
+   - **Placement:** "tap the map only" now has a second route, street plus nearest corner, because tagging otherwise
+     needs sight and a steady finger (§10.3). Still no GPS.
+   - **Paused uploads** stay paused until Michael resumes them, with no automatic restart (§4.6).
 
 ## 14. Milestones
 
 | Milestone | Scope | Exit criteria |
 |---|---|---|
-| **M0 Infra** | GitHub repo; Turborepo skeleton; Vercel projects (`web`, `admin`) in `michael-lebot's projects`, region `syd1`; Neon via the Vercel Marketplace (Sydney); Blob stores (public and private); Resend; CI (lint, typecheck, Vitest, axe, Lighthouse CI with §11.1 budgets, contrast test); spend alert | Empty apps deploy; Prisma migration runs on Neon; CI gates run |
-| **M1 Map prototype** | PMTiles extract on Blob; Overworld MapLibre style with pattern sprites; mask and gold council line; Atkinson Hyperlegible glyphs; HTML-marker pins; static preview image; bottom sheet with snap points | On a real mid-range Android over 4G, the §11.1 budgets pass; street names are legible at zoom 16 on a 320 px screen; VoiceOver and TalkBack can reach every pin; contrast test passes |
-| **M2 Tags** | Placement (zoom ≥ 16, buffered boundary, keyboard crosshair, Jump to street), still-there, removed, expiry, duplicate check, BotID, rate limits, CDN cache and refresh; `/list` and `/tag/[id]` | Playwright (desktop and mobile projects): create → confirm → remove → admin undo, by touch and by keyboard; axe has no serious or critical issues |
-| **M3 Photos and moderation** | Upload pipeline, private serving, reports, email, admin queue, circuit breaker | Reported photo returns 404 on the next request; restore works; generated alt text is present; the admin app passes axe |
-| **M4 Launch** | `/why`, `/accessibility`, `/privacy`, `/terms`; eSafety self-assessment; domain; OSM and NSW attribution; manual assistive-technology pass (§10.6); launch checklist | Michael signs off |
+| **M0 Infra** | GitHub repo; Turborepo skeleton; Vercel projects (`web`, `admin`) in `michael-lebot's projects`, region `syd1`; Neon via the Vercel Marketplace (Sydney); Blob stores (public and private); Resend; `CRON_SECRET`; CI (lint, typecheck, Vitest, axe, Lighthouse CI and the Playwright performance checks from §11.4, contrast test); spend alert | Empty apps deploy; Prisma migration runs on Neon; CI gates run; the bare build is measured and the §11.1 budgets are confirmed or reset |
+| **M1 Map prototype** | PMTiles extract on Blob; Overworld MapLibre style with pattern sprites; mask and gold council line; Atkinson Hyperlegible glyphs; HTML-marker pins with the crowded-pin chooser; zoom and Move map buttons; static preview image and the map-failed fallback; bottom sheet with its three heights and inner scrolling | On a real mid-range Android over 4G, the §11.1 budgets pass, including "map ready"; the PMTiles checks in §11.2 pass; street names are legible at zoom 16 on a 320 px screen; VoiceOver and TalkBack can reach every pin; a spot that starts off screen can be reached with taps alone; contrast test passes |
+| **M2 Tags** | Placement step and form dialog (zoom ≥ 16, buffered boundary, keyboard crosshair, Choose by street, Change location); nearby-tag suggestion; still-there and removed under the §4.2 rules; safe retries (§5.3); BotID; rate limits; the hourly job; `/list` and `/tag/[id]`; admin Tags screen with Undo and Take down | Playwright (desktop and mobile projects): create → confirm → remove → admin undo, by touch, by keyboard, and by Choose by street with no map; the §5.5 tests for expiry edges, two at once, repeats, access and the hourly job pass; axe finds no A or AA violations; at the largest text size on an SE-sized screen, the form can be submitted and cancelled |
+| **M3 Photos and moderation** | Upload pipeline; photo attach with its own retry; private serving; reports; email with digest retry; admin queue; pause switch and circuit breaker | A reported photo returns 404 on the next request and stays hidden through remove → undo; a photo returns 404 once its tag is no longer live; restore works; the §5.5 photo, bad-image and outside-failure tests pass; generated alt text is present; the admin app passes axe |
+| **M4 Launch** | `/why`, `/accessibility`, `/privacy`, `/terms`; eSafety classification and response procedure (§7); domain; OSM and NSW attribution; manual assistive-technology pass (§10.6); launch checklist | Michael signs off |
 
 ## 15. Out of scope for v1
 
 Hosting-cost tracker and contributions (deferred, §4.5); accounts; free-text notes; automated image moderation; GPS or
 photo-location placement; operator or council integrations and notifications; multiple photos per tag; a stats or
 heat-map page (the data is kept for later); dark mode; an offline queue and installable-app (PWA) support; other
-councils.
+councils; an abuse dashboard and visitor blocking; a draggable sheet; a CDN cache for tag data.
 
 ## Appendix A — Cost tracking and contributions research (parked)
 
@@ -612,6 +894,7 @@ Kept so the feature can be revived quickly if costs grow.
   - [Google Maps Platform terms](https://cloud.google.com/maps-platform/terms)
   - [Protomaps PMTiles CLI](https://docs.protomaps.com/pmtiles/cli)
   - [Protomaps downloads](https://docs.protomaps.com/basemaps/downloads)
+  - [Protomaps PMTiles cloud storage](https://docs.protomaps.com/pmtiles/cloud-storage)
   - [MapLibre MapOptions (`pixelRatio`)](https://maplibre.org/maplibre-gl-js/docs/API/type-aliases/MapOptions/)
   - [MapLibre `within`](https://maplibre.org/maplibre-style-spec/expressions/#within)
   - [turf buffer](https://turfjs.org/docs/api/buffer)
@@ -622,11 +905,18 @@ Kept so the feature can be revived quickly if costs grow.
   - [Vercel fair use](https://vercel.com/docs/limits/fair-use-guidelines)
   - [Vercel pricing](https://vercel.com/docs/pricing)
   - [Vercel WAF rate limiting](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting)
+  - [Vercel Cron: securing cron jobs](https://vercel.com/docs/cron-jobs/manage-cron-jobs)
+  - [Vercel caches are per project](https://vercel.com/kb/guide/share-vercel-cache-across-deployments-nextjs)
   - [Vercel Sydney pricing](https://vercel.com/docs/pricing/regional-pricing/syd1)
   - [Neon plans](https://neon.com/docs/introduction/plans)
   - [Neon pricing](https://neon.com/pricing)
 - **Accessibility and performance:**
   - [WCAG 2.2](https://www.w3.org/TR/WCAG22/)
+  - [WCAG 2.5.7 Dragging Movements](https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements.html)
+  - [WCAG 2.2.1 Timing Adjustable](https://www.w3.org/WAI/WCAG22/Understanding/timing-adjustable.html)
+  - [WCAG 2.4.7 Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html)
+  - [WCAG 2.4.11 Focus Not Obscured (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html)
+  - [W3C modal dialog pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)
   - [Core Web Vitals thresholds](https://web.dev/articles/vitals)
   - [axe-core for Playwright](https://github.com/dequelabs/axe-core-npm/tree/develop/packages/playwright)
   - [Lighthouse CI](https://github.com/GoogleChrome/lighthouse-ci)
@@ -641,6 +931,7 @@ Kept so the feature can be revived quickly if costs grow.
   - [Resend pricing](https://resend.com/pricing)
   - [OAIC small business](https://www.oaic.gov.au/privacy/privacy-guidance-for-organisations-and-government-agencies/organisations/small-business)
   - [eSafety cyberbullying scheme guidance](https://www.esafety.gov.au/sites/default/files/2025-01/Cyberbullying-Scheme-Regulatory-Guidance-Updated-January2025_0.pdf)
+  - [eSafety industry codes and standards](https://www.esafety.gov.au/industry/codes)
 - **Parked (Appendix A):**
   - [Ko-fi fees](https://help.ko-fi.com/hc/en-us/articles/360002506494)
   - [PayPal AU fees](https://www.paypal.com/au/webapps/mpp/merchant-fees)
