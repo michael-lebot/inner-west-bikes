@@ -49,7 +49,7 @@ export function MapScreen() {
     // Hydration can run before the first paint, so wait for a frame and then a task: the shell and the preview are on
     // screen before the map's 300 KB starts loading. A tab opened in the background starts when it is first shown.
     const frame = requestAnimationFrame(() => {
-      timeout = setTimeout(() => setStatus((now) => (now === 'loading' ? 'failed' : now)), READY_WITHIN_MS)
+      timeout = setTimeout(() => setStatus((current) => (current === 'loading' ? 'failed' : current)), READY_WITHIN_MS)
       setTimeout(() =>
         import('@/map/MapView').then(
           (module) => setMapView(() => module.MapView),
