@@ -725,8 +725,8 @@ them.
   all 44×44 px, 8 px apart. The map region: labelled, a one-line summary ("Map of the Inner West with 14 tagged
   bikes. A list view is available.") and a skip link to the list. An "i" button opens a small panel with
   "© OpenStreetMap contributors", "© State of New South Wales (Spatial Services, DCS NSW), CC BY 4.0" and the
-  Accessibility, Privacy and Terms links. At peek height the sheet sits below the map in the page's flow, so the
-  map's own box is the visible area; map padding follows only the part of a taller sheet that covers the map (2.8).
+  Accessibility, Privacy and Terms links. The sheet sits below the map in the page's flow rather than over it, so
+  the map's own box is always the visible area and camera moves centre in it with no padding to keep in step (2.8).
 - **Measured (local production build, Lighthouse mobile preset, 3 runs):** `/` LCP 2,399–2,415 ms (the preview),
   CLS 0. TBT on `/` comes out at about 600 ms or about 2,000 ms from run to run. A trace shows why: the long task is
   Chrome's compositor waiting up to 310 ms in `GLES2::ReadPixels`, because headless Chrome draws WebGL in software
@@ -797,6 +797,16 @@ them.
   except the handle and Close; no handle at ≥ 768 px. Desktop panel: count, key, then `TagList` (rows scroll in the
   panel); clicking a row opens the card in the panel, pans to the pin and outlines it; Close returns to the list; no
   List toggle at this width. Landscape phones get the panel layout.
+  As built: no `Sheet.tsx`; the sheet is one element in `MapScreen`, below the map in the page's flow. Its height
+  is what it shows (the card asks for at least half the screen), capped at 60 dvh with its content scrolling
+  inside. When it changes height the map resizes, and `MapView` pans by half the change so the map stays still
+  under the header, as if the sheet had slid over it; the picked pin is then brought into view if the sheet now
+  hides it. The map screen's `<main>` has `contain: size`, so the panel's list scrolls inside the panel instead of
+  making the page taller. The switch is instant, which is within "200 ms or less": animating the height would
+  resize the map's canvas on every frame. Shrunk, the card's details are `display: none`, which puts them out of
+  reach of pointer and keyboard as `inert` would. A flick down shrinks and a flick up expands. Close and Esc give
+  focus to the card's pin (found by its `data-tag`), or to the sheet when there is no map. The picked pin gets the
+  focus outline as well as the bob.
 - **Accept:** card opens at half height on phones; shrink and restore by tap and by flick; scrolling the card's
   content never toggles it; at 1280×800 the panel shows the grouped list and opens cards in place.
 - **Files:** `components/{Sheet,TagCard,MapScreen}.tsx`, `components/TagList.tsx`.

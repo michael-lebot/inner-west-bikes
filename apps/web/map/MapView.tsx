@@ -18,6 +18,15 @@ maplibregl.addProtocol('pmtiles', new Protocol().tile)
 const MAX_PINS = 200
 /** A pin's button: 44 px square, with the pin's tip at the middle of its bottom edge. */
 const PIN_PX = 44
+/** The picked pin: outlined like keyboard focus, and bobbing twice (§10.5, §13). */
+const SELECTED = 'outline-3 outline-offset-2 outline-focus shadow-[0_0_0_2px_white] motion-safe:animate-bob'
+
+/** Whether the whole button of a pin at this point is inside the map. */
+function isInView(map: maplibregl.Map, lng: number, lat: number) {
+  const { x, y } = map.project([lng, lat])
+  const { clientWidth, clientHeight } = map.getContainer()
+  return x >= PIN_PX / 2 && x <= clientWidth - PIN_PX / 2 && y >= PIN_PX && y <= clientHeight
+}
 
 export type MapStatus = 'ready' | 'failed'
 
@@ -65,6 +74,13 @@ export function MapView({ tags, now, selected, onPick, onStatus }: Props) {
     }
     created.touchZoomRotate.disableRotation()
     created.keyboard.disableRotation()
+    // When the sheet below grows or shrinks, keep the map still under the header, as if the sheet slid over it.
+    let height = container.current!.clientHeight
+    created.on('resize', () => {
+      const next = container.current!.clientHeight
+      created.panBy([0, (next - height) / 2], { animate: false })
+      height = next
+    })
 
     let shown = false
     const fail = () => !shown && onStatus('failed')
@@ -82,6 +98,18 @@ export function MapView({ tags, now, selected, onPick, onStatus }: Props) {
     })
     return () => created.remove()
   }, [onStatus])
+
+  // The picked pin comes into view: from a row in the panel, or when its card has made the map shorter. Only when
+  // the pick changes, so the map doesn't jump back to it each time the tags refresh.
+  const picked = tags?.find(({ id }) => id === selected)
+  const [lng, lat] = picked ? [picked.lng, picked.lat] : []
+  useEffect(() => {
+    if (!map || lng === undefined || lat === undefined) return
+    const reveal = () => !isInView(map, lng, lat) && map.panTo([lng, lat])
+    reveal()
+    map.once('resize', reveal)
+    return () => void map.off('resize', reveal)
+  }, [map, selected, lng, lat])
 
   // Map ready (§11.1): the first tiles drawn, and the pins on them.
   useEffect(() => {
@@ -161,22 +189,16 @@ function Pin({
     return () => void marker.remove()
   }, [map, element, tag.lng, tag.lat])
 
-  // Focusing a pin off the edge of the map, as Tab does, brings it into view (§4.1).
-  const panIntoView = () => {
-    const { x, y } = map.project([tag.lng, tag.lat])
-    const { clientWidth, clientHeight } = map.getContainer()
-    if (x < PIN_PX / 2 || x > clientWidth - PIN_PX / 2 || y < PIN_PX || y > clientHeight) map.panTo([tag.lng, tag.lat])
-  }
-
   return createPortal(
     <button
       type="button"
       aria-label={label}
       aria-expanded={selected}
-      className={`flex size-11 cursor-pointer items-end justify-center ${HOVER_RING} ${selected ? 'motion-safe:animate-bob' : ''}`}
+      className={`flex size-11 cursor-pointer items-end justify-center ${HOVER_RING} ${selected ? SELECTED : ''}`}
       // A click from Enter or Space has no pointer position, so detail is 0.
       onClick={(event) => onPick(tag, event.currentTarget, event.detail === 0)}
-      onFocus={panIntoView}
+      // Focusing a pin off the edge of the map, as Tab does, brings it into view (§4.1).
+      onFocus={() => !isInView(map, tag.lng, tag.lat) && map.panTo([tag.lng, tag.lat])}
     >
       <PinIcon operator={tag.operator} />
     </button>,

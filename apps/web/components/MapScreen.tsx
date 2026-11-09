@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveTags } from '@/lib/use-live-tags'
 import { CrowdChooser } from './CrowdChooser'
 import { Legend } from './Legend'
+import { TagCard } from './TagCard'
+import { TagList } from './TagList'
 import { ViewToggle } from './ViewToggle'
 
 type MapModule = typeof import('@/map/MapView')
@@ -26,9 +28,20 @@ export function MapScreen() {
   // The pin that opened the chooser, which gets focus back when it closes.
   const opener = useRef<HTMLElement>(null)
 
+  // A refresh can take the open tag away, and its card with it.
+  const card = tags?.find((tag) => tag.id === selected)
+
   const select = (tag: PublicTag) => {
     setCrowd(undefined)
     setSelected(tag.id)
+  }
+
+  const closeCard = () => {
+    setSelected(undefined)
+    // Back to the card's pin (§10.4), or to the sheet when there is no map.
+    ;(
+      document.querySelector<HTMLElement>(`[data-tag="${selected}"] button`) ?? document.getElementById('sheet')
+    )?.focus()
   }
 
   useEffect(() => {
@@ -96,10 +109,11 @@ export function MapScreen() {
           </>
         )}
       </section>
+      {/* Below the map on a phone, as tall as what it shows; beside it in the side-panel layout (§12, §13). */}
       <div
         id="sheet"
         tabIndex={-1}
-        className="flex flex-col gap-3 border-t border-line p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        className="z-10 flex max-h-[60dvh] flex-col gap-3 overflow-y-auto overscroll-contain border-t border-line bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgb(0_0_0/0.08)] wide:max-h-none wide:w-95 wide:shrink-0 wide:border-t-0 wide:border-r wide:shadow-[4px_0_12px_rgb(0_0_0/0.08)]"
       >
         {crowd ? (
           <CrowdChooser
@@ -111,6 +125,8 @@ export function MapScreen() {
               opener.current?.focus()
             }}
           />
+        ) : card ? (
+          <TagCard key={card.id} tag={card} now={now} onClose={closeCard} />
         ) : (
           <>
             {/* Each line keeps its height while the tags load, so nothing moves when they arrive. */}
@@ -121,7 +137,15 @@ export function MapScreen() {
               <p className="text-sm text-muted">Tags disappear {TAG_LIFETIME_HOURS} hours after the last sighting.</p>
             </div>
             <Legend tags={tags} />
-            <ViewToggle current="/" />
+            {/* The panel has room for the list itself, so it needs no List toggle (§13). */}
+            <div className="wide:hidden">
+              <ViewToggle current="/" />
+            </div>
+            {tags && (
+              <div className="hidden wide:block">
+                <TagList tags={tags} now={now} onSelect={select} />
+              </div>
+            )}
           </>
         )}
       </div>

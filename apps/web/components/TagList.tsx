@@ -1,8 +1,16 @@
 import { bikes, byPlace, type PublicTag } from '@iwb/shared'
 import { TagRow } from './TagRow'
 
-/** Live tags grouped by suburb: suburbs, then the streets in each, in alphabetical order. */
-export function TagList({ tags, now }: { tags: PublicTag[]; now: Date }) {
+/** Live tags grouped by suburb: suburbs, then the streets in each, in alphabetical order. `onSelect` as on TagRow. */
+export function TagList({
+  tags,
+  now,
+  onSelect,
+}: {
+  tags: PublicTag[]
+  now: Date
+  onSelect?: (tag: PublicTag) => void
+}) {
   const bySuburb = new Map<string, PublicTag[]>()
   for (const tag of tags.toSorted(byPlace)) {
     const group = bySuburb.get(tag.suburb)
@@ -20,7 +28,7 @@ export function TagList({ tags, now }: { tags: PublicTag[]; now: Date }) {
           <ul className="flex flex-col gap-2">
             {group.map((tag) => (
               <li key={tag.id}>
-                <TagRow tag={tag} now={now} />
+                <TagRow tag={tag} now={now} onSelect={onSelect} />
               </li>
             ))}
           </ul>

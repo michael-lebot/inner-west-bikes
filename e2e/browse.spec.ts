@@ -26,6 +26,16 @@ test('counts the live tags by operator, and drops one that expires at the next r
   await expect(page.getByRole('list', { name: 'Key' }).getByRole('listitem').first()).toHaveText(/Lime 6$/)
 })
 
+test('fits the map screen to the viewport, so the page never scrolls while the map shows', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('[data-map-ready]')).toBeAttached()
+  const [scrollHeight, clientHeight] = await page.evaluate(() => [
+    document.documentElement.scrollHeight,
+    document.documentElement.clientHeight,
+  ])
+  expect(scrollHeight).toBe(clientHeight)
+})
+
 test.describe('pins', () => {
   const pins = (page: Page) =>
     page.getByRole('region', { name: 'Map', exact: true }).getByRole('button', { name: /e-bike/ })
@@ -90,5 +100,93 @@ test.describe('pins', () => {
     await balmain.focus()
     await expect(balmain).toBeInViewport()
     expect(await page.evaluate(() => [scrollX, scrollY])).toEqual([0, 0])
+  })
+})
+
+test.describe('the tag card', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('[data-map-ready]')).toBeAttached()
+  })
+
+  test('opens from a pin by keyboard with focus on its heading, and Esc gives focus back to the pin', async ({
+    page,
+  }) => {
+    const pin = page.getByRole('button', { name: /Liverpool Rd, Ashfield/ })
+    await pin.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('heading', { name: 'Hello e-bike' })).toBeFocused()
+    await expect(page.getByText('Liverpool Rd, Ashfield')).toBeVisible()
+    await expect(page.getByText(/^Last seen \d+ h ago$/)).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('heading', { name: 'Hello e-bike' })).toHaveCount(0)
+    await expect(pin).toBeFocused()
+  })
+
+  test.describe('on a phone', () => {
+    test.skip(({ isMobile }) => !isMobile, 'phones only')
+
+    test('opens at half height, and shrinks to one line and back by tap and by flick', async ({ page }) => {
+      await page.getByRole('button', { name: /Liverpool Rd, Ashfield/ }).click()
+      const sheet = page.locator('#sheet')
+      const viewport = page.viewportSize()!
+      expect((await sheet.boundingBox())!.height).toBeGreaterThan(viewport.height * 0.45)
+
+      const handle = page.getByRole('button', { name: 'Shrink card' })
+      await expect(handle).toHaveAttribute('aria-expanded', 'true')
+      await handle.click()
+      const expand = page.getByRole('button', { name: 'Expand card' })
+      await expect(expand).toHaveAttribute('aria-expanded', 'false')
+      await expect(page.getByRole('heading', { name: 'Hello e-bike · Blocking footpath · Liverpool Rd' })).toBeVisible()
+      await expect(page.getByText(/^Last seen/)).toBeHidden()
+      expect((await sheet.boundingBox())!.height).toBeLessThan(viewport.height * 0.25)
+      await expand.click()
+      await expect(page.getByText(/^Last seen/)).toBeVisible()
+
+      // A flick on the handle switches when the finger lifts: down shrinks the card, up brings it back.
+      const flick = async (name: string, dy: number) => {
+        const box = (await page.getByRole('button', { name }).boundingBox())!
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+        await page.mouse.down()
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + dy, { steps: 4 })
+        await page.mouse.up()
+      }
+      await flick('Shrink card', 40)
+      await expect(expand).toBeVisible()
+      await flick('Expand card', -40)
+      await expect(handle).toBeVisible()
+
+      // A drag on the card's content is left to scrolling, and never switches it.
+      const details = (await page.getByText(/^Last seen/).boundingBox())!
+      await page.mouse.move(details.x + 10, details.y + 5)
+      await page.mouse.down()
+      await page.mouse.move(details.x + 10, details.y + 65, { steps: 4 })
+      await page.mouse.up()
+      await expect(handle).toHaveAttribute('aria-expanded', 'true')
+    })
+  })
+})
+
+test.describe('the desktop panel', () => {
+  test.skip(({ isMobile }) => isMobile, 'desktop only')
+
+  test("lists the tags beside the map, and opens a row's card in place, outlining its pin", async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('[data-map-ready]')).toBeAttached()
+    const panel = page.locator('#sheet')
+    expect((await panel.boundingBox())!).toMatchObject({ x: 0, width: 380 })
+    await expect(page.getByRole('navigation', { name: 'View' })).toBeHidden()
+    await expect(panel.getByRole('heading', { name: 'Ashfield, 1 bike' })).toBeVisible()
+
+    await panel.getByRole('link', { name: /Liverpool Rd/ }).click()
+    await expect(page.getByRole('heading', { name: 'Hello e-bike' })).toBeFocused()
+    await expect(page.getByRole('button', { name: 'Shrink card' })).toBeHidden()
+    const pin = page.getByRole('button', { name: /Liverpool Rd, Ashfield/ })
+    await expect(pin).toHaveAttribute('aria-expanded', 'true')
+    expect(await pin.evaluate((button) => getComputedStyle(button).outlineWidth)).toBe('3px')
+
+    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(panel.getByRole('heading', { name: 'Ashfield, 1 bike' })).toBeVisible()
+    await expect(pin).toBeFocused()
   })
 })
