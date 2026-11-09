@@ -17,8 +17,9 @@ export async function sql(text: string) {
   }
 }
 
-/** Empties every table and loads the seed: 14 live tags. */
-export const resetDb = () => sql(`TRUNCATE tags, rate_counters, daily_salts CASCADE; ${SEED}`)
+/** Empties every table, puts back the unpaused site_state row, and loads the seed: 14 live tags. */
+export const resetDb = () =>
+  sql(`TRUNCATE tags, rate_counters, daily_salts, site_state CASCADE; INSERT INTO site_state (id) VALUES (1); ${SEED}`)
 
 /** Fails on any WCAG 2.2 A or AA violation axe finds, whatever impact it gives it (§10.6). */
 export async function expectNoAxeViolations(page: Page) {
