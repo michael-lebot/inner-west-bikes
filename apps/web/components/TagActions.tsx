@@ -55,19 +55,23 @@ export function TagActions({ id, onDone }: { id: string; onDone?: (tag: TagJson 
       </p>
     )
   return (
-    <div role="group" aria-labelledby={`ask-${id}`} className="flex flex-col gap-2">
-      <p id={`ask-${id}`} className="font-bold">
-        Is it still there?
-      </p>
-      <div className="grid grid-cols-2 gap-2">
-        <button type="button" className={PRIMARY} onClick={() => act('still-there')}>
-          Still there
-        </button>
-        <button type="button" className={SECONDARY} onClick={() => act('removed')}>
-          Removed
-        </button>
+    <>
+      {/* The buttons need JavaScript; without it they'd do nothing, so they make way for a line saying so. */}
+      <p className="hidden noscript:block">Turn on JavaScript to mark it Still there or Removed.</p>
+      <div role="group" aria-labelledby={`ask-${id}`} className="flex flex-col gap-2 noscript:hidden">
+        <p id={`ask-${id}`} className="font-bold">
+          Is it still there?
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" className={PRIMARY} onClick={() => act('still-there')}>
+            Still there
+          </button>
+          <button type="button" className={SECONDARY} onClick={() => act('removed')}>
+            Removed
+          </button>
+        </div>
+        {error && <p className="font-bold">{error}</p>}
       </div>
-      {error && <p className="font-bold">{error}</p>}
-    </div>
+    </>
   )
 }

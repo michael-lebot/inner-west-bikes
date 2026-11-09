@@ -154,6 +154,18 @@ test.describe('the list', () => {
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('14 bikes in the graveyard')
       await expect(page.getByRole('main').getByRole('listitem')).toHaveCount(14)
     })
+
+    test('says Still there and Removed need it, in place of buttons that would do nothing', async ({ page }) => {
+      for (const [path, rows] of [
+        ['/list', 14],
+        [`/tag/${LLEWELLYN_ST}`, 1],
+      ] as const) {
+        await page.goto(path)
+        await expect(page.getByRole('button', { name: /^(Still there|Removed)$/ })).toHaveCount(0)
+        await expect(page.getByText('Turn on JavaScript to mark it Still there or Removed.')).toHaveCount(rows)
+        await expect(page.getByText('Turn on JavaScript to mark it Still there or Removed.').first()).toBeVisible()
+      }
+    })
   })
 })
 
