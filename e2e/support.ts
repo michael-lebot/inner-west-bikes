@@ -38,3 +38,9 @@ export async function expectNoAxeViolations(page: Page) {
     ),
   ).toEqual([])
 }
+
+/** A chip's label, which is what a visitor taps; the radio inside it is visually hidden. */
+export const chip = (page: Page, name: string) => page.getByRole('radio', { name }).locator('..')
+
+/** The new tag's pin: the one marker that isn't a live tag's. */
+export const newPin = (page: Page) => page.locator('.maplibregl-marker:not([data-tag])')

@@ -1166,6 +1166,19 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   keyboard never covers them. From the placement step: "Choose by street", and on success the map centres there with
   the pin so it can be fine-tuned. `ListTagButton.tsx` on `/list`: "Tag a dumped bike" offers Use my location and
   Choose by street, then `TagFlow` without a map.
+  As built: the picker is three steps in one dialog: the search, then the street with its house number box and its
+  corners, then the readback, which takes the focus, with **Back** and **Use this spot**. Corners are buttons that go
+  straight to the readback rather than radios that need a Next; a cross street that meets the street more than once
+  reads "near Edwin St (1 of 2)" in order along it. At most 8 streets are listed, and the count ("5 streets match.")
+  is spoken as it changes, as are the errors. The picker loads `@iwb/shared/picker` and `/geo` together, and a
+  street's suburb file as the street is picked. Its Use this spot goes straight to the match question or the form,
+  as §10.3's "the usual form follows" says, with the pin on the map behind: in the strip above the dialog on a phone,
+  brought into view in the side-panel layout. Fine-tuning is the form's Change location, as for any spot. `TagFlow`
+  is unchanged; `/list` reuses `Placement` (`withMap={false}`), so `ListTagButton` is the button, the bar and
+  `TagFlow`, and a tag added there refreshes the page. Esc inside a dialog is the dialog's own, so Esc in the picker
+  no longer also cancels placing. While an on-screen keyboard is open, `Dialog` fills the visual viewport from its
+  top, over the map strip and the header: on an iPhone 13 a 300 px keyboard left the strip's dialog 236 px, below the
+  first street.
 - **Accept:** the house number is never sent or stored; `/list` tagging loads no MapLibre (perf assertion); the
   readback is announced.
 - **Files:** `components/{StreetPicker,ListTagButton,TagFlow,Placement}.tsx`, `app/list/page.tsx`.

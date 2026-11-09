@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
-import { expectNoAxeViolations, resetDb, sql } from './support'
+import { chip, expectNoAxeViolations, newPin, resetDb, sql } from './support'
 
 const OUTSIDE = 'That spot is outside the Inner West. Tap inside the gold line.'
 
@@ -8,8 +8,6 @@ test.beforeEach(() => resetDb())
 test.use({ reducedMotion: 'reduce' })
 
 const mapBox = async (page: Page) => (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
-/** The new tag's pin: the one marker that isn't a live tag's. */
-const newPin = (page: Page) => page.locator('.maplibregl-marker:not([data-tag])')
 const bar = (page: Page) => page.locator('#placement-heading + p')
 
 /** Where a pin's tip is: the middle of its bottom edge. */
@@ -64,8 +62,6 @@ const greenButtons = (page: Page) =>
         (element) => element.checkVisibility() && getComputedStyle(element).backgroundColor === 'rgb(29, 107, 42)',
       ).length,
   )
-/** A chip's label, which is what a visitor taps; the radio inside it is visually hidden. */
-const chip = (page: Page, name: string) => page.getByRole('radio', { name }).locator('..')
 
 test.describe('placing the pin', () => {
   test("puts the pin's tip where the map is tapped, and moves it with the next tap", async ({ page, isMobile }) => {
@@ -383,8 +379,8 @@ test.describe('Still there and Removed', () => {
     await row(page, 'Llewellyn St').getByRole('button', { name: 'Still there' }).click()
     await expect(page.locator('#announcer')).toHaveText('Marked still there')
     await expect(row(page, 'Llewellyn St').getByRole('link')).toContainText(`${RESTARTED} left`)
-    // Every row has Still there, so none is the screen's one green button.
-    expect(await greenButtons(page)).toBe(0)
+    // Every row has Still there, so none of theirs is the screen's one green button: Tag a dumped bike is.
+    expect(await greenButtons(page)).toBe(1)
     await expectNoAxeViolations(page)
 
     for (const street of ['Llewellyn St', 'Norton St', 'Marion St']) {

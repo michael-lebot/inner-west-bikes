@@ -39,7 +39,8 @@ export function MapScreen() {
   // Tagging a bike (§3): placing the pin, then describing the bike.
   const [tagging, setTagging] = useState<'place' | 'describe'>()
   const [spot, setSpot] = useState<Spot>()
-  const [outside, setOutside] = useState(false)
+  // Why the last try placed no pin, said in place of the spot.
+  const [note, setNote] = useState<string>()
   const tagButton = useRef<HTMLButtonElement>(null)
   const geo = useRef<Promise<Geo>>(null)
 
@@ -83,9 +84,16 @@ export function MapScreen() {
   /** A tap or an arrow key: the pin moves there if it is inside the council or its 20 m strip (§4.1). */
   const place = async (lat: number, lng: number) => {
     const { inside, street, suburb } = (await loadGeo()).where(lat, lng)
-    setOutside(!inside)
+    setNote(inside ? undefined : OUTSIDE)
     if (inside) setSpot({ lat, lng, street, suburb })
     announce(inside ? pinOn({ lat, lng, street, suburb }) : OUTSIDE)
+  }
+
+  /** Chosen by street, the spot goes straight to the form, with the map behind it centred there (§10.3). */
+  const choose = (chosen: Spot) => {
+    setSpot(chosen)
+    setNote(undefined)
+    setTagging('describe')
   }
 
   const endTagging = () => {
@@ -93,7 +101,7 @@ export function MapScreen() {
     flushSync(() => {
       setTagging(undefined)
       setSpot(undefined)
-      setOutside(false)
+      setNote(undefined)
     })
     tagButton.current?.focus()
   }
@@ -112,11 +120,13 @@ export function MapScreen() {
     else document.getElementById('sheet')?.focus()
   }
 
-  // Esc closes the chooser or the card, or cancels placing, wherever focus is: none of them is a dialog (§10.4).
+  // Esc closes the chooser or the card, or cancels placing, wherever focus is: none of them is a dialog (§10.4). Esc in
+  // a dialog, as in the street picker over the placement bar, is the dialog's own.
   const close = crowded?.length ? closeChooser : card ? closeCard : tagging === 'place' ? endTagging : undefined
   useEffect(() => {
     if (!close) return
-    const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && close()
+    const closeOnEscape = (event: KeyboardEvent) =>
+      event.key === 'Escape' && !(event.target as Element).closest('dialog') && close()
     document.addEventListener('keydown', closeOnEscape)
     return () => document.removeEventListener('keydown', closeOnEscape)
   }, [close])
@@ -214,7 +224,13 @@ export function MapScreen() {
           <TagCard key={card.id} tag={card} now={now} onDone={(tag) => apply(card.id, tag)} onClose={closeCard} />
         ) : tagging ? (
           <>
-            <Placement spot={spot} outside={outside} onUse={() => setTagging('describe')} onCancel={endTagging} />
+            <Placement
+              spot={spot}
+              note={note}
+              onChoose={choose}
+              onUse={() => setTagging('describe')}
+              onCancel={endTagging}
+            />
             <Suspense>
               <TagFlow
                 spot={tagging === 'describe' ? spot : undefined}
