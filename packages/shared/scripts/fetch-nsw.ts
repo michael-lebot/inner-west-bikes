@@ -1,6 +1,8 @@
 // Downloads the council boundary, suburbs and road segments from NSW Spatial Services (CC BY 4.0) into data/raw/,
 // which is git-ignored. Run `pnpm --filter @iwb/shared data:fetch`, then `data:build`.
 import { mkdirSync, writeFileSync } from 'node:fs'
+import * as turf from '@turf/turf'
+import type { FeatureCollection } from 'geojson'
 
 const SERVICES = 'https://portal.spatial.nsw.gov.au/server/rest/services'
 const PAGE = 2000
@@ -9,7 +11,6 @@ const RAW = new URL('../data/raw/', import.meta.url)
 const PAD_METERS = 2000
 
 type Box = [west: number, south: number, east: number, north: number]
-type FeatureCollection = { type: 'FeatureCollection'; features: { geometry: { coordinates: unknown } }[] }
 
 async function getJson(url: string) {
   for (let attempt = 1; ; attempt++) {
@@ -64,18 +65,10 @@ const council = await query('NSW_Administrative_Boundaries_Theme', 8, "lganame =
 if (council.features.length !== 1) throw new Error(`expected one Inner West polygon, got ${council.features.length}`)
 save('council', council)
 
-const points = (council.features[0]?.geometry.coordinates as number[][][]).flat()
-const lngs = points.map(([lng]) => lng ?? 0)
-const lats = points.map(([, lat]) => lat ?? 0)
-const midLat = ((Math.min(...lats) + Math.max(...lats)) / 2) * (Math.PI / 180)
+const [west, south, east, north] = turf.bbox(council)
 const padLat = PAD_METERS / 111_320
-const padLng = padLat / Math.cos(midLat)
-const box: Box = [
-  Math.min(...lngs) - padLng,
-  Math.min(...lats) - padLat,
-  Math.max(...lngs) + padLng,
-  Math.max(...lats) + padLat,
-]
+const padLng = padLat / Math.cos(((south + north) / 2) * (Math.PI / 180))
+const box: Box = [west - padLng, south - padLat, east + padLng, north + padLat]
 
 save('suburbs', await query('NSW_Administrative_Boundaries_Theme', 2, '1=1', 'suburbname', box))
 save(
