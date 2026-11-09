@@ -516,15 +516,18 @@ budgets confirmed or reset.
 - **Does:** `TagRow.tsx` (pin icon, street bold, "Operator · Problem", "22 h left"; accessible name with the
   absolute time), `PinIcon.tsx` (the mockup's 13×15 pixel pin as SVG `rect`s with operator fill, black outline,
   white halo, and the letter as real text in Atkinson Hyperlegible 700), `TagList.tsx` (grouped by suburb, groups
-  and rows sorted by name, "Marrickville · 3" group headings), `TagDetails.tsx` (operator, problem, street and
-  suburb, "Last seen … · Disappears in …" with a timer bar), `Footer.tsx` (links to Accessibility, Privacy, Terms).
+  and rows sorted by name, "Marrickville · 3" group headings), `TagDetails.tsx` (problem, street and suburb,
+  "Last seen … · Disappears in …" with a timer bar; the page or card gives it a heading with the pin and
+  `bikeName()`, "Lime e-bike"), `Footer.tsx` (links to Accessibility, Privacy, Terms).
   `/list` reads `listLiveTags()`; empty state "No bikes in the graveyard right now." `/tag/[id]` validates the id
-  with Zod and reads `getLiveTag()`; not live or unknown → `notFound()` with "This tag has gone".
+  with Zod and reads `getLiveTag()`; not live or unknown → `notFound()`, and the route's own `not-found.tsx` says
+  "This tag has gone".
 - **Accept:** with the seed loaded, `/list` shows "14 bikes in the graveyard" and every tag once, grouped and
   ordered; the page works with JavaScript disabled; `/tag/<seeded id>` shows the tag; `/tag/<random uuid>` and
   `/tag/not-a-uuid` return 404.
-- **Files:** `app/list/page.tsx`, `app/tag/[id]/page.tsx`, `components/{TagRow,PinIcon,TagList,TagDetails,Footer}.tsx`,
-  `packages/shared/src/schemas.ts` (`PublicTag`, `TagParams`).
+- **Files:** `app/list/page.tsx`, `app/tag/[id]/{page,not-found}.tsx`,
+  `components/{TagRow,PinIcon,TagList,TagDetails,Footer}.tsx`, `packages/shared/src/schemas.ts` (`PublicTag`,
+  `TagParams`), `packages/shared/src/format.ts` (`bikeName`).
 - **Verify:** `pnpm db:reset && pnpm build && pnpm start`, then the PR 1 browser checks.
 - **Depends:** 1.3, 1.4.
 

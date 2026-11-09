@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bikeCount, clockTime, duration, isExpired } from './format'
+import { bikeCount, bikeName, clockTime, duration, isExpired } from './format'
 
 describe('bikeCount', () => {
   it('uses the singular for one bike', () => {
@@ -9,6 +9,16 @@ describe('bikeCount', () => {
   it('uses the plural for any other number', () => {
     expect(bikeCount(0)).toBe('0 bikes in the graveyard')
     expect(bikeCount(14)).toBe('14 bikes in the graveyard')
+  })
+})
+
+describe('bikeName', () => {
+  it("names the operator's e-bike", () => {
+    expect(bikeName('lime')).toBe('Lime e-bike')
+  })
+
+  it('calls it a share e-bike when the operator is not known', () => {
+    expect(bikeName('not_sure')).toBe('Share e-bike')
   })
 })
 

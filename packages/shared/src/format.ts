@@ -1,10 +1,15 @@
-// Counts and times as the site writes them. Times are always Sydney's, whatever the device's time zone.
+// Names, counts and times as the site writes them. Times are always Sydney's, whatever the device's time zone.
+import { OPERATORS, type Operator } from './config'
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
 
 const time = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', hour: 'numeric', minute: '2-digit' })
 const weekday = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', weekday: 'long' })
+
+/** "Lime e-bike", or "Share e-bike" when the visitor wasn't sure whose it is. */
+export const bikeName = (operator: Operator) =>
+  operator === 'not_sure' ? 'Share e-bike' : `${OPERATORS[operator].label} e-bike`
 
 /** "1 bike" or "14 bikes". */
 export const bikes = (n: number) => `${n} ${n === 1 ? 'bike' : 'bikes'}`

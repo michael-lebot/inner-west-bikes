@@ -9,10 +9,15 @@ export function Header() {
         <path fill="#1f2a36" d="M5 4h2v1h1v1H7v2H5V6H4V5h1z" />
         <path fill="#3c9a3a" d="M0 13h12v1H0z" />
       </svg>
-      <Link href="/" className="flex-1 leading-tight font-bold">
-        The Inner West <span className="whitespace-nowrap">E-bike</span> Graveyard
+      <Link href="/" className="flex min-h-11 flex-1 items-center leading-tight font-bold">
+        <span>
+          The Inner West <span className="whitespace-nowrap">E-bike</span> Graveyard
+        </span>
       </Link>
-      <Link href="/why" className="w-24 text-right text-sm leading-tight underline underline-offset-2">
+      <Link
+        href="/why"
+        className="flex min-h-11 w-24 items-center text-right text-sm leading-tight underline underline-offset-2"
+      >
         Why this page exists
       </Link>
     </header>
