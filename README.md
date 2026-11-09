@@ -78,4 +78,4 @@ pnpm exec playwright install chromium webkit            # once, for the end-to-e
 ## Data attribution
 
 - Map data © OpenStreetMap contributors.
-- Council and suburb boundaries © State of New South Wales (Spatial Services, DCS NSW), CC BY 4.0.
+- Council and suburb boundaries and street names © State of New South Wales (Spatial Services, DCS NSW), CC BY 4.0.
