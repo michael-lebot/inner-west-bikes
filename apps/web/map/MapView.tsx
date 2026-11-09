@@ -28,8 +28,6 @@ function isInView(map: maplibregl.Map, lng: number, lat: number) {
   return x >= PIN_PX / 2 && x <= clientWidth - PIN_PX / 2 && y >= PIN_PX && y <= clientHeight
 }
 
-export type MapStatus = 'ready' | 'failed'
-
 type Props = {
   /** The live tags, or undefined until they arrive. */
   tags?: PublicTag[]
@@ -37,7 +35,7 @@ type Props = {
   selected?: string
   /** A pin was picked: just that tag, or by tap where pins overlap, every tag within 44 px of it. */
   onPick: (tags: PublicTag[], pin: HTMLElement) => void
-  onStatus: (status: MapStatus) => void
+  onStatus: (status: 'ready' | 'failed') => void
 }
 
 /** The one map (§11.3). MapScreen loads this module with import() after first paint, so no other page carries it. */
