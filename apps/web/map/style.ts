@@ -1,7 +1,7 @@
-// The Overworld map style (§4.1, §9), written against the Protomaps v4 tile schema: land, parks, water, rail and roads
-// in the Overworld palette, and Atkinson Hyperlegible labels. Suburb names come from council.json, so they match the
-// cards and show at every zoom.
-import { LABEL, MAP_COLORS, STREET_TYPES } from '@iwb/shared'
+// The Overworld map style (§4.1, §9), written against the Protomaps v4 tile schema: a dozen layers, grass and trees
+// inside the council, dithered grey outside it, the gold council wall, and Atkinson Hyperlegible labels. Suburb names
+// come from council.json, so they match the cards and show at every zoom.
+import { GREYS, LABEL, MAP_COLORS, STREET_TYPES, WALL } from '@iwb/shared'
 import council from '@iwb/shared/data/council.json'
 import buffered from '@iwb/shared/data/council-buffered.json'
 import type { ExpressionSpecification, StyleSpecification } from 'maplibre-gl'
@@ -12,6 +12,8 @@ const BOLD = ['AtkinsonHyperlegible-Bold']
 
 /** Wholly inside the council plus its 20 m strip, so streets along the boundary keep their names (assumption 11). */
 const INSIDE: ExpressionSpecification = ['within', buffered]
+/** Wholly outside the council, where the mask greys everything out. */
+const OUTSIDE: ExpressionSpecification = ['within', council.mask]
 
 const ROADS: ExpressionSpecification = [
   'all',
@@ -58,6 +60,8 @@ export function overworldStyle(): StyleSpecification {
     sources: {
       // 256 px tiles: each view loads the next zoom's tiles, so the whole-council view has suburb names and side streets.
       osm: { type: 'vector', url: `pmtiles://${new URL(TILES_URL, location.href)}` },
+      council: { type: 'geojson', data: council.boundary },
+      mask: { type: 'geojson', data: council.mask },
       suburbs: {
         type: 'geojson',
         data: {
@@ -72,7 +76,7 @@ export function overworldStyle(): StyleSpecification {
     },
     layers: [
       { id: 'water', type: 'background', paint: { 'background-color': MAP_COLORS.water } },
-      { id: 'land', type: 'fill', source: 'osm', 'source-layer': 'earth', paint: { 'fill-color': MAP_COLORS.land } },
+      { id: 'land', type: 'fill', source: 'osm', 'source-layer': 'earth', paint: { 'fill-pattern': 'grass' } },
       {
         id: 'parks',
         type: 'fill',
@@ -85,7 +89,7 @@ export function overworldStyle(): StyleSpecification {
           true,
           false,
         ],
-        paint: { 'fill-color': MAP_COLORS.park },
+        paint: { 'fill-pattern': 'trees' },
       },
       {
         id: 'water-areas',
@@ -132,6 +136,32 @@ export function overworldStyle(): StyleSpecification {
           ],
           'line-width': FILL_WIDTH,
         },
+      },
+      // Everything outside the council: one dithered grey, with its roads in a lighter grey on top.
+      { id: 'mask', type: 'fill', source: 'mask', paint: { 'fill-pattern': 'dither' } },
+      {
+        id: 'roads-outside',
+        type: 'line',
+        source: 'osm',
+        'source-layer': 'roads',
+        filter: ['all', ROADS, OUTSIDE],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': GREYS[3], 'line-width': FILL_WIDTH },
+      },
+      // The council wall: gold on a dark casing, which keeps it at 3:1 on grass and grey alike (assumption 12).
+      {
+        id: 'wall-casing',
+        type: 'line',
+        source: 'council',
+        layout: { 'line-join': 'round' },
+        paint: { 'line-color': WALL.casing, 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 5, 16, 9] },
+      },
+      {
+        id: 'wall',
+        type: 'line',
+        source: 'council',
+        layout: { 'line-join': 'round' },
+        paint: { 'line-color': WALL.gold, 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 2.5, 16, 5] },
       },
       {
         id: 'street-names',

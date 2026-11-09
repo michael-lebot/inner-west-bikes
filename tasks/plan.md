@@ -695,8 +695,10 @@ them.
 - **Does:** `apps/web/map/patterns.ts`: grass tufts, trees, and a 4×4 Bayer-dithered grey defined as ASCII sprites
   (from the mockup's `stamps`), turned into RGBA arrays and added with `map.addImage(id, image, { pixelRatio: 2 })`
   before the pattern layers; `fill-pattern` on land, parks and the mask. Mask layer from `council.json`'s mask
-  polygon in greyscale with the dither pattern. Council wall from the true boundary: a dark `#1f2328` casing line
-  under a gold line (assumption 12). Extend `contrast.test.ts` with every pattern colour.
+  polygon in greyscale with the dither pattern, and roads wholly outside the council (`within` the mask) drawn over it
+  in a lighter grey, so the outside keeps its streets as in the mockup. Council wall from the true boundary: a dark
+  `#1f2328` casing line under a gold line (assumption 12). Extend `contrast.test.ts` with every pattern colour: the
+  sprites' inks live in `palette.ts` (`SPRITE_INKS`), and the test checks pins and the wall against each.
 - **Accept:** the council area is green with tufts and trees, the outside is dithered grey, the wall is gold with a
   dark edge; the council itself is not greyed (winding correct); the contrast test passes.
 - **Files:** `apps/web/map/{patterns,style}.ts`, `packages/shared/src/{palette.ts,contrast.test.ts}`.

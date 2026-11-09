@@ -1,7 +1,7 @@
 // WCAG 2.2 contrast (§10.2) for every colour pair the interface and the map art use. A regression fails CI.
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { GREYS, LABEL, MAP_COLORS, PIN_HALO, PINS, WALL } from './palette'
+import { GREYS, LABEL, MAP_COLORS, PIN_HALO, PINS, SPRITE_INKS, WALL } from './palette'
 
 const css = readFileSync(new URL('../theme.css', import.meta.url), 'utf8')
 const ui = Object.fromEntries(
@@ -42,7 +42,11 @@ describe('interface', () => {
 })
 
 describe('map art', () => {
-  const backgrounds = [...Object.entries(MAP_COLORS), ...GREYS.map((grey, i) => [`grey ${i}`, grey] as const)]
+  const backgrounds = [
+    ...Object.entries(MAP_COLORS),
+    ...GREYS.map((grey, i) => [`grey ${i}`, grey] as const),
+    ...Object.entries(SPRITE_INKS).map(([letter, ink]) => [`sprite ink ${letter}`, ink] as const),
+  ]
 
   describe.each(backgrounds)('on %s (%s)', (_, background) => {
     it.each(Object.entries(PINS))('the %s pin stands out through its fill, outline or halo', (_, pin) => {
