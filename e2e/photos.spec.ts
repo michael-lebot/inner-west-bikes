@@ -100,6 +100,22 @@ test('adds a photo with a new tag, and its page shows the thumbnail, which opens
   expect(size).toEqual([1600, 1200])
 })
 
+test('at the largest text on an SE-sized phone, the chosen photo and Remove photo stay inside the form', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile, 'the phone projects')
+  await page.setViewportSize({ width: 375, height: 667 })
+  await openForm(page)
+  await page.addStyleTag({ content: ':root { font-size: 200% }' })
+  await photoInput(page).setInputFiles(await cameraPhoto(page))
+  await expect(dialog(page).getByRole('img', { name: 'Your photo' })).toBeVisible()
+  // Nothing sideways to scroll to (1.4.10): Remove photo goes under the photo when both don't fit.
+  expect(await dialog(page).evaluate((form) => form.scrollWidth - form.clientWidth)).toBeLessThanOrEqual(0)
+  const remove = (await dialog(page).getByRole('button', { name: 'Remove photo' }).boundingBox())!
+  expect(remove.x + remove.width).toBeLessThanOrEqual(375)
+})
+
 test('when the photo fails, the tag stays added, and Try again sends only the photo, to the same tag', async ({
   page,
 }) => {

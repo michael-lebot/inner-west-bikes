@@ -41,7 +41,7 @@ export function PhotoInput({ photo, onPhoto }: { photo?: Blob; onPhoto: (photo?:
   return (
     <div className="flex flex-col gap-2">
       {preview && (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element -- a blob: URL of the visitor's own photo */}
           <img src={preview} alt="Your photo" width={96} height={72} className="h-18 w-24 rounded-lg object-cover" />
           <button type="button" className={SMALL} onClick={remove}>
