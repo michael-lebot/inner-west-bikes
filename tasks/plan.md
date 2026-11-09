@@ -1339,7 +1339,9 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   As built: `processPhoto` returns the two buffers and the full photo's width and height; `attachPhoto` stores the
   full buffer's length as `bytes`. The 4 MB is `PHOTO_MAX_BYTES` in `config.ts`; 1600 px, 320 px, quality 75 and the
   50 MP budget stay beside the code they tune. `sharp` moves to the web app's dependencies, as it now runs in
-  production, and tests may import it to make their pictures (§1.3).
+  production, and tests may import it to make their pictures (§1.3). No `content-length` check: it measures the
+  multipart envelope, not the file, so it refused a photo of exactly 4 MB; Vercel's 4.5 MB request cap bounds what is
+  read before `file.size` is checked (a `shortcut:` in the route).
 - **Accept:** `image.test.ts` (fixtures generated in the test with sharp) covers §5.5 bad images: oversized, wrong
   magic bytes, truncated, a decompression bomb (a 20,000 × 20,000 single-colour PNG), and polyglots (JPEG + appended
   ZIP or HTML) are all rejected; a valid JPEG with EXIF GPS comes out as WebP with no metadata.

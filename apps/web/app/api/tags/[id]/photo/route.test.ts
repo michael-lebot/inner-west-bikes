@@ -77,10 +77,9 @@ describe('POST /api/tags/[id]/photo', () => {
     await expectError(await post(crypto.randomUUID(), form(jpeg)), 'tag_gone')
   })
 
-  it('refuses a photo over 4 MB with 413, by its size or by the length of the request', async () => {
+  it('refuses a photo over 4 MB with 413', async () => {
     const id = await tagBike()
     await expectError(await post(id, form(new Uint8Array(PHOTO_MAX_BYTES + 1))), 'too_large')
-    await expectError(await post(id, form(jpeg), { 'content-length': String(PHOTO_MAX_BYTES + 1) }), 'too_large')
   })
 
   it('refuses a file that is not a photo with 422', async () => {
