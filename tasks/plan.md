@@ -1520,7 +1520,9 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   (random 32 bytes each, on `web` for production and preview); Vercel Authentication "All deployments" on `admin`;
   spend-management alert; Speed Insights check; domain later. Then the post-deploy checks: §11.2 PMTiles checks,
   `admin-access.spec.ts` against a preview, a tag added and removed from a phone on a preview while a `curl` POST
-  gets 403, the `iwb_v` cookie sent `Secure`, cron 401 in production. **Launch checklist**: every item in Left for Michael. `docs/accessibility-checklist.md`:
+  gets 403, the `iwb_v` cookie sent `Secure`, cron 401 in production without the token and 200 when run from the
+  project's Cron Jobs settings (an hourly schedule needs the Pro plan), and an admin Undo on a preview answering 303,
+  not 403, so its same-origin check holds behind Vercel's proxy. **Launch checklist**: every item in Left for Michael. `docs/accessibility-checklist.md`:
   the §10.6, §12 and §13 manual checks as a ticklist per milestone. `docs/esafety.md`: the §7 one-page response
   procedure, with an empty "Classification" section for Michael. Review every `.env.example` against `env.ts`
   files; update the README's Status section; re-read `/accessibility`, `/privacy` and `/terms` against what was
