@@ -12,7 +12,7 @@ acceptance criteria pass and `pnpm verify` is green.
 - [x] 1.5 Read pages: `/list` and `/tag/[id]` (TagRow, PinIcon, TagList, TagDetails, Footer)
 - [x] 1.6 Text pages: `/why` (placeholder), `/accessibility`, `/privacy`, `/terms`
 - [x] 1.7 Admin app shell with the recent-tags table
-- [ ] 1.8 Test harness: Playwright (3 projects), axe helper, Lighthouse CI, perf sizes
+- [x] 1.8 Test harness: Playwright (3 projects), axe helper, Lighthouse CI, perf sizes
 - [ ] 1.9 CI workflow; M0 measurements recorded, budgets confirmed or reset
 - [ ] Checkpoint: CI green, browser verification at 390×844 and 1280×800, PR opened against `main`
 

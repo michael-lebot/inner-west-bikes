@@ -30,18 +30,24 @@ pnpm install
 pnpm db:up                                        # Postgres 18 on localhost:54318
 cp packages/db/.env.example packages/db/.env      # the Prisma CLI reads DATABASE_URL from here
 pnpm db:reset                                     # migrate the dev database and load 14 seeded tags
+pnpm dev                                          # the site on localhost:3000, admin on localhost:3001
+pnpm exec playwright install chromium webkit      # once, for the end-to-end tests
 ```
 
-| Script           | What it does                                                         |
-| ---------------- | -------------------------------------------------------------------- |
-| `pnpm db:up`     | Start Postgres in Docker and wait until it is healthy                |
-| `pnpm db:down`   | Stop it (the data volume is kept)                                    |
-| `pnpm db:reset`  | Empty the dev database, apply every migration and load the seed      |
-| `pnpm lint`      | ESLint, including the import rules, and Prettier                     |
-| `pnpm typecheck` | TypeScript in every package                                          |
-| `pnpm test`      | Vitest in every package, against the `iwb_test` database in Postgres |
-| `pnpm build`     | Production builds                                                    |
-| `pnpm verify`    | All of the above, in that order                                      |
+| Script           | What it does                                                                      |
+| ---------------- | --------------------------------------------------------------------------------- |
+| `pnpm db:up`     | Start Postgres in Docker and wait until it is healthy                             |
+| `pnpm db:down`   | Stop it (the data volume is kept)                                                 |
+| `pnpm db:reset`  | Empty the dev database, apply every migration and load the seed                   |
+| `pnpm dev`       | Both apps in development mode                                                     |
+| `pnpm start`     | Both apps from their production builds                                            |
+| `pnpm lint`      | ESLint, including the import rules, and Prettier                                  |
+| `pnpm typecheck` | TypeScript in every package and in the end-to-end tests                           |
+| `pnpm test`      | Vitest in every package, against the `iwb_test` database                          |
+| `pnpm build`     | Production builds of both apps                                                    |
+| `pnpm e2e`       | Playwright and axe on iPhone, Pixel and desktop, against the builds and `iwb_e2e` |
+| `pnpm lhci`      | Lighthouse CI on `/` and `/list`, after `pnpm e2e`                                |
+| `pnpm verify`    | All of the above from `lint` on, in that order                                    |
 
 ## Data attribution
 

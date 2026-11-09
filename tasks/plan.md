@@ -102,8 +102,8 @@ components. No package builds anything: both apps compile the packages' TypeScri
 ├── docs/                            mockups/ (existing), accessibility-checklist.md, launch.md, esafety.md
 ├── .github/workflows/ci.yml
 ├── docker-compose.yml               Postgres 18 for local dev and tests (port 54318)
-├── playwright.config.ts, lighthouserc.json, eslint.config.mjs, .prettierrc
-├── turbo.json, pnpm-workspace.yaml, tsconfig.base.json, package.json, .nvmrc
+├── playwright.config.ts, lighthouserc.json, eslint.config.mjs, .prettierrc, .prettierignore
+├── turbo.json, pnpm-workspace.yaml, tsconfig.base.json, tsconfig.json (e2e/), package.json, .nvmrc
 ```
 
 What does **not** go where:
@@ -559,17 +559,19 @@ budgets confirmed or reset.
 
 #### Task 1.8 — Test harness: Playwright, axe, Lighthouse, perf sizes (M)
 - **Does:** root `playwright.config.ts` (projects `iphone`, `pixel`, `desktop`; `webServer` array starting web on
-  3000 and admin on 3001 with `DATABASE_URL` = `iwb_e2e`; `workers: 1`, because the tests share one database and
-  one IP), `e2e/global-setup.ts` (migrate reset of `iwb_e2e`), `e2e/support.ts` (`sql()` via `pg`, `resetDb()` =
+  3000 and admin on 3001 with `DATABASE_URL` = `iwb_e2e`, each checked on a page that doesn't read the database,
+  because Playwright starts them before global setup; `workers: 1`, because the tests share one database and
+  one IP), `e2e/global-setup.ts` (`prisma migrate deploy` of `iwb_e2e`, as in task 1.3; its teardown reloads the seed
+  for Lighthouse), root `tsconfig.json` for `e2e/`, `e2e/support.ts` (`sql()` via `pg`, `resetDb()` =
   truncate + `seed.sql`, `expectNoAxeViolations(page)` with tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`,
   `wcag22aa`, failing on any violation whatever its impact), `e2e/pages.spec.ts` (list, tag page, empty state,
   text pages, 404, each with axe), `e2e/admin.spec.ts` (admin tags + axe), `e2e/perf.spec.ts` (on `/` and
   `/list`: JavaScript transferred ≤ 120 KB and fonts = 2 files ≤ 60 KB, from `request.sizes()`),
-  `lighthouserc.json` (`/` and `/list`, mobile preset, 3 runs, `startServerCommand`, assertions LCP ≤ 2500 ms,
-  CLS ≤ 0.1, TBT ≤ 200 ms, upload to filesystem only).
+  `lighthouserc.json` (`/` and `/list`, mobile preset, 3 runs, `startServerCommand`, assertions on the median run
+  LCP ≤ 2500 ms, CLS ≤ 0.1, TBT ≤ 200 ms, upload to filesystem only).
 - **Accept:** `pnpm e2e` passes on all three projects; `pnpm lhci` passes; a deliberately added axe violation
   fails the run (checked once, then removed).
-- **Files:** `playwright.config.ts`, `lighthouserc.json`, `e2e/{global-setup,support}.ts`,
+- **Files:** `playwright.config.ts`, `lighthouserc.json`, `tsconfig.json`, `e2e/{global-setup,support}.ts`,
   `e2e/{pages,admin,perf}.spec.ts`.
 - **Verify:** `pnpm build && pnpm e2e && pnpm lhci`.
 - **Depends:** 1.5, 1.6, 1.7.
@@ -1342,7 +1344,7 @@ everything else is in Left for Michael.
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Next 16's App Router baseline alone exceeds the 120 KB pre-map JS budget | Med | Measured in task 1.9; §11.1 allows a reset from evidence |
+| Next 16's App Router baseline alone exceeds the 120 KB pre-map JS budget | Fired | Measured at M0: Next 16.4.5 + React 19.3.1 transfer 138,644 B gzipped (118,598 B Brotli) with no client components. Per §11.1 the gate in `e2e/perf.spec.ts` was reset to 150 KiB gzipped; task 2.9 re-measures |
 | MapLibre 5 + pmtiles + style data land just over 300 KB | Med | Task 2.9 measures; simplify `council.json` further for display; reset per §11.1 with evidence |
 | Headless WebKit on Linux CI lacks WebGL, so the `iphone` project sees the map-failed state | Med | If so, run the iPhone 13 descriptor on Chromium for map flows and keep WebKit for the rest; note it in the PR |
 | The pinned Protomaps build is removed | Low | Script fails with a clear message; bump the date; CI cache keeps working builds |
