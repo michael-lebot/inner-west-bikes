@@ -8,4 +8,6 @@ export default {
   // Photos are served exactly as stored (§4.3), and this leaves no image-resizing endpoint to abuse.
   images: { unoptimized: true },
   poweredByHeader: false,
+  // pmtiles' fallback inflater, which no supported browser needs (see map/no-fflate.ts).
+  turbopack: { resolveAlias: { fflate: { browser: './map/no-fflate.ts' } } },
 } satisfies NextConfig

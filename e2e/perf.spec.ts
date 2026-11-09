@@ -10,13 +10,14 @@ const JS_BEFORE_MAP = 150 * 1024
 const FONT_FILES = 2
 const FONT_BYTES = 60_000
 const TAGS_100_BYTES = 15_000
-// Measured in task 2.9 (2026-11-09): 299,546 B, so the 300 KB budget stands.
+// Measured in task 2.9 (2026-11-09): 299,546 B, so the 300 KB budget stood, but CI's runner measured 300,560 B. PR 2's
+// review left pmtiles' fflate out of the browser (map/no-fflate.ts): 290,377 B.
 const MAP_BUNDLE_BYTES = 300_000
 // §11.1 left 6 s to be set from M1 measurements. The time is in the network, so this gate leaves the CPU at full
-// speed (see the test). In PR 2's review, its network log showed 970 KB moved before the map was ready: the page's
-// 200 KB, the map chunk's 300 KB, the bold glyphs' 86 KB and the first view's 350 KB of tiles. That is 5.2 s of
+// speed (see the test). In PR 2's review, its network log showed 960 KB moved before the map was ready: the page's
+// 200 KB, the map chunk's 290 KB, the bold glyphs' 86 KB and the first view's 350 KB of tiles. That is 5.1 s of
 // transfer at 1.47 Mbps, and the page, the map chunk, the tiles' header and the tiles each wait behind a 562 ms round
-// trip. It measured 8.4 to 8.5 s on a laptop, so the gate is 14.5 s: the laptop's time is under 60% of it, which
+// trip. It measured 8.2 to 8.3 s on a laptop, so the gate is 14.5 s: the laptop's time is under 60% of it, which
 // leaves room for a slower CI runner. Fewer tile or glyph bytes is what would bring it down.
 const MAP_READY_MS = 14_500
 const FIRST_VIEW_TILE_REQUESTS = 40
@@ -24,7 +25,7 @@ const FIRST_VIEW_TILE_BYTES = 1_500_000
 // §11.1 says 200 ms. Headless Chromium draws WebGL in software and reads the map's canvas back to composite each
 // frame the map takes part in: in a trace of opening a card with the CPU at full speed, 160 ms of the 215 ms frame
 // is that read-back (GLES2::ReadPixels). With the GPU (--enable-gpu) the same steps measured 48 ms and 24 ms. With
-// the CPU at full speed, opening a card measured 232 to 304 ms on a laptop and a zoom tap 96 to 168 ms, so the lab
+// the CPU at full speed, opening a card measured 224 to 352 ms on a laptop and a zoom tap 88 to 168 ms, so the lab
 // gate is 600 ms, keeping the laptop's time under 60% of it. The real-phone check at M1 (§11.4) holds the 200 ms.
 const INTERACTION_MS = 600
 

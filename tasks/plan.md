@@ -846,11 +846,16 @@ them.
 - **Reset in PR 2's review:** on GitHub's runner (CI run 42586706684) the map was ready in 10.6 s and a card opened
   in 728 ms. The runner draws WebGL in software on a slower CPU, and the ×4 slowdown stacked on top of that. So the
   two time gates now leave the CPU at full speed, a departure from §11.3's "with CPU throttling": map ready keeps the
-  4G profile, and the byte and request gates keep CPU ×4 and 4G. Map ready is still bound by the network: 970 KB
-  move before it (5.2 s at 1.47 Mbps), behind four 562 ms round trips. Measured on a laptop: map ready 8,427 to
-  8,461 ms, so the gate is 14.5 s; opening a card 232 to 304 ms, where a trace puts 160 ms of the 215 ms frame in the
-  canvas read-back, so the gate is 600 ms; a zoom tap 96 to 168 ms. Each is under 60% of its gate. Fetching the
-  tiles' header alongside the map chunk, dropping unused tile layers or fewer glyph bytes would bring map ready down.
+  4G profile, and the byte and request gates keep CPU ×4 and 4G. CI's second run then measured the map bundle at
+  300,560 B. pmtiles imports all of fflate (10 KB) to inflate tiles where `DecompressionStream` is missing, and every
+  supported browser has it, so `next.config.ts` swaps fflate for a stub that throws (`map/no-fflate.ts`): 290,377 B,
+  and the 300 KB budget stands. Map ready is still bound by the network: 960 KB move before it (5.1 s at 1.47 Mbps),
+  behind four 562 ms round trips. Measured on a laptop: map ready 8,244 to 8,283 ms, so the gate is 14.5 s; opening
+  a card 224 to 352 ms, where a trace puts 160 ms of the 215 ms frame in the canvas read-back, so the gate is 600 ms;
+  a zoom tap 88 to 168 ms. Each is under 60% of its gate. Fetching the tiles' header beside the map chunk was tried
+  and dropped: under `next start`'s HTTP/1.1 its chunk took one of Chrome's six connections and held the map chunk
+  back, so map ready didn't move, and splitting pmtiles out added 1 KB to the map's scripts. Dropping unused tile
+  layers or fewer glyph bytes would bring map ready down.
 - **Accept:** all green on three projects; measurements in the PR description.
 - **Files:** `e2e/{browse,perf}.spec.ts`.
 - **Verify:** `pnpm verify`.
