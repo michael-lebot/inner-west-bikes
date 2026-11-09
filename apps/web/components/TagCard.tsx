@@ -51,7 +51,8 @@ export function TagCard({ tag, now, onClose }: { tag: PublicTag; now: Date; onCl
       <div className="flex items-start justify-between gap-3">
         <h2 id="card-heading" ref={heading} tabIndex={-1} className="flex min-w-0 items-center gap-2 text-lg font-bold">
           <PinIcon operator={tag.operator} />
-          <span className="truncate">
+          {/* Only the shrunk card's one line is cut short; expanded, a long name wraps (1.4.4). */}
+          <span className={shrunk ? 'truncate' : ''}>
             {bikeName(tag.operator)}
             {shrunk && (
               <span className="wide:hidden">

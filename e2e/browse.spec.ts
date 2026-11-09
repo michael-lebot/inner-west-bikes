@@ -251,6 +251,16 @@ test.describe('the tag card', () => {
     await expect(page.getByRole('heading', { name: '13 bikes in the graveyard' })).toBeFocused()
   })
 
+  test('keeps its heading whole at the largest text size', async ({ page }) => {
+    await page.addStyleTag({ content: 'html { font-size: 200% }' })
+    await page.getByRole('button', { name: /Liverpool Rd, Ashfield/ }).focus()
+    await page.keyboard.press('Enter')
+    const heading = page.getByRole('heading', { name: 'Hello e-bike' })
+    await expect(heading).toBeFocused()
+    // Only the shrunk card's one line may end in an ellipsis.
+    expect(await heading.locator('span').evaluate((name) => name.scrollWidth - name.clientWidth)).toBeLessThanOrEqual(0)
+  })
+
   test('opens from a chooser that a refresh has trimmed', async ({ page }) => {
     await page.getByRole('button', { name: /Norton St, Leichhardt/ }).click({ force: true })
     await expect(page.getByRole('heading', { name: '2 bikes here' })).toBeVisible()
