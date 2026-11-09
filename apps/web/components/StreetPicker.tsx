@@ -101,6 +101,8 @@ export function StreetPicker({ onUse, onCancel }: { onUse: (spot: Spot) => void;
     const house = loaded!.picker.matchHouseNumber(numbered, typed)
     if (house)
       show(() => setChosen({ place: house, readback: `${house[0]} ${street.street}, ${street.suburb}` }), readback)
+    // A quarter of the streets, lanes mostly, have no numbers at all; every one of them has corners.
+    else if (!numbered.length) fail(`We don't have house numbers on ${street.street}. Pick the nearest corner.`)
     else
       fail(
         `We don't have number ${typed} on ${street.street}. Try another number` +
