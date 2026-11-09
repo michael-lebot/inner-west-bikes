@@ -98,6 +98,20 @@ test.describe('the list', () => {
     await expect(page).toHaveURL('/privacy')
   })
 
+  test('makes every link at least 44 × 44 px, and lines the footer up with the column', async ({ page }) => {
+    await page.goto('/list')
+    const small = await page.getByRole('link').evaluateAll((links) =>
+      links.flatMap((link) => {
+        const { width, height } = link.getBoundingClientRect()
+        return width < 44 || height < 44 ? [`${link.textContent}: ${width} × ${height}`] : []
+      }),
+    )
+    expect(small).toEqual([])
+    const column = await page.getByRole('main').boundingBox()
+    const footer = await page.getByRole('contentinfo').getByRole('navigation').boundingBox()
+    expect(footer?.x).toBe(column?.x)
+  })
+
   test('shows the empty state when no tag is live', async ({ page }) => {
     await sql('TRUNCATE tags CASCADE')
     await page.goto('/list')
