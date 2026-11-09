@@ -3,6 +3,22 @@ import { expectNoAxeViolations, resetDb, sql } from './support'
 
 const LLEWELLYN_ST = '5eed0000-0000-4000-8000-000000000003'
 
+// The production policy with the default local tiles, so no tile origin in connect-src.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'nonce-NONCE' 'strict-dynamic'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  'worker-src blob:',
+  'child-src blob:',
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join('; ')
+
 test.beforeEach(() => resetDb())
 
 test.describe('the map screen shell', () => {
@@ -19,17 +35,23 @@ test.describe('the map screen shell', () => {
     expect(errors).toEqual([])
   })
 
-  test('is sent with a nonce on every script and the security headers', async ({ request }) => {
-    const response = await request.get('/')
-    const headers = response.headers()
-    const nonce = headers['content-security-policy']?.match(/'nonce-([^']+)'/)?.[1]
-    expect(nonce).toBeTruthy()
-    expect(headers['x-content-type-options']).toBe('nosniff')
-    expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin')
-    expect(headers['permissions-policy']).toBe('geolocation=(self)')
-    const scripts = (await response.text()).match(/<script[^>]*>/g) ?? []
-    expect(scripts.length).toBeGreaterThan(0)
-    for (const script of scripts) expect(script).toContain(`nonce="${nonce}"`)
+  test('is sent with the full CSP, a fresh nonce on every script, and the security headers', async ({ request }) => {
+    const nonces: string[] = []
+    for (const response of [await request.get('/'), await request.get('/')]) {
+      const headers = response.headers()
+      const csp = headers['content-security-policy'] ?? ''
+      const nonce = csp.match(/'nonce-([^']+)'/)?.[1] ?? ''
+      expect(nonce).toBeTruthy()
+      expect(csp.replace(nonce, 'NONCE')).toBe(CSP)
+      expect(headers['x-content-type-options']).toBe('nosniff')
+      expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin')
+      expect(headers['permissions-policy']).toBe('geolocation=(self)')
+      const scripts = (await response.text()).match(/<script[^>]*>/g) ?? []
+      expect(scripts.length).toBeGreaterThan(0)
+      for (const script of scripts) expect(script).toContain(`nonce="${nonce}"`)
+      nonces.push(nonce)
+    }
+    expect(nonces[0]).not.toBe(nonces[1])
   })
 
   test('shows a 3 px focus ring on the header link', async ({ page }, testInfo) => {
