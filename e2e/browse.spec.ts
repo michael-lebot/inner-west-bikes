@@ -284,6 +284,22 @@ test.describe('the tag card', () => {
       await page.mouse.up()
       await expect(handle).toHaveAttribute('aria-expanded', 'true')
     })
+
+    test('brings its pin back into view each time the card grows over it', async ({ page }) => {
+      const pin = page.getByRole('button', { name: /Marrickville Rd, Dulwich Hill/ })
+      await pin.click()
+      // Growing the map moves it when its edges reach the bounds, as at the council-wide zoom; growing the card
+      // again would then cover the pin.
+      await page.getByRole('button', { name: 'Shrink card' }).click()
+      await page.getByRole('button', { name: 'Expand card' }).click()
+      const map = page.getByRole('region', { name: 'Map', exact: true })
+      await expect
+        .poll(async () => {
+          const [area, box] = [(await map.boundingBox())!, (await pin.boundingBox())!]
+          return box.y >= area.y && box.y + box.height <= area.y + area.height
+        })
+        .toBe(true)
+    })
   })
 })
 

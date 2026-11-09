@@ -98,15 +98,15 @@ export function MapView({ tags, now, selected, onPick, onStatus }: Props) {
     return () => created.remove()
   }, [onStatus])
 
-  // The picked pin comes into view: from a row in the panel, or when its card has made the map shorter. Only when
-  // the pick changes, so the map doesn't jump back to it each time the tags refresh.
+  // The picked pin comes into view: from a row in the panel, or whenever its card has made the map shorter. Only when
+  // the pick changes or the map resizes, so the map doesn't jump back to it each time the tags refresh.
   const picked = tags?.find(({ id }) => id === selected)
   const [lng, lat] = picked ? [picked.lng, picked.lat] : []
   useEffect(() => {
     if (!map || lng === undefined || lat === undefined) return
     const reveal = () => !isInView(map, lng, lat) && map.panTo([lng, lat])
     reveal()
-    map.once('resize', reveal)
+    map.on('resize', reveal)
     return () => void map.off('resize', reveal)
   }, [map, selected, lng, lat])
 
