@@ -1,5 +1,6 @@
-/* The interface colours, from docs/mockups/graveyard-v3.html, and the focus style. Both apps import this file.
-   The default Tailwind palette is switched off, so every colour class is a token checked by contrast.test.ts. */
+/* The interface colours, from docs/mockups/graveyard-v3.html, the light colour scheme and the focus style. Both apps
+   import this file. The default Tailwind palette is switched off, so every colour class is a token checked by
+   contrast.test.ts. */
 @theme {
   --color-*: initial;
   --color-white: #ffffff;
@@ -15,6 +16,11 @@
 }
 
 @layer base {
+  /* There is no dark mode in v1, so OS dark mode must not half-invert form controls (§10.2). */
+  :root {
+    color-scheme: light;
+  }
+
   /* A 3 px ring outside a 2 px white halo, so it shows on white and on the night header alike. Never removed. */
   :focus-visible {
     outline: 3px solid var(--color-focus);

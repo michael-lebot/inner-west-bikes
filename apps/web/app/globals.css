@@ -20,8 +20,3 @@
 @theme {
   --font-sans: 'Atkinson Hyperlegible', system-ui, sans-serif;
 }
-
-/* There is no dark mode in v1, so OS dark mode must not half-invert form controls (§10.2). */
-:root {
-  color-scheme: light;
-}
