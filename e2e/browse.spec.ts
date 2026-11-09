@@ -68,6 +68,8 @@ test('fits the map screen to the viewport, so the page never scrolls while the m
 })
 
 test('offers the list when the tiles fail to load', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
   await page.route('**/*.pmtiles', (route) => route.abort())
   await page.goto('/')
   await expect(page.getByText("The map couldn't load.")).toHaveText("The map couldn't load. Use the list instead.")
@@ -75,6 +77,18 @@ test('offers the list when the tiles fail to load', async ({ page }) => {
   await page.getByRole('link', { name: 'Use the list instead.' }).click()
   await expect(page).toHaveURL('/list')
   await expect(page.getByRole('heading', { name: '14 bikes in the graveyard' })).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('leaves the map for another page without a script error', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('/')
+  await expect(page.locator('[data-map-ready]')).toBeAttached()
+  await page.getByRole('banner').getByRole('link', { name: 'Why this page exists' }).click()
+  await expect(page).toHaveURL('/why')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  expect(errors).toEqual([])
 })
 
 test.describe('pins', () => {

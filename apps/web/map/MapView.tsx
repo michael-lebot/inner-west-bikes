@@ -75,7 +75,8 @@ export function MapView({ tags, now, selected, onPick, onStatus }: Props) {
     // When the sheet below grows or shrinks, keep the map still under the header, as if the sheet slid over it.
     let height = container.current!.clientHeight
     created.on('resize', () => {
-      const next = container.current!.clientHeight
+      // Not the ref: React has cleared it by the time a resize reports the map leaving the page.
+      const next = created.getContainer().clientHeight
       created.panBy([0, (next - height) / 2], { animate: false })
       height = next
     })
