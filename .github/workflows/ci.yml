@@ -1,0 +1,77 @@
+# Every gate of `pnpm verify`, on every pull request (whatever its base, so stacked PRs run) and on main.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, types and unit tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: iwb
+          POSTGRES_PASSWORD: iwb
+          POSTGRES_DB: iwb
+        ports: ['54318:5432']
+        options: --health-cmd "pg_isready --username iwb" --health-interval 2s --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  e2e:
+    name: Build, end-to-end and Lighthouse
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: iwb
+          POSTGRES_PASSWORD: iwb
+          POSTGRES_DB: iwb
+        ports: ['54318:5432']
+        options: --health-cmd "pg_isready --username iwb" --health-interval 2s --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: playwright
+        run: echo "version=$(pnpm exec playwright --version | cut -d ' ' -f 2)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      # On a cache hit this only installs the system libraries the browsers need.
+      - run: pnpm exec playwright install --with-deps chromium webkit
+      - run: pnpm build
+      - run: pnpm e2e
+      - run: pnpm lhci
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: reports
+          path: |
+            playwright-report/
+            test-results/
+            .lighthouseci/
+          include-hidden-files: true

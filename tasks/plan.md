@@ -586,6 +586,9 @@ budgets confirmed or reset.
   §11.1 numbers or reset the constants in `perf.spec.ts` and `lighthouserc.json` with a comment citing the
   measurement.
 - **Accept:** both jobs green on the PR; measurements and pinned versions recorded in the PR description.
+- **M0 result (2026-11-09, local production build, Lighthouse mobile preset, median of 3):** `/` LCP 758 ms,
+  CLS 0, TBT 49 ms; `/list` LCP 608 ms, CLS 0, TBT 50 ms, so those budgets stand. Fonts: 2 files, 34,732 B.
+  JavaScript: 138,644 B gzipped, all of it Next and React, so its gate was reset in task 1.8 (see §5).
 - **Files:** `.github/workflows/ci.yml`, possibly `e2e/perf.spec.ts`, `lighthouserc.json`.
 - **Verify:** the PR's checks are green.
 - **Depends:** 1.8.
