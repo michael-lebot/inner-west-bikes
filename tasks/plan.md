@@ -39,7 +39,8 @@ components. No package builds anything: both apps compile the packages' TypeScri
 │   │   │   ├── page.tsx             Map screen shell (renders <MapScreen>)
 │   │   │   ├── list/page.tsx        Server-rendered list; never loads MapLibre
 │   │   │   ├── tag/[id]/page.tsx    Server-rendered tag page
-│   │   │   ├── why/ accessibility/ privacy/ terms/   Text pages (page.tsx each)
+│   │   │   ├── (text)/                  Text pages: layout.tsx (column, prose styles, footer) and
+│   │   │   │                            why/ accessibility/ privacy/ terms/ (page.tsx each)
 │   │   │   ├── api/tags/route.ts                    GET live tags, POST create
 │   │   │   ├── api/tags/[id]/still-there/route.ts   POST
 │   │   │   ├── api/tags/[id]/removed/route.ts       POST
@@ -537,10 +538,10 @@ budgets confirmed or reset.
   contact address placeholder, known limits); `/privacy` (§7 list: what is collected and how it is hashed,
   retention per §6, providers and regions, BotID signals, location used only in the browser, contact);
   `/terms` (§7 list: photos must show share bikes, people and plates not the subject, licence to display, removal
-  right, no affiliation). One centred column ≤ 70ch, `Footer` on each.
+  right, no affiliation). One centred column ≤ 70ch, `Footer` on each, both from the route group's layout.
 - **Accept:** each page has one `<h1>`, headings in order, and passes axe; copy contains no claim the build doesn't
   implement.
-- **Files:** `app/{why,accessibility,privacy,terms}/page.tsx`.
+- **Files:** `app/(text)/layout.tsx`, `app/(text)/{why,accessibility,privacy,terms}/page.tsx`.
 - **Verify:** `pnpm e2e e2e/pages.spec.ts`.
 - **Depends:** 1.4.
 
