@@ -662,9 +662,10 @@ them.
 - **Does:** `apps/web/scripts/fetch-tiles.sh`: `pmtiles extract https://build.protomaps.com/20261108.pmtiles
   public/tiles/inner-west.pmtiles --bbox=<padded box> --maxzoom=15`; fails loudly with "bump the pinned build" if
   the source is gone. Root script `pnpm tiles`. `NEXT_PUBLIC_TILES_URL` defaults to `/tiles/inner-west.pmtiles`.
-  CI `e2e` job: cache `apps/web/public/tiles` keyed on `hashFiles('apps/web/scripts/fetch-tiles.sh')`; on a miss,
-  install the go-pmtiles v1.31 Linux release binary and run the script.
-- **Accept:** the file is about 9.7 MB; `curl -s -r 0-126 -o /dev/null -w '%{http_code}'
+  The box is `council.json`'s `maxBounds`, read by the script. CI `e2e` job: cache `apps/web/public/tiles` keyed on
+  `hashFiles('apps/web/scripts/fetch-tiles.sh', 'packages/shared/data/council.json')`; on a miss, install the
+  go-pmtiles v1.31 Linux release binary and run the script.
+- **Accept:** the file is about 9.7 MB (measured: 10,784,835 B from build `20261108`); `curl -s -r 0-126 -o /dev/null -w '%{http_code}'
   localhost:3000/tiles/inner-west.pmtiles` prints `206` under `next start` (if not, serve tiles with a 15-line
   range-capable route handler and note why); the CI cache hits on the second run.
 - **Files:** `apps/web/scripts/fetch-tiles.sh`, `package.json`, `.github/workflows/ci.yml`.

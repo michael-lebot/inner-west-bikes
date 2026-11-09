@@ -10,3 +10,4 @@ playwright-report/
 test-results/
 .lighthouseci/
 packages/shared/data/raw/
+apps/web/public/tiles/
