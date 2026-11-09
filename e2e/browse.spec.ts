@@ -134,6 +134,13 @@ test.describe('pins', () => {
     await expect(chooser).toHaveCount(0)
     expect(await page.evaluate(() => document.activeElement?.ariaLabel)).toMatch(/Leichhardt/)
 
+    // Not a dialog either: Esc closes it with focus back on the map.
+    await norton.click({ force: true })
+    await page.getByRole('button', { name: 'Zoom in' }).focus()
+    await page.keyboard.press('Escape')
+    await expect(chooser).toHaveCount(0)
+    expect(await page.evaluate(() => document.activeElement?.ariaLabel)).toMatch(/Leichhardt/)
+
     await norton.click({ force: true })
     await page.getByRole('link', { name: /Marion St/ }).click()
     await expect(chooser).toHaveCount(0)
