@@ -158,6 +158,9 @@ test.describe('the tag page', () => {
     for (const id of [LLEWELLYN_ST, '00000000-0000-4000-8000-000000000000', 'not-a-uuid']) {
       const response = await page.goto(`/tag/${id}`)
       expect(response?.status(), id).toBe(404)
+      // Both the server's HTML and the hydrated page name it, not "Tagged bike".
+      expect(await response?.text(), id).toContain('<title>This tag has gone')
+      await expect(page).toHaveTitle(/^This tag has gone/)
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('This tag has gone')
     }
     await expectNoAxeViolations(page)
@@ -186,6 +189,7 @@ test('the text pages each say the site is being built, have one h1 and headings 
 test('an unknown address is a 404', async ({ page }) => {
   const response = await page.goto('/no-such-page')
   expect(response?.status()).toBe(404)
+  await expect(page).toHaveTitle(/^Page not found/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page not found')
   await expectNoAxeViolations(page)
 })

@@ -2,16 +2,25 @@ import { getLiveTag } from '@iwb/server'
 import { bikeName, TagParams } from '@iwb/shared'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { cache } from 'react'
 import { Footer } from '@/components/Footer'
 import { PinIcon } from '@/components/PinIcon'
 import { TagDetails } from '@/components/TagDetails'
 
-export const metadata: Metadata = { title: 'Tagged bike' }
+/** The live tag the URL names, or null. Cached for the request, so the title and the page read the database once. */
+const findTag = cache(async (id: string) => {
+  const parsed = TagParams.safeParse({ id })
+  return parsed.success ? getLiveTag(parsed.data.id) : null
+})
+
+// not-found.tsx titles the server's 404 HTML, but once the page hydrates Next shows this title instead.
+export async function generateMetadata({ params }: PageProps<'/tag/[id]'>): Promise<Metadata> {
+  return { title: (await findTag((await params).id)) ? 'Tagged bike' : 'This tag has gone' }
+}
 
 /** One live tag, shareable by URL. Anything else, including an id that isn't a UUID, is a 404. */
 export default async function TagPage({ params }: PageProps<'/tag/[id]'>) {
-  const parsed = TagParams.safeParse(await params)
-  const tag = parsed.success ? await getLiveTag(parsed.data.id) : null
+  const tag = await findTag((await params).id)
   if (!tag) notFound()
 
   return (

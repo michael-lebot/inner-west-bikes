@@ -1,5 +1,9 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Footer } from '@/components/Footer'
+
+// The title in the server's HTML. The tag page's generateMetadata gives the same one once the page hydrates.
+export const metadata: Metadata = { title: 'This tag has gone' }
 
 export default function TagNotFound() {
   return (
