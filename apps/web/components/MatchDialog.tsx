@@ -3,6 +3,7 @@ import { bikeName, bikes, type PublicTag, type TagJson } from '@iwb/shared'
 import { useState } from 'react'
 import { SECONDARY } from './buttons'
 import { Dialog } from './Dialog'
+import { ErrorText } from './ErrorText'
 import { PinIcon } from './PinIcon'
 import { tagAction } from './TagActions'
 import { TagDetails } from './TagDetails'
@@ -51,7 +52,7 @@ export function MatchDialog({
           </li>
         ))}
       </ul>
-      {error && <p className="font-bold">{error}</p>}
+      {error && <ErrorText>{error}</ErrorText>}
       <button type="button" className={SECONDARY} onClick={onNo}>
         No, it&apos;s another bike
       </button>

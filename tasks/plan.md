@@ -1044,8 +1044,11 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   top is `DIALOG_TOP_REM` (8 rem, in shared config) and the map pans the new pin into the strip above it. The dialog
   is fixed between that top and the bottom of the layout viewport and scrolls inside: PR 3 has no text field, so no
   on-screen keyboard, and sizing to the visual viewport comes with PR 4's street picker. The placement bar stays
-  mounted under the dialog, and Change location focuses its heading. Errors are bold text under each legend, named
-  by the fieldset's `aria-describedby`, and focus moves to the first unanswered question. With `showModal()`, Tab
+  mounted under the dialog, and Change location focuses its heading. Errors (`ErrorText`, also in the match dialog
+  and the card's actions) are bold red text after a red "!" mark, so even without colour they can't pass for a
+  question's label; the red, `--color-error` `#b42318` at 6.6:1 on white, is the one colour PR 3 adds. A field's
+  error is named by the fieldset's `aria-describedby`, and focus moves to the first unanswered question. The form's
+  Cancel and Add to the map share a row where both fit, and at large text sizes take a full-width row each. With `showModal()`, Tab
   after the last control visits the browser's own toolbar before coming back; nothing on the page behind is reached.
 - **Accept:** nearby tags never block; Change location returns to placement and back with answers kept; Tab stays
   inside each dialog; the rest of the page is inert.

@@ -5,6 +5,7 @@ import { send } from '@/lib/send'
 import { announce } from './Announcer'
 import { PRIMARY, SECONDARY, SMALL } from './buttons'
 import { Dialog } from './Dialog'
+import { ErrorText } from './ErrorText'
 import { pinOn, type Spot } from './Placement'
 
 /** What the visitor has said so far, kept across Change location. The id is the tag's until it is added (§5.3). */
@@ -93,12 +94,13 @@ export function TagForm({
           error={checked && !draft.problem ? MISSING.problem : undefined}
           onChange={(problem) => onDraft({ ...draft, problem })}
         />
-        {failure && <p className="font-bold">{failure}</p>}
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" className={SECONDARY} onClick={onClose}>
+        {failure && <ErrorText>{failure}</ErrorText>}
+        {/* Side by side where both fit; at large text sizes, one above the other, each the full width. */}
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={`${SECONDARY} grow`} onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className={PRIMARY}>
+          <button type="submit" className={`${PRIMARY} grow`}>
             {sending ? 'Adding…' : 'Add to the map'}
           </button>
         </div>
@@ -126,11 +128,7 @@ function Chips<K extends string>({
   return (
     <fieldset aria-describedby={error ? `${name}-error` : undefined} className="flex flex-col gap-2">
       <legend className="mb-2 text-sm font-bold">{legend}</legend>
-      {error && (
-        <p id={`${name}-error`} className="text-sm font-bold">
-          {error}
-        </p>
-      )}
+      {error && <ErrorText id={`${name}-error`}>{error}</ErrorText>}
       <div className="flex flex-wrap gap-2">
         {choices.map(([key, label]) => (
           <label

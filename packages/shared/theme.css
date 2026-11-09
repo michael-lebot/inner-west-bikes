@@ -13,6 +13,8 @@
   --color-night: #1f2a36;
   --color-meter: #eaeef2;
   --color-focus: #0550ae;
+  /* Not in the mockup, which shows no error: a red for error text and its "!" mark (PR 3). */
+  --color-error: #b42318;
 }
 
 @layer base {

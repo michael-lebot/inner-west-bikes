@@ -239,6 +239,10 @@ test.describe('the dialogs', () => {
     await expect(page.getByRole('group', { name: 'Whose bike?' })).toHaveAccessibleDescription(
       'Choose whose bike it is.',
     )
+    // Unlike the question above it: a "!" mark, and red.
+    const error = dialog(page).getByText('Choose whose bike it is.')
+    await expect(error).toContainText('!')
+    await expect(error).toHaveCSS('color', 'rgb(180, 35, 24)')
     await expectNoAxeViolations(page)
 
     await chip(page, 'Hello').click()
@@ -267,6 +271,36 @@ test.describe('the dialogs', () => {
     await page.getByRole('button', { name: 'Use this spot' }).click()
     await expect(page.getByRole('radio', { name: 'Lime' })).toBeChecked()
     await expect(page.getByRole('radio', { name: 'Blocking footpath' })).toBeChecked()
+  })
+
+  test('at the largest text on an SE-sized phone, scroll to the buttons, each label on two lines at most', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'the phone projects')
+    await page.setViewportSize({ width: 375, height: 667 })
+    await page.goto('/')
+    await expect(page.locator('[data-map-ready]')).toBeAttached()
+    await page.addStyleTag({ content: ':root { font-size: 200% }' })
+    await page.getByRole('button', { name: 'Tag a dumped bike' }).click()
+    const map = await mapBox(page)
+    await tap(page, true, { x: map.x + map.width / 2 - 30, y: map.y + map.height / 2 + 20 })
+    await page.getByRole('button', { name: 'Use this spot' }).click()
+    await chip(page, 'Lime').click()
+    await chip(page, 'Damaged').click()
+
+    const form = dialog(page).locator('form')
+    const lines = (name: string) =>
+      form.getByRole('button', { name }).evaluate((button) => {
+        const range = document.createRange()
+        range.selectNodeContents(button)
+        return new Set([...range.getClientRects()].map((line) => Math.round(line.top))).size
+      })
+    await form.getByRole('button', { name: 'Add to the map' }).scrollIntoViewIfNeeded()
+    expect(await lines('Cancel')).toBeLessThanOrEqual(2)
+    expect(await lines('Add to the map')).toBeLessThanOrEqual(2)
+    await form.getByRole('button', { name: 'Add to the map' }).click()
+    await expect(page.locator('#announcer')).toHaveText('Tag added')
   })
 
   test.describe('by keyboard', () => {

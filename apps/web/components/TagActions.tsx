@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { send } from '@/lib/send'
 import { announce } from './Announcer'
 import { PRIMARY, SECONDARY } from './buttons'
+import { ErrorText } from './ErrorText'
 
 const DONE = { 'still-there': 'Marked still there', removed: 'Removed.' }
 
@@ -79,7 +80,7 @@ export function TagActions({
             Removed
           </button>
         </div>
-        {error && <p className="font-bold">{error}</p>}
+        {error && <ErrorText>{error}</ErrorText>}
       </div>
     </>
   )
