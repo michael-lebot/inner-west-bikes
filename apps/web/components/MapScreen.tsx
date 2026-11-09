@@ -57,9 +57,9 @@ export function MapScreen() {
   const closeCard = () => {
     setSelected(undefined)
     // Back to the card's pin (§10.4), or to the sheet when there is no map.
-    ;(
-      document.querySelector<HTMLElement>(`[data-tag="${selected}"] button`) ?? document.getElementById('sheet')
-    )?.focus()
+    const pin = document.querySelector<HTMLElement>(`[data-tag="${selected}"] button`)
+    if (pin) pin.focus()
+    else document.getElementById('sheet')?.focus()
   }
 
   // Esc closes the chooser or the card wherever focus is, since neither is a dialog (§10.4).
