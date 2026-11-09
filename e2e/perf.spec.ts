@@ -7,7 +7,7 @@ import { resetDb } from './support'
 // 15 KiB for the site's own code before the map.
 const JS_BEFORE_MAP = 150 * 1024
 const FONT_FILES = 2
-const FONT_BYTES = 60 * 1024
+const FONT_BYTES = 60_000
 
 test.beforeEach(() => resetDb())
 
