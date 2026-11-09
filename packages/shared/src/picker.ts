@@ -59,7 +59,8 @@ export function matchHouseNumber(numbers: Place[], typed: string) {
   if (!digits) return null
   const n = Number(digits)
   const exact = numbers.find(([number]) => number === `${n}${letters}`)
-  if (exact || letters) return exact ?? null
+  if (exact) return exact
+  if (letters) return null
   const lettered = numbers.find(([number]) => /^\d+[A-Z]+$/.test(number) && parseInt(number) === n)
   const holds = (number: string) => {
     const [from, to] = number.split('-').map((end) => parseInt(end))
