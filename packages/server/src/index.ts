@@ -7,5 +7,7 @@ export {
   listRecentTags,
   markRemoved,
   type RecentTag,
+  takeDown,
+  undoRemoval,
 } from './tags'
 export { type Visitor, visitorFrom } from './visitors'
