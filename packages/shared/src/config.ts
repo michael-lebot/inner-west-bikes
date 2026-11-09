@@ -74,6 +74,8 @@ export const STREET_TYPES: Record<string, string> = {
   Close: 'Cl',
 }
 
+/** A photo upload over this size is refused (§4.3). The browser's re-encoded photos are about 1 MB. */
+export const PHOTO_MAX_BYTES = 4 * 1024 * 1024
 /** A tag disappears this long after it was last confirmed (§1). */
 export const TAG_LIFETIME_HOURS = 48
 /** Visitor and IP hashes on events and reports are cleared this long after they were stored (§6). */

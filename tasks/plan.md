@@ -124,7 +124,8 @@ What does **not** go where:
    import `@iwb/server`: they get data as props or over `/api/*`.
 4. `maplibre-gl` and `pmtiles` are imported only inside `apps/web/map/`. `apps/web/map/*` is reached only through
    `import('@/map/MapView')` in `components/MapScreen.tsx`.
-5. `sharp` is imported only in `apps/web/lib/image.ts` (and the preview script). `botid` only in `lib/bot.ts`,
+5. `sharp` is imported only in `apps/web/lib/image.ts` (and the preview script, and tests, which make their pictures
+   with it). `botid` only in `lib/bot.ts`,
    `instrumentation-client.ts` and `next.config.ts`.
 6. Apps never import each other. Packages never import apps.
 
@@ -1335,6 +1336,10 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   reject bytes after the end marker (JPEG `FF D9`, PNG `IEND`, RIFF size) as a polyglot (assumption 24); decode with
   `sharp(buf, { limitInputPixels: 50e6, failOn: 'warning', autoOrient: true })`; full = max 1600 px WebP q75; thumb
   = 320 px WebP; return buffers, width, height, bytes. Any sharp error → `bad_image`.
+  As built: `processPhoto` returns the two buffers and the full photo's width and height; `attachPhoto` stores the
+  full buffer's length as `bytes`. The 4 MB is `PHOTO_MAX_BYTES` in `config.ts`; 1600 px, 320 px, quality 75 and the
+  50 MP budget stay beside the code they tune. `sharp` moves to the web app's dependencies, as it now runs in
+  production, and tests may import it to make their pictures (§1.3).
 - **Accept:** `image.test.ts` (fixtures generated in the test with sharp) covers §5.5 bad images: oversized, wrong
   magic bytes, truncated, a decompression bomb (a 20,000 × 20,000 single-colour PNG), and polyglots (JPEG + appended
   ZIP or HTML) are all rejected; a valid JPEG with EXIF GPS comes out as WebP with no metadata.
