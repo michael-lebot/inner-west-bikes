@@ -5,9 +5,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 const MINUTE = 60_000
 
 /**
- * The live tags (§11.3): fetched on mount, when the tab comes back or regains focus, every 5 minutes while it is
- * visible, and on `refresh()` after the page's own writes. Between fetches, tags drop out as their time runs out.
- * `tags` is undefined until the first fetch succeeds.
+ * The live tags (§11.3), fetched by `refresh()`: first by the page once it has painted, then when the tab comes back
+ * or regains focus, every 5 minutes while it is visible, and after the page's own writes. Between fetches, tags drop
+ * out as their time runs out. `tags` is undefined until the first fetch succeeds.
  */
 export function useLiveTags() {
   const [tags, setTags] = useState<PublicTag[]>()
@@ -39,7 +39,6 @@ export function useLiveTags() {
 
   useEffect(() => {
     const whenVisible = () => document.visibilityState === 'visible' && refresh()
-    refresh()
     document.addEventListener('visibilitychange', whenVisible)
     window.addEventListener('focus', refresh)
     const refreshing = setInterval(whenVisible, REFRESH_MINUTES * MINUTE)

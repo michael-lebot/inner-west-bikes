@@ -750,8 +750,9 @@ them.
 
 #### Task 2.6 — Live tags: `GET /api/tags`, refresh, count and legend (M)
 - **Does:** `GET /api/tags` returns `{ tags: PublicTag[] }` from `listLiveTags()` with `Cache-Control: no-store`.
-  `lib/use-live-tags.ts`: fetch on mount, when the tab becomes visible or regains focus, every 5 minutes while
-  visible, and after the page's own writes (an exported `refresh()`); every minute drop tags with `isExpired`.
+  `lib/use-live-tags.ts`: fetch first after first paint (`MapScreen` calls `refresh()` with the map's import), then
+  when the tab becomes visible or regains focus, every 5 minutes while visible, and after the page's own writes (an
+  exported `refresh()`); every minute drop tags with `isExpired`.
   JSON turns the two timestamps into strings, so `PublicTag` in `schemas.ts` becomes a Zod schema (`z.coerce.date()`
   for `lastConfirmedAt` and `expiresAt`, the type inferred from it) and `use-live-tags.ts` parses the response
   through it before any date logic runs. Measured: classic Zod put 32 KB and even Zod Mini 15.8 KB (Turbopack
