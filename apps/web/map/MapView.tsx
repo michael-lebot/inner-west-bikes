@@ -96,7 +96,8 @@ export function MapView({ tags, now, selected, onPick, onStatus, spot, onPlace, 
     created.on('resize', () => {
       // Not the ref: React has cleared it by the time a resize reports the map leaving the page.
       const next = created.getContainer().clientHeight
-      created.panBy([0, (next - height) / 2], { animate: false })
+      // Not during a camera move, which this would stop: the zoom to street level as tagging starts resizes the sheet.
+      if (!created.isEasing()) created.panBy([0, (next - height) / 2], { animate: false })
       height = next
     })
 

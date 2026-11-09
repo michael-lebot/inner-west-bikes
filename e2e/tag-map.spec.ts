@@ -108,6 +108,26 @@ test.describe('placing the pin', () => {
     expect(await tip(newPin(page))).toEqual(onKingSt)
   })
 
+  test.describe('with motion', () => {
+    test.use({ reducedMotion: 'no-preference' })
+
+    test('zooms from the council to street level, where a tap places the pin', async ({ page, isMobile }) => {
+      await startTagging(page)
+      // Two seeded tags about 210 m apart: a few pixels at the council's zoom, about 100 at street level.
+      const apart = async () => {
+        const [a, b] = [
+          await tip(page.getByRole('button', { name: /Norton St/ })),
+          await tip(page.getByRole('button', { name: /Marion St/ })),
+        ]
+        return Math.hypot(a.x - b.x, a.y - b.y)
+      }
+      await expect.poll(apart).toBeGreaterThan(80)
+      const map = await mapBox(page)
+      await tap(page, isMobile, { x: map.x + map.width / 2, y: map.y + map.height / 2 })
+      await expect(bar(page)).toHaveText(/^Pin on /)
+    })
+  })
+
   test('Cancel ends it, with focus back on "Tag a dumped bike"', async ({ page, isMobile }) => {
     await startTagging(page)
     const map = await mapBox(page)
