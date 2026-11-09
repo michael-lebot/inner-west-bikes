@@ -44,7 +44,6 @@ describe('POST /api/tags', () => {
     expect(await response.json()).toEqual({
       tag: {
         ...tag,
-        operator: 'lime',
         suburb: 'Marrickville',
         street: 'Llewellyn St',
         lastConfirmedAt: expect.any(String),
