@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bikeCount, bikeName, clockTime, duration, isExpired } from './format'
+import { bikeCount, bikeName, clockTime, dateTime, duration, isExpired } from './format'
 
 describe('bikeCount', () => {
   it('uses the singular for one bike', () => {
@@ -43,6 +43,12 @@ describe('clockTime', () => {
 
   it('reads the time in Sydney outside daylight saving (UTC+10)', () => {
     expect(clockTime(new Date('2026-07-07T05:40:00Z'))).toBe('3:40 pm Tuesday')
+  })
+})
+
+describe('dateTime', () => {
+  it('gives the day, date and time in Sydney', () => {
+    expect(dateTime(new Date('2026-11-10T04:40:00Z'))).toBe('Tue, 10 Nov, 3:40 pm')
   })
 })
 

@@ -6,6 +6,14 @@ const HOUR = 60 * MINUTE
 
 const time = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', hour: 'numeric', minute: '2-digit' })
 const weekday = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', weekday: 'long' })
+const full = new Intl.DateTimeFormat('en-AU', {
+  timeZone: 'Australia/Sydney',
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  hour: 'numeric',
+  minute: '2-digit',
+})
 
 /** "Lime e-bike", or "Share e-bike" when the visitor wasn't sure whose it is. */
 export const bikeName = (operator: Operator) =>
@@ -25,6 +33,9 @@ export function duration(from: Date, to: Date) {
 
 /** "3:40 pm Tuesday", in Sydney. */
 export const clockTime = (date: Date) => `${time.format(date)} ${weekday.format(date)}`
+
+/** "Tue, 10 Nov, 3:40 pm", in Sydney. */
+export const dateTime = (date: Date) => full.format(date)
 
 /** The API returns live tags only, so the browser just drops tags whose time has passed since. */
 export const isExpired = (tag: { expiresAt: Date }, now = new Date()) => tag.expiresAt <= now

@@ -546,13 +546,14 @@ budgets confirmed or reset.
 - **Depends:** 1.4.
 
 #### Task 1.7 — Admin app shell (S)
-- **Does:** `apps/admin` Next 16 app on port 3001; `next.config.ts` with static security headers (assumption 23) and
-  `robots` noindex; layout with nav "Reported photos" and "Tags"; `/` redirects to `/tags`; `/tags` shows
+- **Does:** `apps/admin` Next 16 app on port 3001; `next.config.ts` with static security headers (assumption 23),
+  `X-Robots-Tag: noindex` and the `/` → `/tags` redirect; layout with nav "Reported photos" and "Tags"; `/tags` shows
   `listRecentTags()` in a table (status, live or not, suburb, street, operator, problem, created, expires).
   `.env.example`.
 - **Accept:** `pnpm dev` starts both apps; admin `/tags` lists the seeded tags; admin passes axe.
 - **Files:** `apps/admin/{package.json,tsconfig.json,next.config.ts,postcss.config.mjs,.env.example}`,
-  `app/{layout,page,globals.css}`, `app/tags/page.tsx`, `app/reports/page.tsx` (empty-state heading only).
+  `app/{layout.tsx,globals.css}`, `app/tags/page.tsx`, `app/reports/page.tsx` (empty-state heading only),
+  `packages/shared/src/format.ts` (`dateTime`).
 - **Verify:** `pnpm dev`, open `localhost:3001/tags`.
 - **Depends:** 1.3.
 
