@@ -252,7 +252,7 @@ test.describe('the dialogs', () => {
       }
       expect([...visited].sort()).toEqual(['browser', 'dialog'])
       // A click on the dimmed map's zoom button does nothing.
-      const pin = page.locator('.maplibregl-marker:not([data-tag])')
+      const pin = newPin(page)
       const before = await tip(pin)
       const zoomIn = (await page.getByRole('button', { name: 'Zoom in', includeHidden: true }).boundingBox())!
       await page.mouse.click(zoomIn.x + zoomIn.width / 2, zoomIn.y + zoomIn.height / 2)
