@@ -895,8 +895,8 @@ under 100 visits a day there may be too little data to judge these, so they are 
 Hosting-cost tracker and contributions (deferred, §4.5); accounts; free-text notes; automated image moderation;
 placing a tag from a photo's stored location; live location tracking; operator or council integrations and
 notifications; multiple photos per tag; a stats or heat-map page (the data is kept for later); dark mode; an offline
-queue and installable-app (PWA) support; other councils; an abuse dashboard and visitor blocking; a sheet that follows the finger; a
-CDN cache for tag data.
+queue and installable-app (PWA) support; other councils; an abuse dashboard and visitor blocking; a sheet that
+follows the finger; a CDN cache for tag data.
 
 ## Appendix A — Cost tracking and contributions research (parked)
 
