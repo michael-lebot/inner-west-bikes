@@ -1365,7 +1365,10 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   If the insert matches nothing, something changed after the check: the files are deleted, and the check runs again
   to give the reason, or the photo a simultaneous request attached first. The answer is `{ tag }`, as for every tag
   write, now carrying its `photoId`. `write()` lets `multipart/form-data` through, and the photo route answers a body
-  it can't read as a form with 400. `/list` passes `uploadsPaused` in task 5.5, where the form reads it.
+  it can't read as a form with 400. `/list` passes `uploadsPaused` in task 5.5, where the form reads it. Revisited in
+  PR 5's review: `attachPhoto` takes `makePhoto`, the route's `processPhoto` not yet run, and calls it only after the
+  check and `checkLimits` (a read-only look at the counters, in `limits.ts`) allow the photo, so a refused upload
+  costs no decoding and writes no file; the count and the conditional insert stay the authority.
 - **Accept:** `photos.test.ts` covers §5.5 photo attach (refused for another visitor, a tag that isn't live, a second
   photo, and while paused) and §5.5 outside failures for Blob (`vi.spyOn` makes `putFile` throw: tag saved, no row,
   no stray files); §5.5 repeats: a repeated upload returns the first photo with one count.

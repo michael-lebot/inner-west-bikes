@@ -20,7 +20,7 @@ async function tagWithPhoto() {
   const { tag } = await attachPhoto({
     tagId: id,
     visitor,
-    photo: await processPhoto(new File([Buffer.from(jpeg)], 'photo.jpg')),
+    makePhoto: () => processPhoto(new File([Buffer.from(jpeg)], 'photo.jpg')),
   })
   return { id, visitor, photoId: tag!.photoId! }
 }

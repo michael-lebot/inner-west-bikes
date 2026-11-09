@@ -6,7 +6,7 @@ import { AppError } from '@iwb/shared'
 import { deleteFiles, getFile, listFiles, putFile } from './blob'
 import { db } from './client'
 import { Prisma } from './generated/prisma/client'
-import { countAction } from './limits'
+import { checkLimits, countAction } from './limits'
 import { getLiveTag, LIVE } from './tags'
 import type { Visitor } from './visitors'
 
@@ -46,11 +46,22 @@ async function hasPhoto(tagId: string, visitor: Visitor) {
 /**
  * Attach (§4.3): a live tag's one photo, from the visitor who tagged the bike, while uploads aren't paused, with no
  * deadline. The photo's id is its tag's (§5.3): a tag that has its photo already answers as it is now, so a repeat
- * does nothing new. The files go first, under random names, then the row, in one statement that tests every rule
- * again; if anything fails, the files are deleted.
+ * does nothing new. `makePhoto` decodes and re-encodes the upload, the costly part, so it runs only once every rule
+ * and the rate limits allow the photo. The files go next, under random names, then the row, in one statement that
+ * tests every rule again; if anything fails, the files are deleted.
  */
-export async function attachPhoto({ tagId, visitor, photo }: { tagId: string; visitor: Visitor; photo: NewPhoto }) {
+export async function attachPhoto({
+  tagId,
+  visitor,
+  makePhoto,
+}: {
+  tagId: string
+  visitor: Visitor
+  makePhoto: () => Promise<NewPhoto>
+}) {
   if (await hasPhoto(tagId, visitor)) return { tag: await getLiveTag(tagId) }
+  await checkLimits('photo', visitor)
+  const photo = await makePhoto()
   const [full, thumb] = [`${randomUUID()}.webp`, `${randomUUID()}.webp`]
   try {
     await Promise.all([putFile(full, photo.full), putFile(thumb, photo.thumb)])

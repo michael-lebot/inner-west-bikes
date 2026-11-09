@@ -30,7 +30,14 @@ async function insertTag(id: string, status = 'active', secondsLeft = 3600) {
     VALUES (${id}::uuid, 'created', ${id}::uuid, ${alice.visitorHash}, ${alice.ipHash})`
 }
 
-const attach = (visitor = alice, tagId = TAG) => attachPhoto({ tagId, visitor, photo: PHOTO })
+// What the web app's processPhoto would make, watched: an attach that is refused never asks for it.
+const makePhoto = vi.fn(async () => PHOTO)
+const attach = (visitor = alice, tagId = TAG) => attachPhoto({ tagId, visitor, makePhoto })
+/** Neither the costly image work nor the store was asked for anything. */
+const expectNoWork = () => {
+  expect(makePhoto).not.toHaveBeenCalled()
+  expect(putFile).not.toHaveBeenCalled()
+}
 const photos = () =>
   db.$queryRaw<{ id: string; blobPath: string; thumbPath: string; width: number; height: number; bytes: number }[]>`
     SELECT id::text, blob_path AS "blobPath", thumb_path AS "thumbPath", width, height, bytes FROM photos`
@@ -43,6 +50,8 @@ beforeEach(async () => {
   await db.$executeRaw`UPDATE site_state SET uploads_paused_at = NULL, uploads_paused_reason = NULL`
   await rm(env.LOCAL_BLOB_DIR, { recursive: true, force: true })
   await insertTag(TAG)
+  makePhoto.mockClear()
+  vi.mocked(putFile).mockClear()
 })
 
 describe('attachPhoto', () => {
@@ -56,30 +65,36 @@ describe('attachPhoto', () => {
     expect(await counts()).toEqual([1, 1])
   })
 
-  it('§5.5 photo attach: refused for another visitor than the one who tagged the bike', async () => {
+  it('§5.5 photo attach: refused for another visitor than the one who tagged the bike, before any image work', async () => {
     await expect(attach(bob)).rejects.toMatchObject({ code: 'not_allowed' })
+    expectNoWork()
     expect(await photos()).toEqual([])
-    expect(await files()).toEqual([])
   })
 
   it.each([
     ['removed', 'removed', 3600],
     ['expired', 'active', -1],
-  ])('§5.5 photo attach: refused for a tag that is not live: %s', async (_, status, secondsLeft) => {
-    const id = '5eed0000-0000-4000-8000-000000000002'
-    await insertTag(id, status, secondsLeft)
-    await expect(attach(alice, id)).rejects.toMatchObject({ code: 'tag_gone' })
-    await expect(attach(alice, '00000000-0000-4000-8000-000000000000')).rejects.toMatchObject({ code: 'tag_gone' })
-    expect(await photos()).toEqual([])
-    expect(await files()).toEqual([])
-  })
+  ])(
+    '§5.5 photo attach: refused for a tag that is not live, before any image work: %s',
+    async (_, status, secondsLeft) => {
+      const id = '5eed0000-0000-4000-8000-000000000002'
+      await insertTag(id, status, secondsLeft)
+      await expect(attach(alice, id)).rejects.toMatchObject({ code: 'tag_gone' })
+      await expect(attach(alice, '00000000-0000-4000-8000-000000000000')).rejects.toMatchObject({ code: 'tag_gone' })
+      expectNoWork()
+      expect(await photos()).toEqual([])
+    },
+  )
 
-  it('§5.5 photo attach: refused for a second photo, so the tag keeps its first and no file is written', async () => {
+  it('§5.5 photo attach: refused for a second photo, so the tag keeps its first, with no image work', async () => {
     await attach()
     const [first] = await photos()
     const before = await files()
-    const { tag } = await attachPhoto({ tagId: TAG, visitor: alice, photo: { ...PHOTO, full: Buffer.from('other') } })
+    makePhoto.mockClear()
+    vi.mocked(putFile).mockClear()
+    const { tag } = await attach()
     expect(tag).toMatchObject({ photoId: first!.id })
+    expectNoWork()
     expect(await photos()).toEqual([first])
     expect(await files()).toEqual(before)
   })
@@ -89,8 +104,8 @@ describe('attachPhoto', () => {
     await db.$executeRaw`UPDATE site_state SET uploads_paused_at = now(), uploads_paused_reason = 'by hand'`
     expect(await uploadsPaused()).toBe(true)
     await expect(attach()).rejects.toMatchObject({ code: 'uploads_paused' })
+    expectNoWork()
     expect(await photos()).toEqual([])
-    expect(await files()).toEqual([])
   })
 
   it('§5.5 repeats: a repeated upload returns the photo already attached, with one count', async () => {
@@ -120,14 +135,40 @@ describe('attachPhoto', () => {
     expect(await counts()).toEqual([])
   })
 
-  it('§5.5 photo attach: a failed attach deletes the files it wrote, here at the daily limit', async () => {
+  describe('at the daily limit of 10', () => {
     const ids = Array.from({ length: 11 }, (_, i) => `5eed0000-0000-4000-8000-1000000000${String(i).padStart(2, '0')}`)
-    for (const id of ids) await insertTag(id)
-    for (const id of ids.slice(0, 10)) await attach(alice, id)
-    const before = await files()
-    await expect(attach(alice, ids[10])).rejects.toMatchObject({ code: 'rate_limited' })
-    expect(await files()).toEqual(before)
-    expect(await photos()).toHaveLength(10)
+    beforeEach(async () => {
+      for (const id of ids) await insertTag(id)
+      for (const id of ids.slice(0, 9)) await attach(alice, id)
+    })
+
+    it('refuses the 11th photo before any image work', async () => {
+      await attach(alice, ids[9])
+      makePhoto.mockClear()
+      vi.mocked(putFile).mockClear()
+      await expect(attach(alice, ids[10])).rejects.toMatchObject({ code: 'rate_limited' })
+      expectNoWork()
+      expect(await photos()).toHaveLength(10)
+    })
+
+    it('§5.5 photo attach: of two at once past the first look, one is refused in its transaction, deleting its files', async () => {
+      // Each makes its photo only once both have passed the look at the limit.
+      makePhoto.mockClear()
+      let bothPassed = () => {}
+      const passed = new Promise<void>((resolve) => (bothPassed = resolve))
+      const afterBoth = async () => {
+        if (makePhoto.mock.calls.length === 2) bothPassed()
+        await passed
+        return PHOTO
+      }
+      makePhoto.mockImplementationOnce(afterBoth).mockImplementationOnce(afterBoth)
+      const results = await Promise.allSettled([attach(alice, ids[9]), attach(alice, ids[10])])
+      expect(results.map((result) => result.status).toSorted()).toEqual(['fulfilled', 'rejected'])
+      expect(results.find((result) => result.status === 'rejected')).toMatchObject({ reason: { code: 'rate_limited' } })
+      const kept = await photos()
+      expect(kept).toHaveLength(10)
+      expect(await files()).toEqual(kept.flatMap((photo) => [photo.blobPath, photo.thumbPath]).toSorted())
+    })
   })
 })
 

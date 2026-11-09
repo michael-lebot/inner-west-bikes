@@ -10,5 +10,5 @@ export const POST = write(async ({ request, params, visitor }) => {
   // shortcut: no limit of its own before the body is read, parse it as a stream if the app moves off Vercel.
   const photo = (await request.formData().catch(() => null))?.get('photo')
   if (!(photo instanceof File)) throw new AppError('invalid')
-  return attachPhoto({ tagId: id, visitor, photo: await processPhoto(photo) })
+  return attachPhoto({ tagId: id, visitor, makePhoto: () => processPhoto(photo) })
 })
