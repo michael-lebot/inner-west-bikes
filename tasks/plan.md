@@ -1007,6 +1007,13 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   West. Tap inside the gold line." and no pin; a tap below zoom 16 follows assumption 20. Keyboard crosshair while
   the map has focus: arrows move the pin 10 m, Shift+arrows 50 m, Enter = Use this spot, Esc = Cancel (MapLibre's
   own keyboard panning is disabled during placement). The readback is announced.
+  As built: `PLACEMENT_ZOOM` is 15, §12's zoom 16 in MapLibre's 512 px tiles (about 2 m per pixel). Focus moves to the
+  bar's heading. A refused spot (outside, by tap or arrow) leaves the last accepted pin where it was. A tap on a live
+  tag's pin while tagging reaches the map too, so it places the new pin there rather than opening a card. The
+  crosshair and a one-line key hint show on the map only while it has keyboard focus (`:has(canvas:focus-visible)`),
+  and the canvas's name says what the keys do; Enter with no pin yet puts it at the crosshair. The new pin is the
+  "Not sure" pin and lets taps through. In the browse sheet "Tag a dumped bike" shares a row with `Map | List` where
+  both fit, so the map keeps its height on a phone.
 - **Accept:** the pin lands exactly where tapped; keyboard-only placement works; the whole map stays usable.
 - **Files:** `components/{Placement,MapScreen}.tsx`, `map/MapView.tsx`.
 - **Verify:** `pnpm e2e e2e/tag-map.spec.ts`.

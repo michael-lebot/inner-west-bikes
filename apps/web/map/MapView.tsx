@@ -1,10 +1,10 @@
 'use client'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { byPlace, CROWDED_PIN_PX, pinLabel, type PublicTag } from '@iwb/shared'
+import { byPlace, CROWDED_PIN_PX, pinLabel, PLACEMENT_ZOOM, type PublicTag } from '@iwb/shared'
 import council from '@iwb/shared/data/council.json'
-import maplibregl, { type LngLatBoundsLike } from 'maplibre-gl'
+import maplibregl, { type LngLatBoundsLike, type MapMouseEvent } from 'maplibre-gl'
 import { Protocol } from 'pmtiles'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { PinIcon } from '@/components/PinIcon'
 import { HOVER_RING } from '@/components/TagRow'
@@ -20,6 +20,17 @@ const MAX_PINS = 200
 const PIN_PX = 44
 /** The picked pin: outlined like keyboard focus, and bobbing twice (§10.5, §13). */
 const SELECTED = 'outline-3 outline-offset-2 outline-focus shadow-[0_0_0_2px_white] motion-safe:animate-bob'
+/** The keyboard crosshair's steps in metres, and with Shift (§10.3). */
+const STEP_M = 10
+const SHIFT_STEP_M = 50
+const ARROWS: Record<string, [number, number]> = {
+  ArrowUp: [0, 1],
+  ArrowDown: [0, -1],
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+}
+/** Only while the map has keyboard focus. */
+const ON_KEYBOARD_FOCUS = 'hidden group-has-[canvas:focus-visible]:block'
 
 /** Whether the whole button of a pin at this point is inside the map. */
 function isInView(map: maplibregl.Map, lng: number, lat: number) {
@@ -36,10 +47,16 @@ type Props = {
   /** A pin was picked: just that tag, or by tap where pins overlap, every tag within 44 px of it. */
   onPick: (tags: PublicTag[], pin: HTMLElement) => void
   onStatus: (status: 'ready' | 'failed') => void
+  /** The new tag's pin, with its tip on this spot. */
+  spot?: { lat: number; lng: number }
+  /** Placing (§10.3): a tap, or the crosshair's arrow keys, put the pin here. */
+  onPlace?: (lat: number, lng: number) => void
+  /** Enter on the map while placing. */
+  onUse?: () => void
 }
 
 /** The one map (§11.3). MapScreen loads this module with import() after first paint, so no other page carries it. */
-export function MapView({ tags, now, selected, onPick, onStatus }: Props) {
+export function MapView({ tags, now, selected, onPick, onStatus, spot, onPlace, onUse }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const [map, setMap] = useState<maplibregl.Map>()
   const [drawn, setDrawn] = useState(false)
@@ -98,10 +115,11 @@ export function MapView({ tags, now, selected, onPick, onStatus }: Props) {
     return () => created.remove()
   }, [onStatus])
 
-  // The picked pin comes into view: from a row in the panel, or whenever its card has made the map shorter. Only when
-  // the pick changes or the map resizes, so the map doesn't jump back to it each time the tags refresh.
+  // The new tag's pin or the picked one comes into view: from a row in the panel, after an arrow key, or whenever the
+  // sheet has made the map shorter. Only when it moves or the map resizes, so the map doesn't jump back to it each time
+  // the tags refresh.
   const picked = tags?.find(({ id }) => id === selected)
-  const [lng, lat] = picked ? [picked.lng, picked.lat] : []
+  const [lng, lat] = spot ? [spot.lng, spot.lat] : picked ? [picked.lng, picked.lat] : []
   useEffect(() => {
     if (!map || lng === undefined || lat === undefined) return
     const reveal = () => !isInView(map, lng, lat) && map.panTo([lng, lat])
@@ -109,6 +127,49 @@ export function MapView({ tags, now, selected, onPick, onStatus }: Props) {
     map.on('resize', reveal)
     return () => void map.off('resize', reveal)
   }, [map, selected, lng, lat])
+
+  // Placing (§10.3, §12): taps and the crosshair place the pin, and MapLibre's own arrow keys stand aside.
+  const placing = !!onPlace
+  const place = useEffectEvent((lat: number, lng: number) => onPlace?.(lat, lng))
+  const key = useEffectEvent((event: KeyboardEvent) => {
+    if (!map) return
+    if (event.key === 'Enter') {
+      if (spot) onUse?.()
+      else place(map.getCenter().lat, map.getCenter().lng)
+      return
+    }
+    const arrow = ARROWS[event.key]
+    if (!arrow) return
+    event.preventDefault()
+    // The first arrow moves the pin from the crosshair at the middle of the map.
+    const from = spot ? new maplibregl.LngLat(spot.lng, spot.lat) : map.getCenter()
+    const box = maplibregl.LngLatBounds.fromLngLat(from, event.shiftKey ? SHIFT_STEP_M : STEP_M)
+    place(from.lat + arrow[1] * (box.getNorth() - from.lat), from.lng + arrow[0] * (box.getEast() - from.lng))
+  })
+  useEffect(() => {
+    if (!map || !placing) return
+    if (map.getZoom() < PLACEMENT_ZOOM) map.easeTo({ zoom: PLACEMENT_ZOOM })
+    // Zoomed out past street level, a tap zooms in there and waits for a second tap (assumption 20).
+    const click = ({ lngLat }: MapMouseEvent) =>
+      map.getZoom() < PLACEMENT_ZOOM
+        ? map.easeTo({ center: lngLat, zoom: PLACEMENT_ZOOM })
+        : place(lngLat.lat, lngLat.lng)
+    const canvas = map.getCanvas()
+    const name = canvas.getAttribute('aria-label') ?? ''
+    canvas.setAttribute(
+      'aria-label',
+      'Map: arrow keys move the pin, Shift and an arrow moves it further, Enter uses it',
+    )
+    map.keyboard.disable()
+    map.on('click', click)
+    canvas.addEventListener('keydown', key)
+    return () => {
+      canvas.setAttribute('aria-label', name)
+      map.keyboard.enable()
+      map.off('click', click)
+      canvas.removeEventListener('keydown', key)
+    }
+  }, [map, placing])
 
   // Map ready (§11.1): the first tiles drawn, and the pins on them.
   useEffect(() => {
@@ -118,13 +179,53 @@ export function MapView({ tags, now, selected, onPick, onStatus }: Props) {
   }, [drawn, tags])
 
   return (
-    <div className="absolute inset-0">
+    <div className="group absolute inset-0">
       {/* overflow: clip, not MapLibre's hidden, so focusing a pin off the edge can't scroll the map out of place. */}
       <div ref={container} className="h-full w-full" style={{ overflow: 'clip' }} />
       {map && tags && <Pins map={map} tags={tags} now={now} selected={selected} onPick={onPick} />}
+      {map && spot && <SpotPin map={map} spot={spot} />}
       {map && <MapControls map={map} />}
+      {placing && (
+        <>
+          {/* The keyboard crosshair: where the first arrow key, or Enter, puts the pin. */}
+          {!spot && (
+            <svg
+              width={32}
+              height={32}
+              viewBox="0 0 32 32"
+              aria-hidden="true"
+              className={`pointer-events-none absolute top-1/2 left-1/2 -translate-1/2 ${ON_KEYBOARD_FOCUS}`}
+            >
+              <path d="M16 2v28M2 16h28" stroke="white" strokeWidth={6} />
+              <path d="M16 2v28M2 16h28" stroke="currentColor" strokeWidth={2} />
+            </svg>
+          )}
+          <p
+            className={`pointer-events-none absolute bottom-2 left-2 max-w-[calc(100%-4rem-44px)] rounded-[10px] bg-white px-3 py-2 text-sm ${ON_KEYBOARD_FOCUS}`}
+          >
+            Arrow keys move the pin 10 m, with Shift 50 m. Enter uses the spot; Esc cancels.
+          </p>
+        </>
+      )}
     </div>
   )
+}
+
+/** The new tag's pin. Taps go through it to the map, so tapping beside it moves it. */
+function SpotPin({ map, spot }: { map: maplibregl.Map; spot: { lat: number; lng: number } }) {
+  const [element] = useState(() => {
+    const div = document.createElement('div')
+    // A flex box, so the pin's bottom edge is the box's: the tip sits on the spot.
+    div.className = 'pointer-events-none flex'
+    return div
+  })
+
+  useEffect(() => {
+    const marker = new maplibregl.Marker({ element, anchor: 'bottom' }).setLngLat([spot.lng, spot.lat]).addTo(map)
+    return () => void marker.remove()
+  }, [map, element, spot.lng, spot.lat])
+
+  return createPortal(<PinIcon operator="not_sure" />, element)
 }
 
 function Pins({

@@ -2,14 +2,19 @@
 import { bikeCount, bikes, GREYS, type PublicTag, TAG_LIFETIME_HOURS } from '@iwb/shared'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { useLiveTags } from '@/lib/use-live-tags'
+import { announce } from './Announcer'
+import { PRIMARY } from './buttons'
 import { CrowdChooser } from './CrowdChooser'
 import { Legend } from './Legend'
+import { OUTSIDE, Placement, pinOn, type Spot } from './Placement'
 import { TagCard } from './TagCard'
 import { TagList } from './TagList'
 import { ViewToggle } from './ViewToggle'
 
 type MapModule = typeof import('@/map/MapView')
+type Geo = typeof import('@iwb/shared/geo')
 type Status = 'loading' | 'ready' | 'failed'
 
 /** The map gives up if it isn't ready this long after it starts loading (§11.2). */
@@ -28,6 +33,12 @@ export function MapScreen() {
   // The pin that opened the chooser, which gets focus back when it closes.
   const opener = useRef<HTMLElement>(null)
   const count = useRef<HTMLHeadingElement>(null)
+  // Tagging a bike (§3): placing the pin, then describing the bike.
+  const [tagging, setTagging] = useState<'place' | 'describe'>()
+  const [spot, setSpot] = useState<Spot>()
+  const [outside, setOutside] = useState(false)
+  const tagButton = useRef<HTMLButtonElement>(null)
+  const geo = useRef<Promise<Geo>>(null)
 
   // The card and the chooser show the tags as they are now. A refresh that takes away the open tag, or every tag in
   // the chooser, closes it.
@@ -54,6 +65,36 @@ export function MapScreen() {
     opener.current?.focus()
   }
 
+  // where() and its 80 KB of streets load when tagging starts (plan §1.6); a failed load is tried again next time.
+  const loadGeo = () =>
+    (geo.current ??= import('@iwb/shared/geo').catch((error) => {
+      geo.current = null
+      throw error
+    }))
+
+  const startTagging = () => {
+    void loadGeo()
+    setTagging('place')
+  }
+
+  /** A tap or an arrow key: the pin moves there if it is inside the council or its 20 m strip (§4.1). */
+  const place = async (lat: number, lng: number) => {
+    const { inside, street, suburb } = (await loadGeo()).where(lat, lng)
+    setOutside(!inside)
+    if (inside) setSpot({ lat, lng, street, suburb })
+    announce(inside ? pinOn({ lat, lng, street, suburb }) : OUTSIDE)
+  }
+
+  const endTagging = () => {
+    // Rendered now, so the button that started it is there to take the focus back.
+    flushSync(() => {
+      setTagging(undefined)
+      setSpot(undefined)
+      setOutside(false)
+    })
+    tagButton.current?.focus()
+  }
+
   const closeCard = () => {
     setSelected(undefined)
     // Back to the card's pin (§10.4), or to the sheet when there is no map.
@@ -62,8 +103,8 @@ export function MapScreen() {
     else document.getElementById('sheet')?.focus()
   }
 
-  // Esc closes the chooser or the card wherever focus is, since neither is a dialog (§10.4).
-  const close = crowded?.length ? closeChooser : card && closeCard
+  // Esc closes the chooser or the card, or cancels placing, wherever focus is: none of them is a dialog (§10.4).
+  const close = crowded?.length ? closeChooser : card ? closeCard : tagging === 'place' ? endTagging : undefined
   useEffect(() => {
     if (!close) return
     const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && close()
@@ -114,11 +155,16 @@ export function MapScreen() {
             now={now}
             selected={selected}
             onPick={(picked, pin) => {
+              // While tagging, a tap on a pin places the new one there instead.
+              if (tagging) return
               opener.current = pin
               if (picked.length > 1) setCrowd(picked.map((tag) => tag.id))
               else if (picked[0]) select(picked[0])
             }}
             onStatus={setStatus}
+            spot={spot}
+            onPlace={tagging === 'place' ? place : undefined}
+            onUse={() => setTagging('describe')}
           />
         )}
         {status !== 'ready' && (
@@ -157,6 +203,8 @@ export function MapScreen() {
           <CrowdChooser tags={crowded} now={now} onSelect={select} onClose={closeChooser} />
         ) : card ? (
           <TagCard key={card.id} tag={card} now={now} onClose={closeCard} />
+        ) : tagging ? (
+          <Placement spot={spot} outside={outside} onUse={() => setTagging('describe')} onCancel={endTagging} />
         ) : (
           <>
             {/* Each line keeps its height while the tags load, so nothing moves when they arrive. */}
@@ -167,9 +215,15 @@ export function MapScreen() {
               <p className="text-sm text-muted">Tags disappear {TAG_LIFETIME_HOURS} hours after the last sighting.</p>
             </div>
             <Legend tags={tags} />
-            {/* The panel has room for the list itself, so it needs no List toggle (§13). */}
-            <div className="wide:hidden">
-              <ViewToggle current="/" />
+            {/* One row where both fit, so the map keeps its height on a phone; they wrap at 320 px or large text. */}
+            <div className="flex flex-wrap gap-2">
+              <button ref={tagButton} type="button" className={`${PRIMARY} grow-2 basis-44`} onClick={startTagging}>
+                Tag a dumped bike
+              </button>
+              {/* The panel has room for the list itself, so it needs no List toggle (§13). */}
+              <div className="grow basis-36 wide:hidden">
+                <ViewToggle current="/" />
+              </div>
             </div>
             {tags && (
               <div className="hidden wide:block">

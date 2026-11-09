@@ -84,8 +84,11 @@ export const BOUNDARY_BUFFER_METERS = 20
 export const LOCATION_ACCURACY_METERS = 50
 /** Tapping a pin this close to another opens the "N bikes here" chooser (§4.1). */
 export const CROWDED_PIN_PX = 44
-/** Placing a tag needs this zoom or closer (§12). */
-export const PLACEMENT_ZOOM = 16
+/**
+ * Placing a tag needs this zoom or closer (§12). It is §12's "zoom 16, about 2 m per screen pixel": §12 counts zoom
+ * in 256 px tiles, and MapLibre counts it in 512 px tiles, where 2 m per pixel at Sydney's latitude is zoom 15.
+ */
+export const PLACEMENT_ZOOM = 15
 /** A visible page refreshes its tags this often (§11.3). */
 export const REFRESH_MINUTES = 5
 /** Reports emailed one by one each day, before the hourly digest takes over (§4.6). */

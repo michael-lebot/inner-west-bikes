@@ -35,7 +35,7 @@ acceptance criteria pass and `pnpm verify` is green.
 - [x] 3.2 Tag lifecycle in `tags.ts`: create, still there, removed, undo, take down (expiry, two-at-once, repeat tests)
 - [x] 3.3 Write wrapper, BotID seam and the three tag write routes
 - [x] 3.4 Browser `send()` with retries, request IDs and announcements
-- [ ] 3.5 Placement step: tap, readback, outside message, keyboard crosshair
+- [x] 3.5 Placement step: tap, readback, outside message, keyboard crosshair
 - [ ] 3.6 Native dialog, "Is it one of these?", tag form with Change location
 - [ ] 3.7 Still there and Removed on the card, `/list` and `/tag/[id]`
 - [ ] 3.8 Tagging E2E (touch and keyboard), axe on dialogs, interaction perf
