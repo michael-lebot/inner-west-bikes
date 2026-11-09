@@ -28,6 +28,13 @@ test('has 44 px nav links with room for the whole focus ring', async ({ page }) 
   }
 })
 
+test('scrolls the tags table, not the page, on a 320 px screen, and passes axe there', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 })
+  await page.goto('/tags')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
+  await expectNoAxeViolations(page)
+})
+
 test('is never indexed and sends its security headers', async ({ request }) => {
   const headers = (await request.get('/tags')).headers()
   expect(headers['x-robots-tag']).toBe('noindex, nofollow')
