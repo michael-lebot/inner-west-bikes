@@ -92,7 +92,13 @@ export function MapScreen() {
 
   return (
     <>
-      <section aria-label="Map" aria-describedby="map-summary" className="relative min-h-0 flex-1 overflow-clip">
+      {/* As tall as its controls at least: four 44 px buttons, three stacked and the "i" below, and the five 0.5rem
+          spaces around them. The sheet scrolls for the rest. */}
+      <section
+        aria-label="Map"
+        aria-describedby="map-summary"
+        className="relative min-h-[calc(176px+2.5rem)] flex-1 overflow-clip"
+      >
         <a
           href="#sheet"
           className="absolute top-2 left-2 z-10 rounded-[10px] bg-white px-3 py-2.5 font-bold not-focus:sr-only"

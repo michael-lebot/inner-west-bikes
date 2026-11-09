@@ -756,6 +756,12 @@ them.
   `maxBounds`, so its grey covers everything the camera can reach past them, and the water-blue background never
   shows. `minZoom: 11` is gone: a phone held sideways needs about 10.8 to fit the council, and `maxBounds` already
   stops the zoom out. The first view is unchanged: 5 tile requests, 351,634 B.
+- **Revisited in PR 2's review (text size):** with a 200% root font on a phone the map was 82 to 174 px tall, the
+  "i" button covered + and −, and the sheet covered Move map. The map now has a minimum height of four 44 px
+  buttons and the five 0.5rem spaces around them (`calc(176px + 2.5rem)`), and the sheet scrolls for the rest. The
+  map's buttons stay 44 px at any text size, like the 24 px icons in them: sized in rem they grew to 88 px at 200%,
+  and with the header at 184 px the iPhone 13's 664 px left no room for the sheet's count line. Measured at 200%
+  on the iPhone 13: header 184 px, map 256 px, sheet 224 px with the count line in full.
 - **Accept:** LCP is the preview image; swapping in the map causes no layout shift; with tiles blocked the failure
   message appears and the List link works; a pin that starts off screen can be reached with Move map and zoom taps
   only.

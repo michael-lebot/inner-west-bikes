@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { ABOUT_LINKS } from '@/components/Footer'
 
-const BUTTON = 'flex size-11 items-center justify-center rounded-[10px] border border-edge bg-white text-ink'
+// 44 px at any text size, like the icons in them, so a short map at a large text size still has room for them all.
+const BUTTON = 'flex size-[44px] items-center justify-center rounded-[10px] border border-edge bg-white text-ink'
 
 /** A 24 × 24 line icon. */
 const Icon = ({ d }: { d: string }) => (

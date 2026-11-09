@@ -162,6 +162,39 @@ for (const viewport of [
   })
 }
 
+test('keeps every map control in sight and the count above the fold at twice the text size', async ({
+  page,
+  browserName,
+}) => {
+  test.skip(browserName !== 'webkit', 'the iPhone project')
+  await page.goto('/')
+  await expect(page.locator('[data-map-ready]')).toBeAttached()
+  // The largest text a phone's settings allow, which scales every rem.
+  await page.addStyleTag({ content: ':root { font-size: 200% }' })
+
+  const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
+  const boxes = await Promise.all(
+    ['Zoom in', 'Zoom out', 'Move map', 'About this map'].map(
+      async (name) => (await page.getByRole('button', { name, exact: true }).boundingBox())!,
+    ),
+  )
+  for (const [i, box] of boxes.entries()) {
+    expect(box.x >= map.x && box.x + box.width <= map.x + map.width, `control ${i} across`).toBe(true)
+    expect(box.y >= map.y && box.y + box.height <= map.y + map.height, `control ${i} down`).toBe(true)
+    for (const other of boxes.slice(i + 1)) {
+      const apart =
+        box.x + box.width <= other.x ||
+        other.x + other.width <= box.x ||
+        box.y + box.height <= other.y ||
+        other.y + other.height <= box.y
+      expect(apart, `control ${i} overlaps another`).toBe(true)
+    }
+  }
+  const sheet = (await page.locator('#sheet').boundingBox())!
+  const count = (await page.getByRole('heading', { name: '14 bikes in the graveyard' }).boundingBox())!
+  expect(count.y + count.height).toBeLessThanOrEqual(sheet.y + sheet.height)
+})
+
 test.describe('pins', () => {
   const pins = (page: Page) =>
     page.getByRole('region', { name: 'Map', exact: true }).getByRole('button', { name: /e-bike/ })
