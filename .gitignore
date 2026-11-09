@@ -2,7 +2,6 @@ node_modules/
 .turbo/
 .next/
 next-env.d.ts
-*.tsbuildinfo
 .env
 .DS_Store
 packages/db/src/generated/
