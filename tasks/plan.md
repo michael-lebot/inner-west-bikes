@@ -308,7 +308,7 @@ must equal the request host), run, then `303` redirect back with a `?notice=` co
 
 | Concern | Local and CI | Production (Michael's runbook, task 6.7) |
 |---|---|---|
-| Postgres | `docker compose up` → `postgres:18-alpine` on `localhost:54318` (volume at `/var/lib/postgresql`, the PG 18 layout). CI uses a service container | Neon via Vercel Marketplace, `DATABASE_URL` / `DATABASE_URL_UNPOOLED` |
+| Postgres | `docker compose up` → `postgres:18-alpine` on `localhost:54318` (volume at `/var/lib/postgresql`, the PG 18 layout). CI runs the same `pnpm db:up` | Neon via Vercel Marketplace, `DATABASE_URL` / `DATABASE_URL_UNPOOLED` |
 | Map tiles | `pnpm tiles` runs `apps/web/scripts/fetch-tiles.sh`: `pmtiles extract` of a **pinned** Protomaps daily build into `apps/web/public/tiles/inner-west.pmtiles` (git-ignored). `next start` serves it with range requests. CI caches the file keyed on the script's hash | Uploaded to the public Blob store under a versioned name; `NEXT_PUBLIC_TILES_URL` points at it |
 | Photos (Blob) | `blob.ts`: no `BLOB_READ_WRITE_TOKEN` → files under `<repo>/.data/blob/` (git-ignored) | Private Vercel Blob store |
 | Email (Resend) | `email.ts`: no `RESEND_API_KEY` → `console.info('[email]', subject)` | Resend API over `fetch` |
@@ -430,8 +430,9 @@ budgets confirmed or reset.
 
 #### Task 1.1 — Workspace and tooling (M)
 - **Does:** root `package.json` (`packageManager: pnpm@9.15.9`, `engines.node: ">=24"`, the root scripts in §1.7),
-  `pnpm-workspace.yaml`, `turbo.json` (tasks `build`, `typecheck`, `test`, `dev`; declare `NEXT_PUBLIC_*` in `env`
-  and `DATABASE_URL`, `TEST_DATABASE_URL`, `CI` in `passThroughEnv`, because Turbo 2 hides undeclared variables;
+  `pnpm-workspace.yaml`, `turbo.json` (tasks `build`, `typecheck`, `test`, `dev`; declare `DATABASE_URL`,
+  `TEST_DATABASE_URL` and `CI` in `globalPassThroughEnv`, because Turbo 2 hides undeclared variables, while it
+  tracks `NEXT_PUBLIC_*` for Next apps by itself;
   `build`, `typecheck` and `test` depend on the same task in their workspace dependencies (`^`), because the packages
   ship source with no build, and without that edge a package change would not invalidate the apps' cached results;
   `tsconfig.base.json` is a global dependency),
@@ -586,8 +587,8 @@ budgets confirmed or reset.
 
 #### Task 1.9 — CI workflow and M0 measurement (S)
 - **Does:** `.github/workflows/ci.yml` on `pull_request` (any base, so stacked PRs run) and `push` to `main`, with a
-  concurrency group. Job `check`: Postgres 18 service, `pnpm install --frozen-lockfile`, `pnpm lint`,
-  `pnpm typecheck`, `pnpm test`. Job `e2e`: Postgres 18 service, Playwright browsers cached by version and installed
+  concurrency group. Job `check`: `pnpm install --frozen-lockfile`, `pnpm db:up`, `pnpm lint`,
+  `pnpm typecheck`, `pnpm test`. Job `e2e`: `pnpm db:up`, Playwright browsers cached by version and installed
   with `--with-deps chromium webkit`, `pnpm build`, `pnpm e2e`, `pnpm lhci` (after the E2E run, against the same
   migrated and seeded `iwb_e2e` database), upload the Playwright report and
   `.lighthouseci/` on failure. Then measure the bare build (LCP, CLS, TBT, pre-map JS, fonts) and either confirm the
