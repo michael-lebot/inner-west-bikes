@@ -26,7 +26,8 @@ export function write(run: (context: WriteContext) => Promise<object>) {
 function identify(request: NextRequest) {
   const cookie = request.cookies.get(VISITOR_COOKIE)?.value
   if (!cookie) throw new Error('No visitor cookie, which proxy.ts sets on every request')
-  // Vercel sets it to the client's address, overwriting any the client sent; so does `next start`.
+  // Vercel sets it to the client's address, overwriting any the client sent. `next start` keeps a client's own, so
+  // off Vercel the per-IP limits trust the client, which only the tests and local runs meet.
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? ''
   return visitorFrom(cookie, ip)
 }
