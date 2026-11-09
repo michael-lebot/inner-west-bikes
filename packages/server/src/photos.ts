@@ -139,7 +139,7 @@ export async function sweepOrphanFiles() {
                             ${files.map((file) => file.uploadedAt)}::timestamptz[]) AS file (path, uploaded_at)
     WHERE NOT EXISTS (SELECT 1 FROM photos WHERE status <> 'deleted' AND path IN (blob_path, thumb_path))
       AND (uploaded_at < now() - interval '1 hour'
-           OR EXISTS (SELECT 1 FROM photos WHERE path IN (blob_path, thumb_path)))`
+           OR EXISTS (SELECT 1 FROM photos WHERE status = 'deleted' AND path IN (blob_path, thumb_path)))`
   await deleteFiles(orphans.map((orphan) => orphan.path))
   return orphans.length
 }
