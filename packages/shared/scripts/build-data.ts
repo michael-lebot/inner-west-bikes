@@ -253,8 +253,10 @@ for (const point of addresses) {
   const streets = numbers.get(suburb) ?? numbers.set(suburb, new Map()).get(suburb)!
   const byNumber = streets.get(street) ?? streets.set(street, new Map()).get(street)!
   const at = !byNumber.has(number) && onGrid(point.geometry.coordinates)
-  if (at) byNumber.set(number, at)
-  entry(street, suburb)
+  if (at) {
+    byNumber.set(number, at)
+    entry(street, suburb).numbered = true
+  }
 }
 
 /**

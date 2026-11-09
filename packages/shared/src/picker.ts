@@ -11,8 +11,11 @@ export type Place = [name: string, lat: number, lng: number]
  * 0, 0 for the first, so it is a place only once `loadHouseNumbers` has added the steps up.
  */
 export type EncodedPlace = [number: string, dLat: number, dLng: number]
-/** A street in one suburb, and its corners in order along it. */
-export type Street = { street: string; suburb: string; corners: Place[] }
+/**
+ * A street in one suburb, its corners in order along it, and whether its suburb's file has house numbers for it: a
+ * quarter of the streets, lanes mostly, have none, only corners.
+ */
+export type Street = { street: string; suburb: string; corners: Place[]; numbered?: true }
 
 const STREETS = picker as Street[]
 

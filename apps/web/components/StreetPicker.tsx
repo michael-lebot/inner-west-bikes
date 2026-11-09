@@ -81,7 +81,7 @@ export function StreetPicker({ onUse, onCancel }: { onUse: (spot: Spot) => void;
 
   const chooseStreet = (choice: Street) => {
     // Its suburb's house numbers start loading now, while the visitor reads on (§11.1).
-    numbers.current = loaded!.picker.loadHouseNumbers(choice)
+    if (choice.numbered) numbers.current = loaded!.picker.loadHouseNumbers(choice)
     show(() => {
       setStreet(choice)
       setNumber('')
@@ -101,8 +101,6 @@ export function StreetPicker({ onUse, onCancel }: { onUse: (spot: Spot) => void;
     const house = loaded!.picker.matchHouseNumber(numbered, typed)
     if (house)
       show(() => setChosen({ place: house, readback: `${house[0]} ${street.street}, ${street.suburb}` }), readback)
-    // A quarter of the streets, lanes mostly, have no numbers at all; every one of them has corners.
-    else if (!numbered.length) fail(`We don't have house numbers on ${street.street}. Pick the nearest corner.`)
     else
       fail(
         `We don't have number ${typed} on ${street.street}. Try another number` +
@@ -147,30 +145,35 @@ export function StreetPicker({ onUse, onCancel }: { onUse: (spot: Spot) => void;
             </button>
           </div>
           {/* Each box sits at the top, with its answer right under it, clear of the on-screen keyboard (§12). */}
-          <form noValidate onSubmit={findNumber} className="flex flex-col gap-2">
-            <label htmlFor="house-number" className="font-bold">
-              House number
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="house-number"
-                inputMode="numeric"
-                autoComplete="off"
-                value={number}
-                onChange={(event) => setNumber(event.target.value)}
-                aria-describedby={error ? 'number-error' : undefined}
-                className={`${FIELD} flex-1`}
-              />
-              <button type="submit" className={SECONDARY}>
-                Find
-              </button>
-            </div>
-            {error && <ErrorText id="number-error">{error}</ErrorText>}
-          </form>
+          {street.numbered && (
+            <form noValidate onSubmit={findNumber} className="flex flex-col gap-2">
+              <label htmlFor="house-number" className="font-bold">
+                House number
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="house-number"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={number}
+                  onChange={(event) => setNumber(event.target.value)}
+                  aria-describedby={error ? 'number-error' : undefined}
+                  className={`${FIELD} flex-1`}
+                />
+                <button type="submit" className={SECONDARY}>
+                  Find
+                </button>
+              </div>
+              {error && <ErrorText id="number-error">{error}</ErrorText>}
+            </form>
+          )}
           {street.corners.length > 0 && (
             <>
+              {/* A street with no house numbers has corners, or the build wouldn't list it. */}
               <p id="corner-label" className="font-bold">
-                Or the nearest corner
+                {street.numbered
+                  ? 'Or the nearest corner'
+                  : `We don't have house numbers on ${street.street}. Pick the nearest corner.`}
               </p>
               <ul aria-labelledby="corner-label" className="flex flex-col gap-2">
                 {street.corners.map((corner, i) => (

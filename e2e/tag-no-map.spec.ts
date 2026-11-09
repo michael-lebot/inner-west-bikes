@@ -90,14 +90,15 @@ test.describe('Choose by street', () => {
     for (const script of scripts) expect(await script.text()).not.toContain('maplibre')
   })
 
-  test('says a street with no house numbers has none, rather than to try another', async ({ page }) => {
+  test('on a street with no house numbers, leads with its corners and says it has none', async ({ page }) => {
     await startTagging(page, '/list')
     // The first street "llew" lists.
     await pickStreet(page, 'llew', 'Llewellyn La, Marrickville')
-    await findNumber(page, '12')
-    const none = "We don't have house numbers on Llewellyn La. Pick the nearest corner."
-    await expect(dialog(page).getByRole('textbox', { name: 'House number' })).toHaveAccessibleDescription(none)
-    await expect(announced(page)).toHaveText(none)
+    await expect(dialog(page).getByRole('textbox', { name: 'House number' })).toHaveCount(0)
+    const corners = dialog(page).getByRole('list', {
+      name: "We don't have house numbers on Llewellyn La. Pick the nearest corner.",
+    })
+    await expect(corners.getByRole('button').first()).toBeVisible()
   })
 
   test('on /list, lists the corners in order along the street, and asks about a live tag at the one chosen', async ({
