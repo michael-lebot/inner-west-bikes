@@ -12,8 +12,23 @@ const BOLD = ['AtkinsonHyperlegible-Bold']
 
 /** Wholly inside the council plus its 20 m strip, so streets along the boundary keep their names (assumption 11). */
 const INSIDE: ExpressionSpecification = ['within', buffered]
+const [west, south, east, north] = council.maxBounds as [number, number, number, number]
+/** The map's box with the council cut out, to grey out everything else. geojson-vt winds the rings itself. */
+const MASK = {
+  type: 'Polygon',
+  coordinates: [
+    [
+      [west, south],
+      [east, south],
+      [east, north],
+      [west, north],
+      [west, south],
+    ],
+    ...council.boundary.coordinates,
+  ],
+} as const
 /** Wholly outside the council, where the mask greys everything out. */
-const OUTSIDE: ExpressionSpecification = ['within', council.mask]
+const OUTSIDE: ExpressionSpecification = ['within', MASK]
 
 const ROADS: ExpressionSpecification = [
   'all',
@@ -61,7 +76,7 @@ export function overworldStyle(): StyleSpecification {
       // 256 px tiles: each view loads the next zoom's tiles, so the whole-council view has suburb names and side streets.
       osm: { type: 'vector', url: `pmtiles://${new URL(TILES_URL, location.href)}` },
       council: { type: 'geojson', data: council.boundary },
-      mask: { type: 'geojson', data: council.mask },
+      mask: { type: 'geojson', data: MASK },
       suburbs: {
         type: 'geojson',
         data: {

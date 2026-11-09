@@ -1,12 +1,11 @@
 // Turns the NSW downloads in data/raw/ (from fetch-nsw.ts) into the files the site ships, in data/:
-// - council.json: the boundary, its bounding box, the map's bounds, the mask that greys out everything else, and
-//   where the map names each suburb;
+// - council.json: the boundary, its bounding box, the map's bounds, and where the map names each suburb;
 // - council-buffered.json: the boundary pushed out 20 m, where tags are accepted (§4.1);
 // - places.json: the suburbs and named streets that reach into the buffered boundary, for where().
 import { readFileSync, writeFileSync } from 'node:fs'
 import { gzipSync } from 'node:zlib'
 import * as turf from '@turf/turf'
-import type { BBox, Feature, FeatureCollection, LineString, MultiPolygon, Polygon, Position } from 'geojson'
+import type { BBox, FeatureCollection, LineString, MultiPolygon, Polygon, Position } from 'geojson'
 import { BOUNDARY_BUFFER_METERS, STREET_TYPES } from '../src/config.ts'
 
 /**
@@ -27,11 +26,11 @@ function write(name: string, value: unknown) {
   console.info(`${name}.json: ${json.length} B, ${gzipSync(json).length} B gzipped`)
 }
 
-/** Simplified, and rounded to 6 decimal places (about 0.1 m). */
+/** Simplified, and rounded to 5 decimal places (about 1 m): any finer is noise after the 2 m simplification. */
 const tidy = <T extends Polygon | MultiPolygon | LineString>(geometry: T) =>
-  turf.truncate(turf.simplify(geometry, { tolerance: SIMPLIFY }), { precision: 6 })
+  turf.truncate(turf.simplify(geometry, { tolerance: SIMPLIFY }), { precision: 5 })
 
-const round = (box: number[]) => box.map((n) => +n.toFixed(6)) as BBox
+const round = (box: number[]) => box.map((n) => +n.toFixed(5)) as BBox
 
 // The council, as gazetted, and the 20 m wider area where tags are accepted.
 const [council] = raw<FeatureCollection<Polygon>>('council').features
@@ -44,11 +43,6 @@ const [west, south, east, north] = bbox
 const padLat = PAD_NS_METERS / 111_320
 const padLng = PAD_EW_METERS / 111_320 / Math.cos((((south + north) / 2) * Math.PI) / 180)
 const maxBounds = round([west - padLng, south - padLat, east + padLng, north + padLat])
-
-// Outer ring the padded box, hole the council. rewind() makes the outer ring anticlockwise and the hole clockwise
-// (RFC 7946), so MapLibre reads the council as a hole rather than a second polygon to grey out.
-const box = turf.bboxPolygon(maxBounds).geometry.coordinates[0]!
-const mask = (turf.rewind(turf.polygon([box, boundary.coordinates[0]!])) as Feature<Polygon>).geometry
 
 write('council-buffered', buffered)
 
@@ -73,10 +67,10 @@ const labels = suburbs.flatMap(({ name, geometry }) => {
   if (!inside || turf.area(inside) < LABELLED_SHARE * turf.area(geometry)) return []
   const middle = turf.centerOfMass(inside)
   const at = turf.booleanPointInPolygon(middle, inside) ? middle : turf.pointOnFeature(inside)
-  return [{ name, at: at.geometry.coordinates.map((n) => +n.toFixed(6)) }]
+  return [{ name, at: at.geometry.coordinates.map((n) => +n.toFixed(5)) }]
 })
 
-write('council', { boundary, bbox, maxBounds, mask, labels })
+write('council', { boundary, bbox, maxBounds, labels })
 
 // Named, open road segments that reach into the buffered council, grouped by name. Tunnels are left out: a bike on
 // the street above one belongs to that street.

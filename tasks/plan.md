@@ -641,13 +641,13 @@ them.
   `data/raw/` (git-ignored). `scripts/build-data.ts`: `@turf/buffer` 20 m → `council-buffered.json`;
   `council.json` with the true boundary, the bbox, the padded `maxBounds` box (2 km north and south, 4 km east and
   west, because MapLibre keeps the whole view inside it and a 1920 × 1080 screen needs that width to show all the
-  council: about 151.069, −33.952 to 151.240, −33.828), the **mask** polygon (outer ring = padded box, hole =
-  council ring, wound correctly; a test checks signed areas) and a label point for each suburb at least a quarter
+  council: about 151.069, −33.952 to 151.240, −33.828) and a label point for each suburb at least a quarter
   inside the council (the tiles carry suburb names only from zoom 12, and MapLibre fits the whole council on a phone
   at about 11.7, so the map names suburbs from this list); `places.json` with the suburbs that intersect the buffered polygon (including neighbours
   that only touch the buffer) and named road segments inside it (open and not in a tunnel, so a bike above the
   WestConnex tunnels gets the street on top), titled and abbreviated as in `process_geo.py` (Street → St, Road → Rd,
-  …), each street's segments joined end to end, simplified at about 2 m with coordinates at 6 dp. `src/geo.ts`: `where(lat, lng)`
+  …), each street's segments joined end to end, simplified at about 2 m with coordinates at 5 dp (about 1 m; any finer is noise after the simplification, and it
+  keeps the map bundle under budget). `src/geo.ts`: `where(lat, lng)`
   returns `{ inside, suburb, street }`, inside by `booleanPointInPolygon` on the buffered polygon, suburb by
   point-in-polygon (or the nearest suburb, for the metre-wide slivers that simplifying each suburb leaves between
   them), street by nearest segment in local metres.
@@ -694,13 +694,15 @@ them.
 #### Task 2.4 — Map art: patterns, mask and council wall (M)
 - **Does:** `apps/web/map/patterns.ts`: grass tufts, trees, and a 4×4 Bayer-dithered grey defined as ASCII sprites
   (from the mockup's `stamps`), turned into RGBA arrays and added with `map.addImage(id, image, { pixelRatio: 2 })`
-  before the pattern layers; `fill-pattern` on land, parks and the mask. Mask layer from `council.json`'s mask
-  polygon in greyscale with the dither pattern, and roads wholly outside the council (`within` the mask) drawn over it
+  before the pattern layers; `fill-pattern` on land, parks and the mask. Mask layer from a polygon `style.ts` builds
+  from the `maxBounds` box and the boundary ring (MapLibre's geojson-vt winds GeoJSON rings itself, first ring outer,
+  so no winding step or test; `council.json` doesn't repeat the boundary as a hole, which saved 2 KB of map bundle)
+  in greyscale with the dither pattern, and roads wholly outside the council (`within` the mask) drawn over it
   in a lighter grey, so the outside keeps its streets as in the mockup. Council wall from the true boundary: a dark
   `#1f2328` casing line under a gold line (assumption 12). Extend `contrast.test.ts` with every pattern colour: the
   sprites' inks live in `palette.ts` (`SPRITE_INKS`), and the test checks pins and the wall against each.
 - **Accept:** the council area is green with tufts and trees, the outside is dithered grey, the wall is gold with a
-  dark edge; the council itself is not greyed (winding correct); the contrast test passes.
+  dark edge; the council itself is not greyed; the contrast test passes.
 - **Files:** `apps/web/map/{patterns,style}.ts`, `packages/shared/src/{palette.ts,contrast.test.ts}`.
 - **Verify:** `pnpm --filter @iwb/shared test`, then look at `/` at zooms 12, 14 and 16.
 - **Depends:** 2.3.

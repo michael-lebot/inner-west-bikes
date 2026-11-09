@@ -1,5 +1,5 @@
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
-import type { Polygon, Position } from 'geojson'
+import type { Polygon } from 'geojson'
 import { describe, expect, it } from 'vitest'
 import council from '../data/council.json'
 import places from '../data/places.json'
@@ -37,28 +37,9 @@ describe('places.json', () => {
 })
 
 describe('council.json', () => {
-  /** Twice the signed area by the shoelace formula: positive when the ring runs anticlockwise. */
-  const signedArea = (ring: Position[]) =>
-    ring.reduce((sum, [x = 0, y = 0], i) => {
-      const [nx = 0, ny = 0] = ring[(i + 1) % ring.length] ?? []
-      return sum + x * ny - nx * y
-    }, 0)
-
-  it('winds the mask so the council is a hole in it, not a second grey polygon', () => {
-    const [outer = [], hole = []] = council.mask.coordinates
-    expect(council.mask.coordinates).toHaveLength(2)
-    expect(signedArea(outer)).toBeGreaterThan(0)
-    expect(signedArea(hole)).toBeLessThan(0)
-  })
-
   it('names every suburb wholly inside the council on the map, at a point inside the council', () => {
     expect(council.labels.map((label) => label.name)).toEqual(expect.arrayContaining(WHOLLY_INSIDE.split(', ')))
     for (const { name, at } of council.labels)
       expect(booleanPointInPolygon(at, council.boundary as Polygon), name).toBe(true)
-  })
-
-  it('cuts the hole along the council boundary itself, not the 20 m strip', () => {
-    const hole = council.mask.coordinates[1] ?? []
-    expect([hole, hole.toReversed()]).toContainEqual(council.boundary.coordinates[0])
   })
 })
