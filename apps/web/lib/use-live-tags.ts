@@ -5,9 +5,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 const MINUTE = 60_000
 
 /**
- * The live tags (§11.3), and whether photo uploads are paused (§4.6): fetched on mount, when the tab comes back or regains focus, every 5 minutes while it is
- * visible, and after each of the page's own writes, which `apply` shows at once. Between fetches, tags drop out as
- * their time runs out. `tags` is undefined until the first fetch succeeds.
+ * The live tags (§11.3), and whether photo uploads are paused (§4.6): fetched on mount, when the tab comes back or
+ * regains focus, every 5 minutes while it is visible, and after each of the page's own writes, which `apply` shows at
+ * once. Between fetches, tags drop out as their time runs out. `tags` is undefined until the first fetch succeeds.
  */
 export function useLiveTags() {
   const [tags, setTags] = useState<PublicTag[]>()

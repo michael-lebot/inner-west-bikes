@@ -138,6 +138,9 @@ describe('photoAlt', () => {
     expect(photoAlt({ operator: 'lime', problem: 'blocking_footpath' })).toBe(
       'Photo of a Lime e-bike reported as blocking footpath',
     )
+    expect(photoAlt({ operator: 'ario', problem: 'knocked_over' })).toBe(
+      'Photo of an Ario e-bike reported as knocked over',
+    )
     expect(photoAlt({ operator: 'not_sure', problem: 'in_waterway' })).toBe(
       'Photo of a share e-bike reported as in waterway',
     )

@@ -20,6 +20,8 @@ export function PhotoInput({ photo, onPhoto }: { photo?: Blob; onPhoto: (photo?:
 
   const choose = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
+    // Emptied, so the same file chosen again, after Remove photo, still counts as a choice.
+    event.target.value = ''
     if (!file) return
     try {
       onPhoto(await shrinkPhoto(file))

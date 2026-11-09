@@ -67,9 +67,16 @@ test('adds a photo with a new tag, and its page shows the thumbnail, which opens
 
   await chip(page, 'Lime').click()
   await chip(page, 'Damaged').click()
-  await photoInput(page).setInputFiles(await cameraPhoto(page))
+  const photo = await cameraPhoto(page)
+  await photoInput(page).setInputFiles(photo)
   await expect(dialog(page).getByRole('img', { name: 'Your photo' })).toBeVisible()
   await expect(dialog(page).getByText("That file isn't a photo we can use.")).toBeHidden()
+  // Removed, the photo gives the focus back to the input, and the same one can be chosen again.
+  await dialog(page).getByRole('button', { name: 'Remove photo' }).click()
+  await expect(dialog(page).getByRole('img', { name: 'Your photo' })).toHaveCount(0)
+  await expect(photoInput(page)).toBeFocused()
+  await photoInput(page).setInputFiles(photo)
+  await expect(dialog(page).getByRole('img', { name: 'Your photo' })).toBeVisible()
   await expectNoAxeViolations(page)
   await dialog(page).getByRole('button', { name: 'Add to the map' }).click()
   await expect(announced(page)).toHaveText('Tag added')
