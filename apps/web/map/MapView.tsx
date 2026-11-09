@@ -53,8 +53,8 @@ export function MapView({ tags, now, selected, onPick, onStatus }: Props) {
         // The same framing as the preview it replaces, whose image sits 8 px (p-2) inside the map.
         bounds: council.bbox as LngLatBoundsLike,
         fitBoundsOptions: { padding: 8 },
+        // Also how far it zooms out: MapLibre keeps the whole view inside them.
         maxBounds: council.maxBounds as LngLatBoundsLike,
-        minZoom: 11,
         maxZoom: 18,
         dragRotate: false,
         pitchWithRotate: false,

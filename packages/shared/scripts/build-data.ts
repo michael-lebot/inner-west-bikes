@@ -1,5 +1,6 @@
 // Turns the NSW downloads in data/raw/ (from fetch-nsw.ts) into the files the site ships, in data/:
-// - council.json: the boundary, its bounding box, the map's bounds, and where the map names each suburb;
+// - council.json: the boundary, its bounding box, the camera's and the tiles' bounds, and where the map names each
+//   suburb;
 // - council-buffered.json: the boundary pushed out 20 m, where tags are accepted (§4.1);
 // - places.json: the suburbs and named streets that reach into the buffered boundary, for where().
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -8,12 +9,17 @@ import * as turf from '@turf/turf'
 import type { BBox, FeatureCollection, LineString, MultiPolygon, Polygon, Position } from 'geojson'
 import { BOUNDARY_BUFFER_METERS, STREET_TYPES } from '../src/config.ts'
 
-/**
- * The map can be moved this far past the council's bounding box, and the tiles cover it. Twice as far east and west,
- * because MapLibre keeps the whole view inside the box: a 1920 × 1080 screen needs that width to show all the council.
- */
+/** The tiles cover this much past the council's bounding box: twice as far east and west, for wide screens. */
 const PAD_NS_METERS = 2000
 const PAD_EW_METERS = 4000
+/**
+ * MapLibre keeps the whole view inside maxBounds, so they must hold the view that fits the council in the tallest and
+ * the widest maps the layouts make, in CSS px: the side panel's narrowest (768 − 380 wide) on an upright iPad mini,
+ * and a Pixel 7 held sideways. Past the tiles, the mask's grey carries on.
+ * shortcut: a 21:9 screen's map is wider still and crops the council's top and bottom, widen WIDEST if one matters.
+ */
+const TALLEST = { width: 388, height: 968 }
+const WIDEST = { width: 483, height: 304 }
 /** Douglas–Peucker tolerance in degrees: about 2 m, far below anything a tap can tell apart. */
 const SIMPLIFY = 0.00002
 
@@ -40,9 +46,16 @@ const buffered = tidy(turf.buffer(council, BOUNDARY_BUFFER_METERS, { units: 'met
 
 const bbox = round(turf.bbox(council))
 const [west, south, east, north] = bbox
-const padLat = PAD_NS_METERS / 111_320
-const padLng = PAD_EW_METERS / 111_320 / Math.cos((((south + north) / 2) * Math.PI) / 180)
-const maxBounds = round([west - padLng, south - padLat, east + padLng, north + padLat])
+const metresPerLng = 111_320 * Math.cos((((south + north) / 2) * Math.PI) / 180)
+const [wide, tall] = [(east - west) * metresPerLng, (north - south) * 111_320]
+const pad = (lng: number, lat: number) => round([west - lng, south - lat, east + lng, north + lat])
+const tileBounds = pad(PAD_EW_METERS / metresPerLng, PAD_NS_METERS / 111_320)
+/** Metres per px once fitBounds has fitted the council in a map this size, 8 px inside each side. */
+const fit = ({ width, height }: typeof TALLEST) => Math.max(wide / (width - 16), tall / (height - 16))
+const maxBounds = pad(
+  (WIDEST.width * fit(WIDEST) - wide) / 2 / metresPerLng,
+  (TALLEST.height * fit(TALLEST) - tall) / 2 / 111_320,
+)
 
 write('council-buffered', buffered)
 
@@ -70,7 +83,7 @@ const labels = suburbs.flatMap(({ name, geometry }) => {
   return [{ name, at: at.geometry.coordinates.map((n) => +n.toFixed(5)) }]
 })
 
-write('council', { boundary, bbox, maxBounds, labels })
+write('council', { boundary, bbox, maxBounds, tileBounds, labels })
 
 // Named, open road segments that reach into the buffered council, grouped by name. Tunnels are left out: a bike on
 // the street above one belongs to that street.

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { expect, type Page, test } from '@playwright/test'
 import { expectNoAxeViolations, resetDb, sql } from './support'
 
@@ -112,6 +113,54 @@ test('leaves the map for another page without a script error', async ({ page }) 
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   expect(errors).toEqual([])
 })
+
+// The tallest map the layouts make, then the widest and the shortest: phones held sideways get the side panel too.
+for (const viewport of [
+  { width: 768, height: 800 },
+  { width: 863, height: 360 },
+  { width: 750, height: 342 },
+]) {
+  test.describe(`at ${viewport.width} × ${viewport.height}`, () => {
+    test.use({ viewport })
+
+    test('shows the whole council once the map is ready', async ({ page }) => {
+      const { bbox } = JSON.parse(
+        readFileSync(new URL('../packages/shared/data/council.json', import.meta.url), 'utf8'),
+      ) as { bbox: [number, number, number, number] }
+      const [west, south, east, north] = bbox
+      const edges = [
+        ['West', west, (south + north) / 2],
+        ['East', east, (south + north) / 2],
+        ['North', (west + east) / 2, north],
+        ['South', (west + east) / 2, south],
+      ] as const
+      // A pin at the middle of each side of the council's box.
+      await sql(`
+        INSERT INTO tags (id, lat, lng, suburb, street, operator, problem, last_confirmed_at, expires_at)
+        VALUES ${edges
+          .map(
+            ([side, lng, lat]) =>
+              `(gen_random_uuid(), ${lat}, ${lng}, 'Edge', '${side} St', 'lime', 'damaged', now(), now() + interval '1 day')`,
+          )
+          .join(', ')}`)
+      await page.goto('/')
+      await expect(page.locator('[data-map-ready]')).toBeAttached()
+
+      const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
+      for (const [side] of edges) {
+        const pin = (await page.getByRole('button', { name: new RegExp(`${side} St, Edge`) }).boundingBox())!
+        // A pin's tip is the middle of its bottom edge.
+        const [x, y] = [pin.x + pin.width / 2, pin.y + pin.height]
+        expect([x >= map.x, x <= map.x + map.width, y >= map.y, y <= map.y + map.height], side).toEqual([
+          true,
+          true,
+          true,
+          true,
+        ])
+      }
+    })
+  })
+}
 
 test.describe('pins', () => {
   const pins = (page: Page) =>
@@ -317,11 +366,26 @@ test.describe('the tag card', () => {
       await expect(handle).toHaveAttribute('aria-expanded', 'true')
     })
 
+    test('stays still under the header when the card shrinks at the council-wide zoom', async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      const pin = page.getByRole('button', { name: /Liverpool Rd, Ashfield/ })
+      await pin.click()
+      const top = async () => (await pin.boundingBox())!.y
+      // Once the map has stopped moving for the card that just opened.
+      let before = NaN
+      await expect.poll(async () => before === (before = await top())).toBe(true)
+
+      await page.getByRole('button', { name: 'Shrink card' }).click()
+      await expect(page.getByRole('button', { name: 'Expand card' })).toBeVisible()
+      let after = NaN
+      await expect.poll(async () => after === (after = await top())).toBe(true)
+      expect(Math.abs(after - before)).toBeLessThanOrEqual(3)
+    })
+
     test('brings its pin back into view each time the card grows over it', async ({ page }) => {
       const pin = page.getByRole('button', { name: /Marrickville Rd, Dulwich Hill/ })
       await pin.click()
-      // Growing the map moves it when its edges reach the bounds, as at the council-wide zoom; growing the card
-      // again would then cover the pin.
+      // Growing the map moves it if its edges reach the bounds; growing the card again would then cover the pin.
       await page.getByRole('button', { name: 'Shrink card' }).click()
       await page.getByRole('button', { name: 'Expand card' }).click()
       const map = page.getByRole('region', { name: 'Map', exact: true })

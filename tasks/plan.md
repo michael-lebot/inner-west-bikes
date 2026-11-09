@@ -747,6 +747,15 @@ them.
   about visitors and will never be stable. `lighthouserc.json` drops TBT on `/` and keeps LCP and CLS there and TBT
   ≤ 200 ms on `/list`; SPEC §11.1's TBT row now applies to pages without the map, and the map page's responsiveness is
   gated by task 2.9's interaction tests, which run with the CPU at full speed.
+- **Revisited in PR 2's review (camera):** the browser check found tall, narrow maps cropping the council (92% of its
+  width at 768 × 800, 71% on an upright iPad) and the map jumping about 210 px when a card shrank at the
+  council-wide zoom. MapLibre keeps the whole view inside `maxBounds`, which reached only 2 km past the council north
+  and south. `build-data.ts` now computes them from the tallest and the widest maps the layouts make (388 × 968 and
+  483 × 304 px): `[151.06576, -33.98087, 151.24314, -33.79891]`, 5.2 km past the council north and south and 4.3 km
+  east and west. The tiles keep their own, unchanged `tileBounds`, so they weren't re-extracted; the mask is drawn to
+  `maxBounds`, so its grey covers everything the camera can reach past them, and the water-blue background never
+  shows. `minZoom: 11` is gone: a phone held sideways needs about 10.8 to fit the council, and `maxBounds` already
+  stops the zoom out. The first view is unchanged: 5 tile requests, 351,634 B.
 - **Accept:** LCP is the preview image; swapping in the map causes no layout shift; with tiles blocked the failure
   message appears and the List link works; a pin that starts off screen can be reached with Move map and zoom taps
   only.
