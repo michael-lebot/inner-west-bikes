@@ -9,3 +9,6 @@ const isPath = TILES_URL.startsWith('/') && !TILES_URL.startsWith('//')
 const isHttpUrl = URL.canParse(TILES_URL) && ['http:', 'https:'].includes(new URL(TILES_URL).protocol)
 if (!isPath && !isHttpUrl)
   throw new Error(`NEXT_PUBLIC_TILES_URL must be a path starting with / or an http(s) URL, not "${TILES_URL}"`)
+
+/** Built on Vercel, where BotID runs (§6). Vercel sets it when the project exposes its system environment variables. */
+export const ON_VERCEL = !!process.env.NEXT_PUBLIC_VERCEL_ENV

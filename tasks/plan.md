@@ -969,6 +969,15 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   public POST routes), `withBotId` in `next.config.ts`, routes `POST /api/tags`, `POST /api/tags/[id]/still-there`,
   `POST /api/tags/[id]/removed`. Schemas `CreateTagBody` (`id` uuid, lat/lng rounded to 6 dp, active operator key,
   problem) and `ActionBody` (`requestId` uuid) in `schemas.ts`.
+  As built: `write()` takes no type parameter; `params` is `Promise<unknown>` and each route parses it.
+  `instrumentation-client.ts` protects one pattern, `POST /api/*`, which covers every public write as later PRs add
+  them, and runs only in a build made on Vercel (`NEXT_PUBLIC_VERCEL_ENV`): elsewhere the challenge it fetches doesn't
+  exist and `bot.ts` treats everyone as human. `proxy.ts` leaves BotID's own paths alone, since `withBotId` gives them
+  headers that let BotID frame itself. `schemas.ts` exports Zod's error class as `ZodError` for `errorResponse`.
+  The route tests are one file, `app/api/tags/route.test.ts`, where each test is a visitor on an IP of its own, so
+  nothing needs truncating; `proxy.test.ts` checks the cookie over HTTPS. The web app's `vitest.config.ts` reuses
+  `packages/server/test/global-setup.ts`, which now runs Prisma from its own folder.
+  Measured: the BotID client is 2.2 KB gzipped, and the map page's JavaScript before the map is 145,856 B of 153,600.
 - **Accept:** route tests (Vitest, real Postgres, `vi.mock('@/lib/bot')`): a bot gets 403 and no database row is
   written; invalid JSON or fields → 400 with the error shape; outside the buffer → 422; a non-live tag → 410
   `tag_gone`; over a limit → 429 with `Retry-After`; every response has `Cache-Control: no-store`.

@@ -33,7 +33,7 @@ acceptance criteria pass and `pnpm verify` is green.
 
 - [x] 3.1 Visitor cookie and hashes; rate limits in Postgres (two-at-once test)
 - [x] 3.2 Tag lifecycle in `tags.ts`: create, still there, removed, undo, take down (expiry, two-at-once, repeat tests)
-- [ ] 3.3 Write wrapper, BotID seam and the three tag write routes
+- [x] 3.3 Write wrapper, BotID seam and the three tag write routes
 - [ ] 3.4 Browser `send()` with retries, request IDs and announcements
 - [ ] 3.5 Placement step: tap, readback, outside message, keyboard crosshair
 - [ ] 3.6 Native dialog, "Is it one of these?", tag form with Change location

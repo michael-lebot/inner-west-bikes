@@ -6,11 +6,13 @@
     "dev": "node scripts/build-preview.ts && next dev --port 3000",
     "build": "node scripts/build-preview.ts && next build",
     "start": "next start --port 3000",
+    "test": "vitest run",
     "typecheck": "next typegen && tsc"
   },
   "dependencies": {
     "@iwb/server": "workspace:*",
     "@iwb/shared": "workspace:*",
+    "botid": "1.5.12",
     "maplibre-gl": "5.24.0",
     "next": "catalog:",
     "pmtiles": "4.5.0",

@@ -3,8 +3,14 @@
 import * as z from 'zod/mini'
 import { type Operator, OPERATORS, type Problem, PROBLEMS } from './config'
 
+/** What a schema's `parse` throws on input it refuses: a write answers it with 400 `invalid`. */
+export const ZodError = z.core.$ZodError
+
 /** The [id] of a tag URL. */
 export const TagParams = z.object({ id: z.uuid() })
+
+/** Still there or Removed: the id the browser made for this one action, kept for its retries (§5.3). */
+export const ActionBody = z.object({ requestId: z.uuid() })
 
 /** To 6 decimal places, about 10 cm, as the database stores it; so the server checks the point it stores. */
 const coordinate = z.pipe(
