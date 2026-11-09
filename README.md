@@ -55,7 +55,7 @@ pnpm exec playwright install chromium webkit            # once, for the end-to-e
 
 - **Tiles:** `pnpm tiles` runs [`apps/web/scripts/fetch-tiles.sh`](apps/web/scripts/fetch-tiles.sh), which needs the
   [`pmtiles` CLI](https://github.com/protomaps/go-pmtiles/releases) (`brew install pmtiles`). It writes
-  `apps/web/public/tiles/inner-west.pmtiles` (about 11 MB), which `next start` serves with range requests.
+  `apps/web/public/tiles/inner-west.pmtiles` (about 13 MB), which `next start` serves with range requests.
 - **Council, suburbs and streets:** the committed files in `packages/shared/data/` come from NSW Spatial Services.
   `pnpm --filter @iwb/shared data:fetch` downloads them again and `data:build` rebuilds the files.
 

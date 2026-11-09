@@ -11,3 +11,6 @@ test-results/
 .lighthouseci/
 packages/shared/data/raw/
 apps/web/public/tiles/
+apps/web/public/preview.webp
+# Written by next dev for coding agents.
+apps/*/AGENTS.md

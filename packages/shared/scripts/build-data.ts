@@ -1,15 +1,20 @@
 // Turns the NSW downloads in data/raw/ (from fetch-nsw.ts) into the files the site ships, in data/:
-// - council.json: the boundary, its bounding box, the map's bounds and the mask that greys out everything else;
+// - council.json: the boundary, its bounding box, the map's bounds, the mask that greys out everything else, and
+//   where the map names each suburb;
 // - council-buffered.json: the boundary pushed out 20 m, where tags are accepted (§4.1);
 // - places.json: the suburbs and named streets that reach into the buffered boundary, for where().
 import { readFileSync, writeFileSync } from 'node:fs'
 import { gzipSync } from 'node:zlib'
 import * as turf from '@turf/turf'
 import type { BBox, Feature, FeatureCollection, LineString, MultiPolygon, Polygon, Position } from 'geojson'
-import { BOUNDARY_BUFFER_METERS } from '../src/config.ts'
+import { BOUNDARY_BUFFER_METERS, STREET_TYPES } from '../src/config.ts'
 
-/** The map can be moved this far past the council's bounding box, and the tiles cover it. */
-const PAD_METERS = 2000
+/**
+ * The map can be moved this far past the council's bounding box, and the tiles cover it. Twice as far east and west,
+ * because MapLibre keeps the whole view inside the box: a 1920 × 1080 screen needs that width to show all the council.
+ */
+const PAD_NS_METERS = 2000
+const PAD_EW_METERS = 4000
 /** Douglas–Peucker tolerance in degrees: about 2 m, far below anything a tap can tell apart. */
 const SIMPLIFY = 0.00002
 
@@ -36,8 +41,8 @@ const buffered = tidy(turf.buffer(council, BOUNDARY_BUFFER_METERS, { units: 'met
 
 const bbox = round(turf.bbox(council))
 const [west, south, east, north] = bbox
-const padLat = PAD_METERS / 111_320
-const padLng = padLat / Math.cos((((south + north) / 2) * Math.PI) / 180)
+const padLat = PAD_NS_METERS / 111_320
+const padLng = PAD_EW_METERS / 111_320 / Math.cos((((south + north) / 2) * Math.PI) / 180)
 const maxBounds = round([west - padLng, south - padLat, east + padLng, north + padLat])
 
 // Outer ring the padded box, hole the council. rewind() makes the outer ring anticlockwise and the hole clockwise
@@ -45,7 +50,6 @@ const maxBounds = round([west - padLng, south - padLat, east + padLng, north + p
 const box = turf.bboxPolygon(maxBounds).geometry.coordinates[0]!
 const mask = (turf.rewind(turf.polygon([box, boundary.coordinates[0]!])) as Feature<Polygon>).geometry
 
-write('council', { boundary, bbox, maxBounds, mask })
 write('council-buffered', buffered)
 
 // Suburbs that reach into the buffered council, including neighbours that only touch the 20 m strip.
@@ -61,6 +65,19 @@ const suburbs = raw<FeatureCollection<Polygon | MultiPolygon, { suburbname: stri
   .map((suburb) => ({ name: title(suburb.properties.suburbname), geometry: tidy(suburb.geometry) }))
   .sort((a, b) => a.name.localeCompare(b.name))
 
+// The map names a suburb when at least a quarter of it is inside the council, at the middle of that part. The tiles
+// can't do it: they carry suburbs only from zoom 12, and the whole council fits a phone at about 11.7.
+const LABELLED_SHARE = 0.25
+const labels = suburbs.flatMap(({ name, geometry }) => {
+  const inside = turf.intersect(turf.featureCollection([turf.feature(geometry), turf.feature(boundary)]))
+  if (!inside || turf.area(inside) < LABELLED_SHARE * turf.area(geometry)) return []
+  const middle = turf.centerOfMass(inside)
+  const at = turf.booleanPointInPolygon(middle, inside) ? middle : turf.pointOnFeature(inside)
+  return [{ name, at: at.geometry.coordinates.map((n) => +n.toFixed(6)) }]
+})
+
+write('council', { boundary, bbox, maxBounds, mask, labels })
+
 // Named, open road segments that reach into the buffered council, grouped by name. Tunnels are left out: a bike on
 // the street above one belongs to that street.
 type Road = {
@@ -72,23 +89,11 @@ type Road = {
 }
 const IN_TUNNEL = 3
 const OPERATIONAL = 1
-const SHORT_TYPES: Record<string, string> = {
-  Road: 'Rd',
-  Street: 'St',
-  Avenue: 'Ave',
-  Lane: 'La',
-  Parade: 'Pde',
-  Place: 'Pl',
-  Crescent: 'Cres',
-  Highway: 'Hwy',
-  Terrace: 'Tce',
-  Close: 'Cl',
-}
 
 /** "LLEWELLYN", "STREET" → "Llewellyn St"; "O'NEILL", "LANE", "WEST" → "O'Neill La West". */
 function streetName({ roadnamebase, roadnametype, roadnamesuffix }: Road) {
   const type = roadnametype && title(roadnametype)
-  return [title(roadnamebase ?? ''), type && (SHORT_TYPES[type] ?? type), roadnamesuffix && title(roadnamesuffix)]
+  return [title(roadnamebase ?? ''), type && (STREET_TYPES[type] ?? type), roadnamesuffix && title(roadnamesuffix)]
     .filter(Boolean)
     .join(' ')
 }

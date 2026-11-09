@@ -1,4 +1,5 @@
-import type { Position } from 'geojson'
+import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
+import type { Polygon, Position } from 'geojson'
 import { describe, expect, it } from 'vitest'
 import council from '../data/council.json'
 import places from '../data/places.json'
@@ -46,6 +47,12 @@ describe('council.json', () => {
     expect(council.mask.coordinates).toHaveLength(2)
     expect(signedArea(outer)).toBeGreaterThan(0)
     expect(signedArea(hole)).toBeLessThan(0)
+  })
+
+  it('names every suburb wholly inside the council on the map, at a point inside the council', () => {
+    const names = council.labels.map((label) => label.name)
+    expect(names).toEqual(expect.arrayContaining(['Ashfield', 'Balmain East', 'Marrickville', 'Tempe', 'Newtown']))
+    for (const { name, at } of council.labels) expect(booleanPointInPolygon(at, council.boundary as Polygon), name).toBe(true)
   })
 
   it('cuts the hole along the council boundary itself, not the 20 m strip', () => {
