@@ -35,7 +35,7 @@ const INTERACTION_MS = 600
 const CHIP_MS = 200
 // Choose by street's data (§11.1): every street with its corners, loaded when the picker opens, and one suburb's house
 // numbers, loaded when a street in it is chosen. Marrickville's are the largest. Measured in task 4.6 (2026-11-10):
-// 77,058 B and 30,684 B.
+// 77,058 B and 30,684 B; the streets 78,677 B once each was marked for having house numbers or not.
 const STREETS_BYTES = 100_000
 const SUBURB_NUMBERS_BYTES = 40_000
 // Typing in the street search and choosing a street move no map, so they keep §11.1's 200 ms: a letter measured 16 to
