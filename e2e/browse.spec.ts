@@ -157,6 +157,16 @@ test.describe('the tag card', () => {
     await expect(pin).toBeFocused()
   })
 
+  test('closes on Esc while focus is back on the map, as it is not a dialog', async ({ page }) => {
+    const pin = page.getByRole('button', { name: /Liverpool Rd, Ashfield/ })
+    await pin.focus()
+    await page.keyboard.press('Enter')
+    await page.getByRole('button', { name: 'Zoom in' }).focus()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('heading', { name: 'Hello e-bike' })).toHaveCount(0)
+    await expect(pin).toBeFocused()
+  })
+
   test.describe('on a phone', () => {
     test.skip(({ isMobile }) => !isMobile, 'phones only')
 

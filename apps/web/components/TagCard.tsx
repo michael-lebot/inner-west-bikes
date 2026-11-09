@@ -18,11 +18,17 @@ export function TagCard({ tag, now, onClose }: { tag: PublicTag; now: Date; onCl
 
   useEffect(() => heading.current?.focus(), [])
 
+  // Esc closes the card wherever focus is, since the map stays usable beside it (§10.4).
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [onClose])
+
   return (
     <section
       aria-labelledby="card-heading"
       className={`flex flex-col gap-3 ${shrunk ? '' : 'min-h-[calc(50dvh-2rem)]'} wide:min-h-0`}
-      onKeyDown={(event) => event.key === 'Escape' && onClose()}
     >
       <button
         type="button"
