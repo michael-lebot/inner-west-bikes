@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { bikeCount, bikeName, byPlace, clockTime, dateTime, duration, isExpired, pinLabel } from './format'
+import { bikeCount, bikeName, byPlace, clockTime, dateTime, duration, isExpired, parseTag, pinLabel } from './format'
+import type { PublicTag } from './schemas'
 
 describe('bikeCount', () => {
   it('uses the singular for one bike', () => {
@@ -99,5 +100,22 @@ describe('pinLabel', () => {
     expect(pinLabel(tag, new Date(expiresAt.getTime() - (31 * 60 + 20) * 60_000))).toBe(
       'Lime e-bike, blocking footpath, Denison St, Newtown, disappears in 31 hours, at 3:40 pm Tuesday',
     )
+  })
+})
+
+describe('parseTag', () => {
+  it('turns the times that JSON made strings back into dates', () => {
+    const tag: PublicTag = {
+      id: '5eed0000-0000-4000-8000-000000000003',
+      lat: -33.904497,
+      lng: 151.171932,
+      suburb: 'Marrickville',
+      street: 'Llewellyn St',
+      operator: 'lime',
+      problem: 'blocking_footpath',
+      lastConfirmedAt: new Date('2026-11-09T01:00:00Z'),
+      expiresAt: new Date('2026-11-11T01:00:00Z'),
+    }
+    expect(parseTag(JSON.parse(JSON.stringify(tag)))).toEqual(tag)
   })
 })

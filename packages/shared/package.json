@@ -9,7 +9,6 @@
     ".": "./src/index.ts",
     "./geo": "./src/geo.ts",
     "./palette": "./src/palette.ts",
-    "./schemas": "./src/schemas.ts",
     "./data/*": "./data/*",
     "./theme.css": "./theme.css"
   },

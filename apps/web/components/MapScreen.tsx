@@ -22,7 +22,7 @@ const READY_WITHIN_MS = 15_000
 export function MapScreen() {
   const [status, setStatus] = useState<Status>('loading')
   const [MapView, setMapView] = useState<MapModule['MapView']>()
-  const { tags, now, refresh } = useLiveTags()
+  const { tags, now } = useLiveTags()
   const [selected, setSelected] = useState<string>()
   const [crowd, setCrowd] = useState<string[]>()
   // The pin that opened the chooser, which gets focus back when it closes.
@@ -60,23 +60,21 @@ export function MapScreen() {
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>
     // Hydration can run before the first paint, so wait for a frame and then a task: the shell and the preview are on
-    // screen before the map's 300 KB, the tags and Zod start loading. A tab opened in the background starts when it is
-    // first shown.
+    // screen before the map's 300 KB starts loading. A tab opened in the background starts when it is first shown.
     const frame = requestAnimationFrame(() => {
       timeout = setTimeout(() => setStatus((current) => (current === 'loading' ? 'failed' : current)), READY_WITHIN_MS)
-      setTimeout(() => {
-        refresh()
+      setTimeout(() =>
         import('@/map/MapView').then(
           (module) => setMapView(() => module.MapView),
           () => setStatus('failed'),
-        )
-      })
+        ),
+      )
     })
     return () => {
       cancelAnimationFrame(frame)
       clearTimeout(timeout)
     }
-  }, [refresh])
+  }, [])
 
   return (
     <>

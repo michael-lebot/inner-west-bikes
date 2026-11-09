@@ -1,13 +1,13 @@
 'use client'
-import { isExpired, type PublicTag, REFRESH_MINUTES } from '@iwb/shared'
+import { isExpired, parseTag, type PublicTag, REFRESH_MINUTES } from '@iwb/shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 const MINUTE = 60_000
 
 /**
- * The live tags (§11.3), fetched by `refresh()`: first by the page once it has painted, then when the tab comes back
- * or regains focus, every 5 minutes while it is visible, and after the page's own writes. Between fetches, tags drop
- * out as their time runs out. `tags` is undefined until the first fetch succeeds.
+ * The live tags (§11.3): fetched on mount, when the tab comes back or regains focus, every 5 minutes while it is
+ * visible, and on `refresh()` after the page's own writes. Between fetches, tags drop out as their time runs out.
+ * `tags` is undefined until the first fetch succeeds.
  */
 export function useLiveTags() {
   const [tags, setTags] = useState<PublicTag[]>()
@@ -19,26 +19,24 @@ export function useLiveTags() {
   const refresh = useCallback(() => {
     const request = ++latest.current
     return (
-      Promise.all([
-        fetch('/api/tags').then((response) => {
+      fetch('/api/tags')
+        .then((response) => {
           if (!response.ok) throw new Error(`GET /api/tags: ${response.status}`)
           return response.json()
-        }),
-        // Zod arrives with the tags rather than with the page, so it isn't JavaScript the first paint waits for.
-        import('@iwb/shared/schemas'),
-      ])
-        .then(([body, { LiveTags }]) => {
+        })
+        .then((body) => {
           if (request !== latest.current) return
-          setTags(LiveTags.parse(body).tags)
+          setTags(body.tags.map(parseTag))
           setNow(new Date())
         })
-        // Offline, or a body that isn't live tags: keep what is showing, and try again at the next refresh.
+        // Offline, or a body without tags: keep what is showing, and try again at the next refresh.
         .catch(() => {})
     )
   }, [])
 
   useEffect(() => {
     const whenVisible = () => document.visibilityState === 'visible' && refresh()
+    refresh()
     document.addEventListener('visibilitychange', whenVisible)
     window.addEventListener('focus', refresh)
     const refreshing = setInterval(whenVisible, REFRESH_MINUTES * MINUTE)

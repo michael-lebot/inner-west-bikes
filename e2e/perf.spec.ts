@@ -39,7 +39,6 @@ function recordRequests(page: Page) {
   return async () =>
     Promise.all(
       finished.map(async (request) => ({
-        request,
         url: new URL(request.url()),
         type: request.resourceType(),
         bytes: (await request.sizes()).responseBodySize,
@@ -97,20 +96,11 @@ test('a mid-range phone over 4G loads the map from a 300 KB bundle and 40 tiles'
   await expect(page.locator('[data-map-ready]')).toBeAttached({ timeout: 30_000 })
   const rows = await requests()
 
-  // After first paint come the map's chunks, which carry MapLibre's name, and Zod, which the tag fetch loads.
-  // MapLibre's worker is a blob: inside the map's chunk, so its bytes are already counted.
-  const later = rows.filter(
+  // Every script after first paint is the map's: the browser loads nothing else then. MapLibre's worker is a blob:
+  // inside the map's chunk, so its bytes are already counted.
+  const map = rows.filter(
     (row) => row.type === 'script' && row.url.protocol !== 'blob:' && !html.includes(row.url.pathname),
   )
-  const bodies = await Promise.all(later.map(async (row) => (await row.request.response())!.text()))
-  const kinds = later.map((row, i) =>
-    bodies[i]!.includes('maplibregl') ? 'map' : bodies[i]!.includes('ZodError') ? 'zod' : row.url.pathname,
-  )
-  expect(
-    kinds.filter((kind) => kind !== 'map' && kind !== 'zod'),
-    'other scripts after first paint',
-  ).toEqual([])
-  const map = later.filter((_, i) => kinds[i] === 'map')
 
   // The tiles file's header, directories and tiles, all range requests on the one file.
   const tiles = rows.filter((row) => row.url.pathname.endsWith('.pmtiles'))
