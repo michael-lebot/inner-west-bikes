@@ -24,12 +24,25 @@ export function MapScreen() {
   const [MapView, setMapView] = useState<MapModule['MapView']>()
   const { tags, now } = useLiveTags()
   const [selected, setSelected] = useState<string>()
-  const [crowd, setCrowd] = useState<PublicTag[]>()
+  const [crowd, setCrowd] = useState<string[]>()
   // The pin that opened the chooser, which gets focus back when it closes.
   const opener = useRef<HTMLElement>(null)
+  const count = useRef<HTMLHeadingElement>(null)
 
-  // A refresh can take the open tag away, and its card with it.
+  // The card and the chooser show the tags as they are now. A refresh that takes away the open tag, or every tag in
+  // the chooser, closes it.
   const card = tags?.find((tag) => tag.id === selected)
+  const crowded = tags?.filter((tag) => crowd?.includes(tag.id))
+  if (tags && selected && !card) setSelected(undefined)
+  if (tags && crowd && !crowded?.length) setCrowd(undefined)
+
+  // Closed that way, it takes the focus with it: keep the focus in the sheet, on the count.
+  const open = !!card || !!crowded?.length
+  const wasOpen = useRef(false)
+  useEffect(() => {
+    if (wasOpen.current && !open && document.activeElement === document.body) count.current?.focus()
+    wasOpen.current = open
+  }, [open])
 
   const select = (tag: PublicTag) => {
     setCrowd(undefined)
@@ -88,7 +101,7 @@ export function MapScreen() {
             selected={selected}
             onPick={(picked, pin) => {
               opener.current = pin
-              if (picked.length > 1) setCrowd(picked)
+              if (picked.length > 1) setCrowd(picked.map((tag) => tag.id))
               else if (picked[0]) select(picked[0])
             }}
             onStatus={setStatus}
@@ -124,9 +137,9 @@ export function MapScreen() {
         tabIndex={-1}
         className="z-10 flex max-h-[60dvh] flex-col gap-3 overflow-y-auto overscroll-contain border-t border-line bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgb(0_0_0/0.08)] wide:max-h-none wide:w-95 wide:shrink-0 wide:border-t-0 wide:border-r wide:shadow-[4px_0_12px_rgb(0_0_0/0.08)]"
       >
-        {crowd ? (
+        {crowded?.length ? (
           <CrowdChooser
-            tags={crowd}
+            tags={crowded}
             now={now}
             onSelect={select}
             onClose={() => {
@@ -140,7 +153,7 @@ export function MapScreen() {
           <>
             {/* Each line keeps its height while the tags load, so nothing moves when they arrive. */}
             <div>
-              <h2 className="min-h-7 text-lg font-bold">
+              <h2 ref={count} tabIndex={-1} className="min-h-7 text-lg font-bold">
                 {tags && (tags.length ? bikeCount(tags.length) : 'No bikes in the graveyard right now.')}
               </h2>
               <p className="text-sm text-muted">Tags disappear {TAG_LIFETIME_HOURS} hours after the last sighting.</p>

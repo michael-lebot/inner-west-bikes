@@ -1,6 +1,7 @@
 import { expect, type Page, test } from '@playwright/test'
 import { expectNoAxeViolations, resetDb, sql } from './support'
 
+const MARION_ST = '5eed0000-0000-4000-8000-000000000002'
 const LLEWELLYN_ST = '5eed0000-0000-4000-8000-000000000003'
 
 test.beforeEach(() => resetDb())
@@ -194,6 +195,26 @@ test.describe('the tag card', () => {
     await page.keyboard.press('Escape')
     await expect(page.getByRole('heading', { name: 'Hello e-bike' })).toHaveCount(0)
     await expect(pin).toBeFocused()
+  })
+
+  test('goes when a refresh takes its tag away, leaving focus on the count', async ({ page }) => {
+    await page.getByRole('button', { name: /Llewellyn St, Marrickville/ }).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('heading', { name: 'Lime e-bike' })).toBeFocused()
+    await sql(`UPDATE tags SET expires_at = now() WHERE id = '${LLEWELLYN_ST}'`)
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await expect(page.getByRole('heading', { name: '13 bikes in the graveyard' })).toBeFocused()
+  })
+
+  test('opens from a chooser that a refresh has trimmed', async ({ page }) => {
+    await page.getByRole('button', { name: /Norton St, Leichhardt/ }).click({ force: true })
+    await expect(page.getByRole('heading', { name: '2 bikes here' })).toBeVisible()
+    await sql(`UPDATE tags SET expires_at = now() WHERE id = '${MARION_ST}'`)
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await expect(page.getByRole('heading', { name: '1 bike here' })).toBeVisible()
+    await expect(page.getByRole('link', { name: /Marion St/ })).toHaveCount(0)
+    await page.getByRole('link', { name: /Norton St/ }).click()
+    await expect(page.getByRole('heading', { name: 'Lime e-bike' })).toBeFocused()
   })
 
   test.describe('on a phone', () => {
