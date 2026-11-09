@@ -739,7 +739,7 @@ dependency versions. If Next.js and MapLibre alone don't fit, the budgets are re
 |---|---|
 | Largest Contentful Paint (LCP) | ≤ 2.5 s |
 | Cumulative Layout Shift (CLS) | ≤ 0.1 |
-| Total Blocking Time (the lab stand-in for INP) | ≤ 200 ms |
+| Total Blocking Time (the lab stand-in for INP) | ≤ 200 ms on pages without the map (set in PR 2: headless Chrome draws the map in software, and TBT on the map page measured 4.7 to 7 s in CI, while with a GPU opening a card takes 48 ms; the scripted interactions gate the map page instead) |
 | Scripted interactions: open a card, pick a chip, zoom, open the form | Each ≤ 200 ms to the next paint |
 | **Map ready for placement:** tiles, labels and pins drawn, and taps accepted | ≤ 6 s (to be set properly from M1 measurements) |
 | JavaScript before the map loads (gzip, as transferred) | ≤ 150 KiB (reset at M0: the framework alone is 139 KB gzip, 119 KB Brotli) |

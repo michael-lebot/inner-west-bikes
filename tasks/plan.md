@@ -742,6 +742,11 @@ them.
   to 2.8, LCP reached 2,476–2,585 ms: Lighthouse's model charges the preview for every byte requested with it. The
   preview went from WebP quality 80 (24.6 KB) to quality 50 at effort 6 (16.6 KB, no visible loss at 2×), and LCP
   measured 2,297–2,433 ms. TBT now sits at about 2,000 ms on every run.
+- **Revisited in PR 2's review:** on GitHub's runner TBT on `/` measured 7,012, 5,060 and 4,719 ms (CI run 4) against
+  the 2,500 ms reset, and it measures software-drawn WebGL under Lighthouse's own CPU slowdown, so it says nothing
+  about visitors and will never be stable. `lighthouserc.json` drops TBT on `/` and keeps LCP and CLS there and TBT
+  ≤ 200 ms on `/list`; SPEC §11.1's TBT row now applies to pages without the map, and the map page's responsiveness is
+  gated by task 2.9's interaction tests, which run with the CPU at full speed.
 - **Accept:** LCP is the preview image; swapping in the map causes no layout shift; with tiles blocked the failure
   message appears and the List link works; a pin that starts off screen can be reached with Move map and zoom taps
   only.
@@ -1443,7 +1448,7 @@ everything else is in Left for Michael.
 | Risk | Impact | Mitigation |
 |---|---|---|
 | Next 16's App Router baseline alone exceeds the 120 KB pre-map JS budget | Fired | Measured at M0: Next 16.4.5 + React 19.3.1 transfer 138,644 B gzipped (118,598 B Brotli) with no client components. Per §11.1 the gate in `e2e/perf.spec.ts` was reset to 150 KiB gzipped; task 2.9 re-measures |
-| MapLibre's start-up blocks the main thread for longer than the 200 ms TBT budget on `/` | Fired | Measured in task 2.5: with software WebGL, the compositor's read-back of the map canvas puts TBT on `/` at about 600 or about 2,000 ms (with a GPU, no task passes 75 ms). Per §11.1 the `/` assertion was reset to 2,500 ms. CI's runner may be slower: check its first run, and reset from that evidence if it misses |
+| MapLibre's start-up blocks the main thread for longer than the 200 ms TBT budget on `/` | Fired | Measured in task 2.5: with software WebGL, the compositor's read-back of the map canvas puts TBT on `/` at about 600 or about 2,000 ms (with a GPU, no task passes 75 ms). Per §11.1 the `/` assertion was reset to 2,500 ms. CI's runner measured 4,719 to 7,012 ms, so PR 2's review dropped TBT on `/` (§11.1 now applies it to pages without the map) and left the map page to the interaction gates (task 2.5) |
 | MapLibre 5 + pmtiles + style data land just over 300 KB | Held | Measured in task 2.9: 299,546 B after rounding the data to 5 dp and building the mask in the style. 454 B of headroom: the next map feature will need room found, or a reset with evidence |
 | Map ready and interaction gates miss their §11.1 targets in the lab | Fired | Task 2.9 measured map ready at 9.2 s and opening a card at up to 376 ms under the 4G and CPU ×4 profile; reset to 10 s and 500 ms with the evidence in `perf.spec.ts`. CI missed both: PR 2's review took the CPU slowdown off the two time gates and reset them to 14.5 s and 600 ms from the network log and a trace (task 2.9). The M1 real-phone check decides the real numbers |
 | Headless WebKit on Linux CI lacks WebGL, so the `iphone` project sees the map-failed state | Med | If so, run the iPhone 13 descriptor on Chromium for map flows and keep WebKit for the rest; note it in the PR |
