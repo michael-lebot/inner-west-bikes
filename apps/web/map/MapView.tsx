@@ -1,6 +1,6 @@
 'use client'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { byPlace, CROWDED_PIN_PX, pinLabel, PLACEMENT_ZOOM, type PublicTag } from '@iwb/shared'
+import { byPlace, CROWDED_PIN_PX, DIALOG_TOP_REM, pinLabel, PLACEMENT_ZOOM, type PublicTag } from '@iwb/shared'
 import council from '@iwb/shared/data/council.json'
 import maplibregl, { type LngLatBoundsLike, type MapMouseEvent } from 'maplibre-gl'
 import { Protocol } from 'pmtiles'
@@ -29,6 +29,8 @@ const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [-1, 0],
   ArrowRight: [1, 0],
 }
+/** The side-panel layout, as globals.css's `wide` variant has it. */
+const WIDE = '(width >= 48rem), (orientation: landscape)'
 /** Only while the map has keyboard focus. */
 const ON_KEYBOARD_FOCUS = 'hidden group-has-[canvas:focus-visible]:block'
 
@@ -170,6 +172,17 @@ export function MapView({ tags, now, selected, onPick, onStatus, spot, onPlace, 
       canvas.removeEventListener('keydown', key)
     }
   }, [map, placing])
+
+  // On a phone the dialogs that follow placing cover all but a strip of the map under the header (Dialog.tsx): the new
+  // pin moves into that strip, its tip 8 px above the dialog.
+  const describing = !!spot && !placing
+  useEffect(() => {
+    if (!map || !spot || !describing || matchMedia(WIDE).matches) return
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
+    const canvas = map.getCanvas().getBoundingClientRect()
+    const tipY = DIALOG_TOP_REM * rem - canvas.top - 8
+    map.panTo([spot.lng, spot.lat], { offset: [0, tipY - canvas.height / 2], animate: false })
+  }, [map, spot, describing])
 
   // Map ready (§11.1): the first tiles drawn, and the pins on them.
   useEffect(() => {

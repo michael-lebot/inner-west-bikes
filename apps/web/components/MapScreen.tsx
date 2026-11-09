@@ -1,7 +1,7 @@
 'use client'
 import { bikeCount, bikes, GREYS, type PublicTag, TAG_LIFETIME_HOURS } from '@iwb/shared'
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useLiveTags } from '@/lib/use-live-tags'
 import { announce } from './Announcer'
@@ -14,6 +14,9 @@ import { TagList } from './TagList'
 import { ViewToggle } from './ViewToggle'
 
 type MapModule = typeof import('@/map/MapView')
+
+// The dialogs load when tagging starts, out of the JavaScript before the map (§11.1).
+const TagFlow = lazy(() => import('./TagFlow').then((module) => ({ default: module.TagFlow })))
 type Geo = typeof import('@iwb/shared/geo')
 type Status = 'loading' | 'ready' | 'failed'
 
@@ -27,7 +30,7 @@ const READY_WITHIN_MS = 15_000
 export function MapScreen() {
   const [status, setStatus] = useState<Status>('loading')
   const [MapView, setMapView] = useState<MapModule['MapView']>()
-  const { tags, now } = useLiveTags()
+  const { tags, now, apply } = useLiveTags()
   const [selected, setSelected] = useState<string>()
   const [crowd, setCrowd] = useState<string[]>()
   // The pin that opened the chooser, which gets focus back when it closes.
@@ -93,6 +96,12 @@ export function MapScreen() {
       setOutside(false)
     })
     tagButton.current?.focus()
+  }
+
+  const changeLocation = () => {
+    // The dialog has to close first: until then the bar is inert and can't take the focus.
+    flushSync(() => setTagging('place'))
+    document.getElementById('placement-heading')?.focus()
   }
 
   const closeCard = () => {
@@ -204,7 +213,19 @@ export function MapScreen() {
         ) : card ? (
           <TagCard key={card.id} tag={card} now={now} onClose={closeCard} />
         ) : tagging ? (
-          <Placement spot={spot} outside={outside} onUse={() => setTagging('describe')} onCancel={endTagging} />
+          <>
+            <Placement spot={spot} outside={outside} onUse={() => setTagging('describe')} onCancel={endTagging} />
+            <Suspense>
+              <TagFlow
+                spot={tagging === 'describe' ? spot : undefined}
+                tags={tags ?? []}
+                now={now}
+                apply={apply}
+                onChangeLocation={changeLocation}
+                onClose={endTagging}
+              />
+            </Suspense>
+          </>
         ) : (
           <>
             {/* Each line keeps its height while the tags load, so nothing moves when they arrive. */}

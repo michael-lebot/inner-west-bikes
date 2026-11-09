@@ -1029,6 +1029,15 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   bike** → form. `TagForm.tsx`: chosen street with **Change location**, "Whose bike?" and "What's wrong?" as native
   radios in `fieldset`/`legend` styled as 44 px chips with a tick and tint, errors in text, **Cancel** and **Add to
   the map**. Success: close, "Tag added" announced, pin appears, count updates.
+  As built: `TagFlow` is loaded with `lazy()` when tagging starts, so no dialog code is in the first bundle. The
+  match dialog shows each nearby tag with `TagDetails`, not `TagRow`, which is a link to the tag's page and would
+  leave the flow; Yes and No are both secondary buttons, as neither is the expected answer. On a phone the dialog's
+  top is `DIALOG_TOP_REM` (8 rem, in shared config) and the map pans the new pin into the strip above it. The dialog
+  is fixed between that top and the bottom of the layout viewport and scrolls inside: PR 3 has no text field, so no
+  on-screen keyboard, and sizing to the visual viewport comes with PR 4's street picker. The placement bar stays
+  mounted under the dialog, and Change location focuses its heading. Errors are bold text under each legend, named
+  by the fieldset's `aria-describedby`, and focus moves to the first unanswered question. With `showModal()`, Tab
+  after the last control visits the browser's own toolbar before coming back; nothing on the page behind is reached.
 - **Accept:** nearby tags never block; Change location returns to placement and back with answers kept; Tab stays
   inside each dialog; the rest of the page is inert.
 - **Files:** `components/{Dialog,TagFlow,MatchDialog,TagForm}.tsx`, `packages/shared/src/near.ts`.

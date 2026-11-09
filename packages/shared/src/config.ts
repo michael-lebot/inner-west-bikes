@@ -89,6 +89,8 @@ export const CROWDED_PIN_PX = 44
  * in 256 px tiles, and MapLibre counts it in 512 px tiles, where 2 m per pixel at Sydney's latitude is zoom 15.
  */
 export const PLACEMENT_ZOOM = 15
+/** On a phone, a dialog's top edge: below the header and a strip of the map, where the map shows the new pin. */
+export const DIALOG_TOP_REM = 8
 /** A visible page refreshes its tags this often (§11.3). */
 export const REFRESH_MINUTES = 5
 /** Reports emailed one by one each day, before the hourly digest takes over (§4.6). */

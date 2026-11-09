@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
-import { expectNoAxeViolations, resetDb } from './support'
+import { expectNoAxeViolations, resetDb, sql } from './support'
 
 const OUTSIDE = 'That spot is outside the Inner West. Tap inside the gold line.'
 
@@ -30,6 +30,27 @@ async function startTagging(page: Page) {
   await page.getByRole('button', { name: 'Tag a dumped bike' }).click()
   await expect(page.getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
 }
+
+/** Places the pin a little way from the map's middle, where no tag is within 25 m. */
+async function placeAwayFromTags(page: Page, isMobile: boolean) {
+  const map = await mapBox(page)
+  await tap(page, isMobile, { x: map.x + map.width / 2 - 120, y: map.y + map.height / 2 + 120 })
+  await expect(bar(page)).toHaveText(/^Pin on /)
+}
+
+/** Places the pin about 12 m from the seeded tag on Llewellyn St: zoomed out, a tap on its pin zooms in there. */
+async function placeBesideLlewellynSt(page: Page, isMobile: boolean) {
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Zoom out' }).click()
+  const pin = page.getByRole('button', { name: /Llewellyn St, Marrickville/ })
+  await tap(page, isMobile, await tip(pin))
+  const at = await tip(pin)
+  await tap(page, isMobile, { x: at.x + 6, y: at.y })
+  await expect(bar(page)).toHaveText('Pin on Llewellyn St, Marrickville')
+}
+
+const dialog = (page: Page) => page.getByRole('dialog')
+/** A chip's label, which is what a visitor taps; the radio inside it is visually hidden. */
+const chip = (page: Page, name: string) => page.getByRole('radio', { name }).locator('..')
 
 test.describe('placing the pin', () => {
   test("puts the pin's tip where the map is tapped, and moves it with the next tap", async ({ page, isMobile }) => {
@@ -125,6 +146,116 @@ test.describe('placing the pin', () => {
 
       await page.keyboard.press('Escape')
       await expect(newPin(page)).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Tag a dumped bike' })).toBeFocused()
+    })
+  })
+})
+
+test.describe('the dialogs', () => {
+  test('ask "Is it one of these?" near a live tag, where "No" carries on to the form', async ({ page, isMobile }) => {
+    await startTagging(page)
+    await placeBesideLlewellynSt(page, isMobile)
+    await page.getByRole('button', { name: 'Use this spot' }).click()
+    await expect(dialog(page).getByRole('heading', { name: 'Is it one of these?' })).toBeFocused()
+    await expect(dialog(page)).toContainText('Llewellyn St, Marrickville')
+    await expectNoAxeViolations(page)
+
+    await page.getByRole('button', { name: "No, it's another bike" }).click()
+    await expect(dialog(page).getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
+    await expect(dialog(page)).toContainText('Pin on Llewellyn St, Marrickville')
+    await expectNoAxeViolations(page)
+  })
+
+  test('mark the nearby tag still there with "Yes, this bike"', async ({ page, isMobile }) => {
+    await sql(`UPDATE tags SET expires_at = now() + interval '3 hours' WHERE street = 'Llewellyn St'`)
+    await startTagging(page)
+    await placeBesideLlewellynSt(page, isMobile)
+    await page.getByRole('button', { name: 'Use this spot' }).click()
+    await page.getByRole('button', { name: 'Yes, this bike' }).click()
+    await expect(dialog(page)).toHaveCount(0)
+    await expect(page.locator('#announcer')).toHaveText('Marked still there')
+    await expect(page.getByRole('button', { name: 'Tag a dumped bike' })).toBeFocused()
+    const [tag] = await sql(
+      `SELECT expires_at - now() > interval '47 hours' AS reset FROM tags WHERE street = 'Llewellyn St'`,
+    )
+    expect(tag).toEqual({ reset: true })
+    await expect(page.getByRole('heading', { name: '14 bikes in the graveyard' })).toBeVisible()
+  })
+
+  test('name what is missing, then add the tag: announced, on the map and counted', async ({ page, isMobile }) => {
+    await startTagging(page)
+    await placeAwayFromTags(page, isMobile)
+    await page.getByRole('button', { name: 'Use this spot' }).click()
+    await expect(dialog(page).getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
+
+    await page.getByRole('button', { name: 'Add to the map' }).click()
+    await expect(dialog(page)).toContainText('Choose whose bike it is.')
+    await expect(dialog(page)).toContainText("Choose what's wrong.")
+    await expect(page.getByRole('radio', { name: 'Lime' })).toBeFocused()
+    await expect(page.getByRole('group', { name: 'Whose bike?' })).toHaveAccessibleDescription(
+      'Choose whose bike it is.',
+    )
+    await expectNoAxeViolations(page)
+
+    await chip(page, 'Hello').click()
+    await chip(page, 'Knocked over').click()
+    await expect(page.getByRole('radio', { name: 'Hello' })).toBeChecked()
+    await page.getByRole('button', { name: 'Add to the map' }).click()
+    await expect(dialog(page)).toHaveCount(0)
+    await expect(page.locator('#announcer')).toHaveText('Tag added')
+    await expect(page.getByRole('heading', { name: '15 bikes in the graveyard' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Hello e-bike, knocked over, / })).toHaveCount(2)
+    await expect(page.getByRole('button', { name: 'Tag a dumped bike' })).toBeFocused()
+  })
+
+  test('keep the answers across Change location', async ({ page, isMobile }) => {
+    await startTagging(page)
+    await placeAwayFromTags(page, isMobile)
+    await page.getByRole('button', { name: 'Use this spot' }).click()
+    await chip(page, 'Lime').click()
+    await chip(page, 'Blocking footpath').click()
+
+    await page.getByRole('button', { name: 'Change location' }).click()
+    await expect(dialog(page)).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
+    const map = await mapBox(page)
+    await tap(page, isMobile, { x: map.x + map.width / 2 + 40, y: map.y + map.height / 2 + 40 })
+    await page.getByRole('button', { name: 'Use this spot' }).click()
+    await expect(page.getByRole('radio', { name: 'Lime' })).toBeChecked()
+    await expect(page.getByRole('radio', { name: 'Blocking footpath' })).toBeChecked()
+  })
+
+  test.describe('by keyboard', () => {
+    test.skip(({ isMobile }) => isMobile, 'the desktop project')
+
+    test('hold Tab inside, leave the rest untouchable, and give focus back on Esc', async ({ page }) => {
+      await startTagging(page)
+      await placeAwayFromTags(page, false)
+      await page.getByRole('button', { name: 'Use this spot' }).click()
+      await expect(dialog(page).getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
+
+      // After the last control, focus visits the browser's own toolbar (the page sees body), then comes back.
+      const visited = new Set<string>()
+      for (let i = 0; i < 20; i++) {
+        await page.keyboard.press('Tab')
+        visited.add(
+          await page.evaluate(() => {
+            const at = document.activeElement
+            return at === document.body ? 'browser' : at?.closest('dialog') ? 'dialog' : at!.outerHTML.slice(0, 80)
+          }),
+        )
+      }
+      expect([...visited].sort()).toEqual(['browser', 'dialog'])
+      // A click on the dimmed map's zoom button does nothing.
+      const pin = page.locator('.maplibregl-marker:not([data-tag])')
+      const before = await tip(pin)
+      const zoomIn = (await page.getByRole('button', { name: 'Zoom in', includeHidden: true }).boundingBox())!
+      await page.mouse.click(zoomIn.x + zoomIn.width / 2, zoomIn.y + zoomIn.height / 2)
+      await page.waitForTimeout(300)
+      expect(await tip(pin)).toEqual(before)
+
+      await page.keyboard.press('Escape')
+      await expect(dialog(page)).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Tag a dumped bike' })).toBeFocused()
     })
   })
