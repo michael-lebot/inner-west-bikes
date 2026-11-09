@@ -40,8 +40,9 @@ export function TagCard({
         type="button"
         aria-label={shrunk ? 'Expand card' : 'Shrink card'}
         aria-expanded={!shrunk}
-        // Only the handle takes the flick, so it never fights the card's own scrolling.
-        className="-mx-4 -mt-4 flex h-11 touch-none items-center justify-center wide:hidden"
+        // Only the handle takes the flick, so it never fights the card's own scrolling. It keeps its 44 px when the
+        // card scrolls, as it does at large text sizes.
+        className="-mx-4 -mt-4 flex h-11 shrink-0 touch-none items-center justify-center wide:hidden"
         onPointerDown={(event) => {
           event.currentTarget.setPointerCapture(event.pointerId)
           flick.current = { from: event.clientY, flicked: false }

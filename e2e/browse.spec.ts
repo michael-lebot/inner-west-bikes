@@ -337,7 +337,7 @@ test.describe('the tag card', () => {
     await expect(page.getByRole('heading', { name: '13 bikes in the graveyard' })).toBeFocused()
   })
 
-  test('keeps its heading whole at the largest text size', async ({ page }) => {
+  test('keeps its heading whole and its handle full size at the largest text size', async ({ page, isMobile }) => {
     await page.addStyleTag({ content: 'html { font-size: 200% }' })
     await page.getByRole('button', { name: /Liverpool Rd, Ashfield/ }).focus()
     await page.keyboard.press('Enter')
@@ -345,6 +345,9 @@ test.describe('the tag card', () => {
     await expect(heading).toBeFocused()
     // Only the shrunk card's one line may end in an ellipsis.
     expect(await heading.locator('span').evaluate((name) => name.scrollWidth - name.clientWidth)).toBeLessThanOrEqual(0)
+    // The card is taller than the sheet and scrolls; its handle still gets its 44 px.
+    if (isMobile)
+      expect((await page.getByRole('button', { name: 'Shrink card' }).boundingBox())!.height).toBeGreaterThanOrEqual(44)
   })
 
   test('opens from a chooser that a refresh has trimmed', async ({ page }) => {
