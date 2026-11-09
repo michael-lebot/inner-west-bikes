@@ -2,7 +2,7 @@
 // tag_events. A visitor's write is one transaction: the repeat check, the rate count and one conditional statement,
 // with Postgres's now() as the only clock (plan §1.4).
 import { type AdminTag, AppError, type NewTag, type PublicTag, TAG_LIFETIME_HOURS } from '@iwb/shared'
-import { where } from '@iwb/shared/geo'
+import { isStreetNear, where } from '@iwb/shared/geo'
 import { db } from './client'
 import { Prisma, type TagEventType, type TagStatus } from './generated/prisma/client'
 import { countAction } from './limits'
@@ -96,10 +96,14 @@ async function claimRequest(tx: Client, { requestId, tagId, type, visitor }: Tag
   return false
 }
 
-/** Create (§4.2): inside the council or its 20 m strip, which where() decides here again, whatever the browser said. */
+/**
+ * Create (§4.2): inside the council or its 20 m strip, which where() decides here again, whatever the browser said.
+ * The street is where()'s nearest, or one picked by name (§10.3) if the data has it within 60 m: no other text gets in.
+ */
 export async function createTag({ tag, visitor }: { tag: NewTag; visitor: Visitor }) {
-  const { inside, suburb, street } = where(tag.lat, tag.lng)
+  const { inside, suburb, street: nearest } = where(tag.lat, tag.lng)
   if (!inside) throw new AppError('outside_area')
+  const street = tag.street && isStreetNear(tag.street, tag.lat, tag.lng) ? tag.street : nearest
   return db.$transaction(async (tx) => {
     // The tag goes in before its created event, which refers to it; the id is the event's request id. A repeat
     // inserts nothing, and the claim then finds the first create.

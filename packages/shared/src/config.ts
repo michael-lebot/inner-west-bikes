@@ -84,6 +84,8 @@ export const COUNTER_RETENTION_HOURS = 48
 export const NEARBY_METERS = 25
 /** Tags are accepted this far outside the council boundary (§4.1). */
 export const BOUNDARY_BUFFER_METERS = 20
+/** A street picked by name (§10.3) is kept for a tag only this close to its spot; past it, the nearest one is. */
+export const PICKED_STREET_METERS = 60
 /** Use my location proposes a pin only when the position is at least this accurate (§4.1). */
 export const LOCATION_ACCURACY_METERS = 50
 /** Tapping a pin this close to another opens the "N bikes here" chooser (§4.1). */

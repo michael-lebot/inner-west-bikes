@@ -1,4 +1,5 @@
 import { type NewTag, PROBLEMS, REPORT_REASONS } from '@iwb/shared'
+import { where } from '@iwb/shared/geo'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db } from './client'
 import { Problem, ReportReason } from './generated/prisma/enums'
@@ -148,6 +149,25 @@ describe('createTag', () => {
   it('refuses the same id from another visitor', async () => {
     await createTag({ tag: LLEWELLYN_ST, visitor: alice })
     await expect(createTag({ tag: LLEWELLYN_ST, visitor: bob })).rejects.toMatchObject({ code: 'conflict' })
+  })
+
+  describe('with the street picked by name (§10.3)', () => {
+    // 106 Albion St, Annandale, where the nearest named street is the lane behind the house.
+    const ALBION_ST: NewTag = { id: NEW, lat: -33.88727, lng: 151.16679, operator: 'lime', problem: 'damaged' }
+
+    it('keeps a picked street within 60 m of the spot, where the nearest street is another', async () => {
+      expect(where(ALBION_ST.lat, ALBION_ST.lng).street).toBe('Albion La')
+      const { tag } = await createTag({ tag: { ...ALBION_ST, street: 'Albion St' }, visitor: alice })
+      expect(tag).toMatchObject({ suburb: 'Annandale', street: 'Albion St' })
+    })
+
+    it.each([
+      ['a street further away', 'King St'],
+      ['a name no street has', 'Nowhere Rd'],
+    ])('names the nearest street instead of %s', async (_, street) => {
+      const { tag } = await createTag({ tag: { ...ALBION_ST, street }, visitor: alice })
+      expect(tag).toMatchObject({ suburb: 'Annandale', street: 'Albion La' })
+    })
   })
 
   it('stops at the limit, keeping nothing of the refused tag', async () => {

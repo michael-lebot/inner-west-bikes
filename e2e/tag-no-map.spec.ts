@@ -79,9 +79,10 @@ test.describe('Choose by street', () => {
     await expect(page.getByRole('heading', { name: '15 bikes in the graveyard' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Tag a dumped bike' })).toBeFocused()
 
-    // The tag is the point and the street where() names, as any other (§10.3); the number stays in the browser.
+    // The tag is the point and the street picked, which the server checks (§10.3); the number stays in the browser.
     const body = (await posted).postDataJSON()
-    expect(Object.keys(body).sort()).toEqual(['id', 'lat', 'lng', 'operator', 'problem'])
+    expect(Object.keys(body).sort()).toEqual(['id', 'lat', 'lng', 'operator', 'problem', 'street'])
+    expect(body.street).toBe('Llewellyn St')
     expect(await sql(`SELECT suburb, street FROM tags WHERE id = '${body.id}'`)).toEqual([
       { suburb: 'Marrickville', street: 'Llewellyn St' },
     ])
@@ -124,8 +125,30 @@ test.describe('Choose by street', () => {
     // The seeded tag on Llewellyn St is 3 m from the corner.
     await expect(dialog(page).getByRole('heading', { name: 'Is it one of these?' })).toBeFocused()
     await dialog(page).getByRole('button', { name: "No, it's another bike" }).click()
-    // The street a tag records is always the one nearest its point, which here is the cross street (assumption 10).
-    await expect(dialog(page)).toContainText('Pin on Juliett St, Marrickville')
+    // The street picked, though the cross street is nearer the corner (assumption 10).
+    await expect(dialog(page)).toContainText('Pin on Llewellyn St, Marrickville')
+  })
+
+  test('stores the street picked, not the lane behind the house, so its card and /list say Albion St', async ({
+    page,
+  }) => {
+    await startTagging(page)
+    await pickStreet(page, 'albion st ann', 'Albion St, Annandale')
+    await findNumber(page, '106')
+    await dialog(page).getByRole('button', { name: 'Use this spot' }).click()
+    // The nearest named street to 106 is Albion La, behind it.
+    await expect(dialog(page)).toContainText('Pin on Albion St, Annandale')
+    await chip(page, 'Lime').click()
+    await chip(page, 'Damaged').click()
+    await dialog(page).getByRole('button', { name: 'Add to the map' }).click()
+    await expect(announced(page)).toHaveText('Tag added')
+    const id = await newTagId()
+
+    await page.locator(`[data-tag="${id}"] button`).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('region', { name: 'Lime e-bike' })).toContainText('Albion St, Annandale')
+    await page.goto('/list')
+    await expect(page.locator(`a[href="/tag/${id}"]`)).toContainText('Albion St')
   })
 
   test('on the map, puts the pin there behind the form, where Change location lets a tap move it', async ({

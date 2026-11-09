@@ -26,6 +26,8 @@ export const CreateTagBody = z.object({
   lng: coordinate,
   operator: z.enum(operators),
   problem: z.enum(Object.keys(PROBLEMS) as [Problem, ...Problem[]]),
+  // Chosen by name in the street picker (§10.3). The server keeps it only if the data has it near the spot.
+  street: z.optional(z.string().check(z.maxLength(100))),
 })
 export type NewTag = z.infer<typeof CreateTagBody>
 

@@ -35,7 +35,7 @@ function searchStatus(query: string, found: number | undefined) {
 /**
  * Choose by street (§10.3), the way to place a tag without the map: a street, then the nearest house number or
  * corner, then the spot read back with Use this spot. What is typed never leaves the browser, and the house number
- * only finds the spot: `onUse` gets the point, named by where() like any other.
+ * only finds the spot: `onUse` gets the point, in where()'s suburb, on the street picked from the list.
  */
 export function StreetPicker({ onUse, onCancel }: { onUse: (spot: Spot) => void; onCancel: () => void }) {
   const [loaded, setLoaded] = useState<{ picker: Picker; where: Where }>()
@@ -112,7 +112,8 @@ export function StreetPicker({ onUse, onCancel }: { onUse: (spot: Spot) => void;
 
   const use = () => {
     const [, lat, lng] = chosen!.place
-    onUse({ lat, lng, ...loaded!.where(lat, lng) })
+    // The street picked, not where()'s nearest, which is often the lane behind the house; the server checks it.
+    onUse({ lat, lng, ...loaded!.where(lat, lng), street: street!.street, picked: true })
   }
 
   return (

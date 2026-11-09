@@ -399,7 +399,12 @@ One line each; the spec section is in brackets.
 7. The browser retries a 429 only when `Retry-After` is 30 s or less; longer limits show the limit message at once (§5.3).
 8. The visitor cookie (`iwb_v`) is set by `proxy.ts` on the first request of any kind, including the request itself, so even a first write has a stable visitor for retries (§5.3, §6).
 9. Visitor hash = HMAC-SHA256(`HASH_SECRET`, cookie). IP hash = HMAC-SHA256(daily salt, IPv4 or IPv6 /64). Both hex (§6).
-10. The street stored for a tag is always `where()`'s nearest named street, even on the Choose by street route (§4.1, §10.3).
+10. The street stored for a tag is `where()`'s nearest named street, except on the Choose by street route, where the
+    browser sends the street picked (for a corner, the street chosen, not the cross street) and the server keeps it if
+    the data has a named street by that name within 60 m of the point (`isStreetNear` in `geo.ts`), and otherwise
+    stores the nearest one. No free text gets in, as the name must be the data's. The suburb is always `where()`'s
+    (§4.1, §10.3). Overruled in PR 4's browser check, where 37% of house numbers were stored under another street,
+    usually the lane behind the house.
 11. The `within` label filter uses the buffered polygon, so streets on the boundary (King St, Parramatta Rd) keep their labels (§4.1).
 12. The gold council wall gets a dark (`#1f2328`) casing: gold alone is 1.6:1 on the grass and 1.2:1 on light grey, below the 3:1 in §10.2.
 13. The Hello pin fill darkens from `#2f7bff` to about `#2566e6` so its white letter reaches 4.5:1; all pins get a 1 px white outer halo so they reach 3:1 on the dark greys outside the council (§10.2).
@@ -1180,8 +1185,9 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   is spoken as it changes, as are the errors. The picker loads `@iwb/shared/picker` and `/geo` together, and a
   street's suburb file as the street is picked. Its Use this spot goes straight to the match question or the form,
   as §10.3's "the usual form follows" says, with the pin on the map behind: in the strip above the dialog on a phone,
-  brought into view in the side-panel layout. Fine-tuning is the form's Change location, as for any spot. `TagFlow`
-  is unchanged; `/list` reuses `Placement` (`withMap={false}`), so `ListTagButton` is the button, the bar and
+  brought into view in the side-panel layout. Fine-tuning is the form's Change location, as for any spot. The spot
+  carries the street picked (`picked`), which `TagForm` sends and the server checks (assumption 10, as overruled at
+  PR 4's browser check); otherwise `TagFlow` is unchanged. `/list` reuses `Placement` (`withMap={false}`), so `ListTagButton` is the button, the bar and
   `TagFlow`, and a tag added there refreshes the page. Esc inside a dialog is the dialog's own, so Esc in the picker
   no longer also cancels placing. While an on-screen keyboard is open, `Dialog` fills the visual viewport from its
   top, over the map strip and the header: on an iPhone 13 a 300 px keyboard left the strip's dialog 236 px, below the

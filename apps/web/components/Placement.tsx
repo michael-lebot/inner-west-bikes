@@ -7,8 +7,11 @@ import { LocateButton, type Located } from './LocateButton'
 // Loaded when it opens, out of the JavaScript before the map (§11.1).
 const StreetPicker = lazy(() => import('./StreetPicker').then((module) => ({ default: module.StreetPicker })))
 
-/** A spot inside the council or its 20 m strip, with the street and suburb where() gives it. */
-export type Spot = { lat: number; lng: number; street: string; suburb: string }
+/**
+ * A spot inside the council or its 20 m strip, with the street and suburb where() gives it. Chosen by street, it has
+ * the street the visitor picked instead, and `picked`, so the tag sends it (§10.3).
+ */
+export type Spot = { lat: number; lng: number; street: string; suburb: string; picked?: true }
 
 export const OUTSIDE = 'That spot is outside the Inner West. Tap inside the gold line.'
 export const pinOn = (spot: Spot) => `Pin on ${spot.street}, ${spot.suburb}`
