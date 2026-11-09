@@ -153,7 +153,9 @@ export function StreetPicker({ onUse, onCancel }: { onUse: (spot: Spot) => void;
               <div className="flex gap-2">
                 <input
                   id="house-number"
-                  inputMode="numeric"
+                  // The full keyboard, as a number can have a letter (12A), which a phone's number pad lacks.
+                  inputMode="text"
+                  autoCapitalize="characters"
                   autoComplete="off"
                   value={number}
                   onChange={(event) => setNumber(event.target.value)}

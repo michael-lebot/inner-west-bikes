@@ -58,6 +58,7 @@ test.describe('Choose by street', () => {
 
     await dialog(page).getByRole('button', { name: 'Llewellyn St, Marrickville' }).click()
     await expect(dialog(page).getByRole('heading', { name: 'Llewellyn St, Marrickville' })).toBeFocused()
+    await expect(dialog(page).getByRole('textbox', { name: 'House number' })).toHaveAttribute('inputmode', 'text')
     await findNumber(page, '9999')
     const unknown = "We don't have number 9999 on Llewellyn St. Try another number, or pick the nearest corner."
     await expect(dialog(page).getByRole('textbox', { name: 'House number' })).toHaveAccessibleDescription(unknown)
