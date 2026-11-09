@@ -1,6 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 import { E2E_DATABASE_URL } from './e2e/support'
 
+// The photos the tests add, kept apart from the dev server's, as their database is.
+const E2E_BLOB_DIR = '../../.data/blob-e2e'
+
 // End-to-end tests run against production builds (`pnpm build` first) of both apps on the iwb_e2e database.
 export default defineConfig({
   testDir: 'e2e',
@@ -23,13 +26,13 @@ export default defineConfig({
     {
       command: 'pnpm --filter @iwb/web start',
       url: 'http://localhost:3000',
-      env: { DATABASE_URL: E2E_DATABASE_URL },
+      env: { DATABASE_URL: E2E_DATABASE_URL, LOCAL_BLOB_DIR: E2E_BLOB_DIR },
     },
     {
       command: 'pnpm --filter @iwb/admin start',
       // Playwright starts the servers before global setup creates the database: check a page that doesn't read it.
       url: 'http://localhost:3001/reports',
-      env: { DATABASE_URL: E2E_DATABASE_URL },
+      env: { DATABASE_URL: E2E_DATABASE_URL, LOCAL_BLOB_DIR: E2E_BLOB_DIR },
     },
   ],
 })

@@ -1437,6 +1437,15 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   Try again → attached; Skip leaves the tag without a photo; after Removed the photo URL is 404. axe on the form with
   a photo and on the failure state.
 - **Accept:** green on three projects.
+  As built: the JPEG is drawn by the browser's own canvas in the test, so the root needs no `sharp`. The servers
+  under test keep their photos in `.data/blob-e2e`, apart from the dev server's, as their database is. The spec also
+  covers a file the browser can't read (said in the form), a card whose photo was hidden after the tags were fetched
+  ("Photo no longer shown"), and the admin side: the tag page shows a removed tag's photo, and Take down makes both
+  apps' URLs 404. That card test opens a thumbnail the tab has never loaded: WebKit was seen reusing an image from its
+  memory cache after the photo was hidden, `no-cache` notwithstanding, until the page next refreshes its data
+  (§4.3). Measured (2026-11-10): 147,566 B of JavaScript before the map on `/` (PR 4: 146,901 B; the card's
+  thumbnail is in it, the photo input and its canvas code are not), a 291,082 B map bundle, and 3,530 B for the
+  tagging chunk with the photo step.
 - **Files:** `e2e/photos.spec.ts`.
 - **Verify:** `pnpm verify`.
 - **Depends:** 5.5, 5.6.
