@@ -58,6 +58,18 @@ test.describe('the map screen shell', () => {
     expect(nonces[0]).not.toBe(nonces[1])
   })
 
+  test('gives a new visitor a random cookie once, which only the server can read', async ({ page }) => {
+    const first = await page.goto('/')
+    // Over HTTPS, as on Vercel, it is Secure too (proxy.test.ts).
+    expect(await first?.headerValue('set-cookie')).toMatch(
+      /^iwb_v=[\w-]{22}; Path=\/; Expires=[^;]+; Max-Age=31536000; HttpOnly; SameSite=lax$/,
+    )
+    const [cookie] = await page.context().cookies()
+    expect(cookie).toMatchObject({ name: 'iwb_v', httpOnly: true, sameSite: 'Lax' })
+    const again = await page.goto('/list')
+    expect(await again?.headerValue('set-cookie')).toBeNull()
+  })
+
   test('shows a 3 px focus ring on the header link', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'Tab moves through links on desktop browsers')
     await page.goto('/')

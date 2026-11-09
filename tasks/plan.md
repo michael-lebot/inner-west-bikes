@@ -927,6 +927,12 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   `packages/server/src/limits.ts`: `countAction(tx, action, visitor, tagId?)` upserts one counter per `LIMITS` rule
   (`INSERT … ON CONFLICT (key) DO UPDATE SET count = rate_counters.count + 1 RETURNING count`, window start from
   Postgres) and throws `AppError('rate_limited', { retryAfter })` when any count passes its maximum.
+  As built: the cookie is `Secure` whenever the request is HTTPS, which on Vercel is always: WebKit drops a `Secure`
+  cookie sent over plain HTTP, as `next start` serves the end-to-end tests, so the `iphone` project would have been a
+  new visitor on every request. The salt isn't cached: one upsert (`ON CONFLICT (day) DO UPDATE SET salt =
+  daily_salts.salt RETURNING salt`) returns the day's salt whoever made it, with Postgres's clock deciding the day,
+  for one small query per write. `HASH_SECRET` is optional in the schema and `visitorFrom` throws without it, so the
+  admin app runs without it.
 - **Accept:** `limits.test.ts`: §5.5 two at once — six concurrent Removed counts for one visitor give exactly three
   successes; per-IP limits apply across different cookies; "1 per tag per 12 h" for Still there; `Retry-After`
   equals the seconds to the bucket end. Raw IPs never appear in the database or logs.

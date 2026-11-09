@@ -21,10 +21,13 @@ export const SEND_FAILED = "Couldn't send. Check your connection and try again."
 
 export class AppError extends Error {
   readonly code: ErrorCode
+  /** For `rate_limited`: the seconds until the limit's window ends, sent as `Retry-After`. */
+  readonly retryAfter?: number
 
-  constructor(code: ErrorCode) {
+  constructor(code: ErrorCode, options?: { retryAfter: number }) {
     super(ERRORS[code].message)
     this.name = 'AppError'
     this.code = code
+    this.retryAfter = options?.retryAfter
   }
 }
