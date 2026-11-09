@@ -1443,11 +1443,14 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   branch-per-preview on; web build command `DATABASE_URL=$DATABASE_URL_UNPOOLED pnpm --filter @iwb/server migrate:deploy
   && pnpm turbo run build --filter=@iwb/web`; Blob: a **public** store for tiles (upload `inner-west-<build>.pmtiles`
   with a one-year immutable cache, set `NEXT_PUBLIC_TILES_URL`) and a **private** photo store connected to both
-  projects as `BLOB_READ_WRITE_TOKEN`; BotID with Deep Analysis on `web`; firewall rule `POST /api/*` 20 per 60 s per
+  projects as `BLOB_READ_WRITE_TOKEN`; BotID with Deep Analysis on `web`, whose system environment variables stay
+  exposed (the default: the browser's BotID check is built in only when `NEXT_PUBLIC_VERCEL_ENV` is set, while the
+  server checks whenever `VERCEL` is, so without them every write gets 403); firewall rule `POST /api/*` 20 per 60 s per
   IP → 429; Resend account and API key (`RESEND_API_KEY`, `ALERT_EMAIL_TO`); `HASH_SECRET` and `CRON_SECRET`
-  (random 32 bytes each); Vercel Authentication "All deployments" on `admin`; spend-management alert; Speed Insights
-  check; domain later. Then the post-deploy checks: §11.2 PMTiles checks, `admin-access.spec.ts` against a preview,
-  cron 401 in production. **Launch checklist**: every item in Left for Michael. `docs/accessibility-checklist.md`:
+  (random 32 bytes each, on `web` for production and preview); Vercel Authentication "All deployments" on `admin`;
+  spend-management alert; Speed Insights check; domain later. Then the post-deploy checks: §11.2 PMTiles checks,
+  `admin-access.spec.ts` against a preview, a tag added and removed from a phone on a preview while a `curl` POST
+  gets 403, the `iwb_v` cookie sent `Secure`, cron 401 in production. **Launch checklist**: every item in Left for Michael. `docs/accessibility-checklist.md`:
   the §10.6, §12 and §13 manual checks as a ticklist per milestone. `docs/esafety.md`: the §7 one-page response
   procedure, with an empty "Classification" section for Michael. Review every `.env.example` against `env.ts`
   files; update the README's Status section; re-read `/accessibility`, `/privacy` and `/terms` against what was
