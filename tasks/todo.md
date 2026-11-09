@@ -32,7 +32,7 @@ acceptance criteria pass and `pnpm verify` is green.
 ## PR 3 — `build/03-tag-on-map` (from `build/02-browse-map`)
 
 - [x] 3.1 Visitor cookie and hashes; rate limits in Postgres (two-at-once test)
-- [ ] 3.2 Tag lifecycle in `tags.ts`: create, still there, removed, undo, take down (expiry, two-at-once, repeat tests)
+- [x] 3.2 Tag lifecycle in `tags.ts`: create, still there, removed, undo, take down (expiry, two-at-once, repeat tests)
 - [ ] 3.3 Write wrapper, BotID seam and the three tag write routes
 - [ ] 3.4 Browser `send()` with retries, request IDs and announcements
 - [ ] 3.5 Placement step: tap, readback, outside message, keyboard crosshair

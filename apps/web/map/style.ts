@@ -4,17 +4,20 @@
 import { GREYS, LABEL, MAP_COLORS, STREET_TYPES, WALL } from '@iwb/shared'
 import council from '@iwb/shared/data/council.json'
 import buffered from '@iwb/shared/data/council-buffered.json'
+import type { Polygon } from 'geojson'
 import type { ExpressionSpecification, StyleSpecification } from 'maplibre-gl'
 import { TILES_URL } from '@/lib/public-env'
 
 const REGULAR = ['AtkinsonHyperlegible-Regular']
 const BOLD = ['AtkinsonHyperlegible-Bold']
 
+// JSON imports type "Polygon" as any string.
+const BOUNDARY = council.boundary as Polygon
 /** Wholly inside the council plus its 20 m strip, so streets along the boundary keep their names (assumption 11). */
-const INSIDE: ExpressionSpecification = ['within', buffered]
+const INSIDE: ExpressionSpecification = ['within', buffered as Polygon]
 const [west, south, east, north] = council.maxBounds as [number, number, number, number]
 /** The map's box with the council cut out, to grey out everything else. geojson-vt winds the rings itself. */
-const MASK = {
+const MASK: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -24,9 +27,9 @@ const MASK = {
       [west, north],
       [west, south],
     ],
-    ...council.boundary.coordinates,
+    ...BOUNDARY.coordinates,
   ],
-} as const
+}
 /** Wholly outside the council, where the mask greys everything out. */
 const OUTSIDE: ExpressionSpecification = ['within', MASK]
 
@@ -75,7 +78,7 @@ export function overworldStyle(): StyleSpecification {
     sources: {
       // 256 px tiles: each view loads the next zoom's tiles, so the whole-council view has suburb names and side streets.
       osm: { type: 'vector', url: `pmtiles://${new URL(TILES_URL, location.href)}` },
-      council: { type: 'geojson', data: council.boundary },
+      council: { type: 'geojson', data: BOUNDARY },
       mask: { type: 'geojson', data: MASK },
       suburbs: {
         type: 'geojson',

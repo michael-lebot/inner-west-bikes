@@ -347,8 +347,8 @@ Dev only: `typescript` ~6.0 (typescript-eslint supports < 6.1; TS 7 has no compi
 typescript-eslint), `next` at the root too (eslint-config-next loads its parser from `next` without declaring it),
 `prettier`, `tailwindcss` 4 + `@tailwindcss/postcss`, `vitest` **4.1** (Vitest 5 excludes Node 25, the local
 runtime), `@playwright/test`, `@axe-core/playwright`, `@lhci/cli`, `pg` + `@types/pg` (E2E SQL helper),
-`@turf/turf` (data build scripts only), `@types/geojson` (the GeoJSON types `geo.ts` and the data scripts use; turf
-brings them, but pnpm only resolves a package's own dependencies), `@types/node`, `@types/react`.
+`@turf/turf` (data build scripts only), `@types/geojson` (the GeoJSON types `geo.ts`, the data scripts and the map
+style use; turf brings them, but pnpm only resolves a package's own dependencies), `@types/node`, `@types/react`.
 
 Platform features used instead of packages: Node 24 type stripping runs `.ts` scripts (no `tsx`); `fetch` for Resend
 (no SDK); `crypto.randomUUID` (no `uuid`); `Intl.DateTimeFormat` (no date library); native `<dialog>` with
@@ -947,6 +947,13 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   (`last_confirmed_at = now()`, `expires_at = now() + 48 h`, `confirm_count + 1`), `markRemoved`, `undoRemoval`
   (`status = 'removed' AND expires_at > now()`; returns `expired` or `not_removed` reasons for the admin), `takeDown`
   (`status <> 'taken_down'`, final). Each per §1.4.
+  As built: create inserts the tag (`ON CONFLICT (id) DO NOTHING`) before `claimRequest`, because the created event
+  refers to it; a repeat inserts nothing and the claim then finds the first create, and a refused create rolls the
+  tag back with its count. `claimRequest` treats a stored request id as a repeat only for the same visitor, tag and
+  action; anything else is `conflict`, and a tag that doesn't exist is `tag_gone`. Undo removal and take down are one
+  statement each, the change and its event in one `WITH … INSERT`; undo also clears `removed_at`. Once the web app's
+  type check sees `@iwb/shared/geo` through `@iwb/server`, `@types/geojson` is in its program, so `map/style.ts`
+  types the council JSON as GeoJSON and the web app lists `@types/geojson` too.
 - **Accept:** `tags.test.ts` covers §5.5 expiry edges (Still there and Removed work one second before `expires_at`
   and change nothing one second after; undo refused after `expires_at`), two at once (two simultaneous Removed write
   one removal), repeats (create, Still there and Removed with the same ID return the first result with one event and
