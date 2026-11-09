@@ -164,6 +164,23 @@ const metres = ([x1 = 0, y1 = 0]: Position, [x2 = 0, y2 = 0]: Position) =>
   Math.hypot((x2 - x1) * metresPerLng, (y2 - y1) * 111_320)
 const place = (name: string, [lng = 0, lat = 0]: Position): Place => [name, +lat.toFixed(5), +lng.toFixed(5)]
 
+/** Corners and houses that rounding alone would have put outside the strip: moved inside it, or left out. */
+let [moved, dropped] = [0, 0]
+/**
+ * The point on the picker's 1e-5 degree grid (about a metre) nearest to `point` that is inside the buffered council,
+ * where createTag() takes it, or null. Rounding alone put 7 houses just outside.
+ */
+function onGrid(point: Position) {
+  const [x = 0, y = 0] = point.map((degrees) => degrees * 1e5)
+  const around = [Math.floor, Math.ceil]
+    .flatMap((lat) => [Math.floor, Math.ceil].map((lng) => [lng(x) / 1e5, lat(y) / 1e5]))
+    .sort((a, b) => metres(a, point) - metres(b, point))
+  const inside = around.findIndex((at) => turf.booleanPointInPolygon(at, buffered))
+  if (inside < 0) dropped++
+  else if (inside > 0) moved++
+  return around[inside] ?? null
+}
+
 const picker = new Map<string, { street: string; suburb: string; corners: Place[] }>()
 function entry(street: string, suburb: string) {
   const key = `${street}, ${suburb}`
@@ -193,7 +210,8 @@ for (const [pair, points] of corners) {
   const [street = '', cross = ''] = pair.split('\n')
   for (const point of points) {
     const suburb = gazetted.find((suburb) => turf.booleanPointInPolygon(point, suburb))
-    if (suburb) entry(street, title(suburb.properties.suburbname)).corners.push(place(cross, point))
+    const at = suburb && onGrid(point)
+    if (at) entry(street, title(suburb.properties.suburbname)).corners.push(place(cross, at))
   }
 }
 // In order along the street: west to east, or north to south, whichever way it runs further.
@@ -234,7 +252,8 @@ for (const point of addresses) {
   }
   const streets = numbers.get(suburb) ?? numbers.set(suburb, new Map()).get(suburb)!
   const byNumber = streets.get(street) ?? streets.set(street, new Map()).get(street)!
-  if (!byNumber.has(number)) byNumber.set(number, point.geometry.coordinates)
+  const at = !byNumber.has(number) && onGrid(point.geometry.coordinates)
+  if (at) byNumber.set(number, at)
   entry(street, suburb)
 }
 
@@ -281,7 +300,8 @@ const numbered = [...numbers.values()].flatMap((streets) => [...streets])
 console.info(
   `${numbered.reduce((total, [, byNumber]) => total + byNumber.size, 0)} house numbers on ${numbered.length} streets ` +
     `in their suburbs (${new Set(numbered.map(([street]) => street)).size} names); ${unmatched} address points left ` +
-    `out, on streets the road data doesn't name`,
+    `out, on streets the road data doesn't name; ${moved} corners and houses moved onto the grid inside the strip, ` +
+    `${dropped} left out`,
 )
 
 write(

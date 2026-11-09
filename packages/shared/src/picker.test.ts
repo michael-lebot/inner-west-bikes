@@ -1,6 +1,10 @@
+import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
+import type { Polygon } from 'geojson'
 import { describe, expect, it } from 'vitest'
+import buffered from '../data/council-buffered.json'
+import picker from '../data/picker.json'
 import { where } from './geo'
-import { loadHouseNumbers, matchHouseNumber, type Place, searchStreets } from './picker'
+import { loadHouseNumbers, matchHouseNumber, type Place, type Street, searchStreets } from './picker'
 
 describe('matchHouseNumber', () => {
   const at = (number: string): Place => [number, -33.9, 151.17]
@@ -70,4 +74,18 @@ describe('loadHouseNumbers', () => {
     expect(twelve?.[0]).toBe('12')
     expect(where(twelve![1], twelve![2])).toEqual({ inside: true, suburb: 'Marrickville', street: 'Llewellyn St' })
   })
+})
+
+it('offers only spots the server takes: every corner and house, as the picker reads it, is inside the 20 m strip', async () => {
+  // where()'s own test, without its nearest street, which would take minutes for every house. The server rounds to
+  // 1e-6 degrees first, which leaves a point on the data's 1e-5 grid as it is.
+  const outside: string[] = []
+  const check = (label: string, [name, lat, lng]: Place) =>
+    booleanPointInPolygon([lng, lat], buffered as Polygon) || outside.push(`${name}, ${label}`)
+  for (const street of picker as Street[]) {
+    const at = `${street.street}, ${street.suburb}`
+    for (const corner of street.corners) check(`corner of ${at}`, corner)
+    for (const house of await loadHouseNumbers(street)) check(at, house)
+  }
+  expect(outside).toEqual([])
 })

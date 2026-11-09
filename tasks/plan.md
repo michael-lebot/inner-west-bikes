@@ -1143,7 +1143,10 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   away under the same name, where a divided road or offset arms meet a street. Further apart, as where a crescent
   meets a street at both ends, 48 repeats remain. A corner's suburb is the gazetted, unsimplified one it is in. Each
   street's house numbers are stored as steps from the one before in 1e-5 degrees, going up one side of the street and
-  then the other: Marrickville went from 52 KB gzipped to 30 KB. `picker.ts` exports `searchStreets`,
+  then the other: Marrickville went from 52 KB gzipped to 30 KB. Each corner and house is checked again on that
+  grid: rounding put 7 houses (on Church St, Newtown, New Canterbury Rd, Hurlstone Park and The Strand, Croydon)
+  just outside the 20 m strip, where the server would refuse them, so each takes the nearest grid point inside it,
+  about a metre away; none is left out. A test reads every committed corner and house back and checks it. `picker.ts` exports `searchStreets`,
   `loadHouseNumbers(street)` (one street's numbers from its suburb's file) and `matchHouseNumber`; each entry carries
   its corners, so there is no `cornersOf`. Measured: 53,513 house numbers on 1,479 streets in their suburbs (1,058
   names), in 29 suburb files, the largest 30,475 B gzipped (Marrickville) and the median 5,420 B; `picker.json` has
