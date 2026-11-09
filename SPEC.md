@@ -11,6 +11,7 @@
 >   - It fixes the placement, dialog and sheet behaviour that conflicted with the accessibility target (§3, §10,
 >     §12).
 >   - Rulings applied provisionally, which need Michael's confirmation, are listed in §13.
+>   - After the review, Michael added **Use my location** as a third way to place a pin (§4.1).
 >
 > Sources are listed at the end.
 
@@ -40,7 +41,7 @@ operators, and has no reporting channel of its own.
 | Bike type | Share-scheme bikes and e-bikes only (Lime, Hello, Ario, plus "Not sure") |
 | Who acts on tags | **Public visibility only** in v1. No operator or council integrations |
 | Map realism | **Real streets and real street names, with a retro game skin**. Must be accurate enough to walk to |
-| Placing a tag | **Tap the map**, or pick a street and its nearest corner (the route that needs no map, §10.3). No GPS. Tags up to **20 m outside the council boundary** are accepted (§4.1) |
+| Placing a tag | Three ways: **tap the map**; **Use my location**, which proposes a pin to confirm; or pick a street and its nearest corner, which needs no map (§4.1, §10.3). Tags up to **20 m outside the council boundary** are accepted |
 | Tag fields | Operator picker + problem pick-list + optional photo. **No free text** is stored or published |
 | "Removed" | Instant, but **rate-limited per visitor**. Every removal is logged so the admin can undo it, until the tag's 48 hours run out (§4.2) |
 | Photo screening | **Published instantly**. Community reports are the safety net; no automated scan. The risk this leaves is recorded in §6 |
@@ -65,18 +66,20 @@ The three main screens are shown in `docs/mockups/graveyard-v3.html`.
    - A **List** toggle shows the same tags as a list grouped by suburb (§10.3).
 2. **Tag a bike.** Going back a step never loses what was already entered.
    1. **Start.** Tap "Tag a dumped bike". If the map is zoomed out, it zooms in to street level (zoom 16) first.
-   2. **Place.** The whole map stays usable. Tap the spot, or use **Choose by street** to pick a street and its
-      nearest corner without the map (§10.3).
-      - The pin drops and a bar under the map reads "Pin on Llewellyn St, Marrickville", with **Use this spot** and
-        **Cancel**. Tapping somewhere else moves the pin.
-      - Spots outside the council plus 20 m are rejected with a friendly message.
-   3. **Check for a match.** If live tags sit within about 25 m, the app asks "Is it one of these?" and lists them.
+   2. **Place.** The whole map stays usable. There are three ways to set the spot:
+      - tap it on the map;
+      - **Use my location**, which proposes a pin where the visitor is standing (§4.1);
+      - **Choose by street**, which picks a street and its nearest corner without the map (§10.3).
+   3. **Check the pin.** A bar under the map reads "Pin on Llewellyn St, Marrickville", with **Use this spot** and
+      **Cancel**. Tapping somewhere else moves the pin. Spots outside the council plus 20 m are rejected with a
+      friendly message.
+   4. **Check for a match.** If live tags sit within about 25 m, the app asks "Is it one of these?" and lists them.
       **Yes, this bike** marks that tag Still there. **No, it's another bike** carries on. Nearby tags never block a
       new one (§4.2).
-   4. **Describe.** The form opens as a dialog over a short map strip. It shows the chosen street with a **Change
+   5. **Describe.** The form opens as a dialog over a short map strip. It shows the chosen street with a **Change
       location** button, which goes back to step 2. Choose **Whose bike?** (Lime / Hello / Ario / Not sure) and
       **What's wrong?**, optionally add a photo, then tap **Add to the map**.
-   5. **Photo.** The tag is saved first and the photo is sent after it. If the photo fails, the tag stays and the
+   6. **Photo.** The tag is saved first and the photo is sent after it. If the photo fails, the tag stays and the
       photo can be retried on its own (§4.3).
 3. **Confirm.** Tap a pin to open a card showing:
    - the photo, operator, problem and street;
@@ -149,6 +152,17 @@ The three main screens are shown in `docs/mockups/graveyard-v3.html`.
   - The same build step lists every corner where two named streets meet, for the street picker (§10.3).
 - **Inside-the-council check:** turf `booleanPointInPolygon` against the buffered polygon, run in the browser for
   instant feedback and again on the server as the rule that counts. PostGIS isn't needed in v1.
+- **Use my location (optional).** A button in the placement step, for someone standing beside the bike.
+  - The browser asks for permission only when the button is tapped, never when the page loads.
+  - The location is read once and never tracked. It stays in the browser. Only the pin the visitor confirms is sent,
+    as for any tag.
+  - **Accurate to 50 m or better:** the map centres there and a pin is proposed. The visitor confirms it with **Use
+    this spot** or taps to move it. Nothing is submitted automatically.
+  - **Worse than 50 m:** the map centres there with no pin, and a message says "Your location is only accurate to
+    about 80 m. Tap where the bike is, or choose a street."
+  - **Outside the council plus 20 m:** "You're outside the Inner West. Tap the map or choose a street."
+  - **Permission refused, or no location within 10 seconds:** a plain message, and the other two ways still work.
+  - It is a convenience, not proof that the visitor was there. The server doesn't check it.
 - **Accessibility, performance and mobile behaviour** of the map are specified in §10–§12.
 
 ### 4.2 Tags
@@ -395,6 +409,8 @@ These are exit criteria for M2 and M3 (§14). They run in Vitest against a real 
 - **Access:** the hourly job returns 401 without the token. The admin app can't be reached without Vercel
   Authentication (Playwright, against a preview deployment).
 - **Hourly job twice:** two runs in a row, and two runs at once, give the same result as one.
+- **Use my location** (Playwright, with a mocked position): an accurate position inside the council proposes a pin. A
+  rough position, one outside the council, and a refused permission each leave no pin and the other ways working.
 
 ## 6. Abuse protection and privacy
 
@@ -433,8 +449,8 @@ the clearing (§5.4).
 | Photo store | Image files | Deleted when the tag's 48 hours run out, on take down, or on admin delete (§4.3) |
 
 **Other measures:**
-- Security headers: strict CSP (map tiles from our own Blob domain only), `X-Content-Type-Options: nosniff`, and
-  `Referrer-Policy: strict-origin-when-cross-origin`.
+- Security headers: strict CSP (map tiles from our own Blob domain only), `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: strict-origin-when-cross-origin`, and `Permissions-Policy: geolocation=(self)`.
 - All input is validated with Zod at the boundary.
 - No visitor-written text is stored or published, by design. The street search box (§10.3) is typed into, but its
   text never leaves the browser.
@@ -460,6 +476,7 @@ Michael sees it. Reporting stops it loading from then on, but can't undo views o
   - how long it's kept (§4.2, §6);
   - providers and regions: Vercel `syd1`, Neon Sydney, Resend;
   - BotID's browser signals;
+  - the optional location button: the location is used in the browser and never stored (§4.1);
   - a contact address.
 
   The site is likely exempt from the Australian Privacy Principles (under $3M turnover) but should follow APPs
@@ -586,6 +603,13 @@ are WCAG success criteria. Where our own rule is stricter than the criterion, th
   - On the map screen the map also centres there, so a sighted visitor can tap to fine-tune the spot.
   - The corner list is built from the bundled NSW road data (§4.1) and loaded only when the picker opens. No
     geocoding API is needed.
+  - It takes a street and a corner, not a house number. The bundled data has no address points.
+- **Use my location** (§4.1) is the quicker route for someone at the bike. It works with a screen reader, and from
+  `/list` with no map.
+  - The result is read back as "Near Llewellyn St, Marrickville, accurate to about 15 metres", with **Use this
+    spot**.
+  - If the location isn't accurate enough, the visitor is pointed to Choose by street.
+  - It never replaces Choose by street, because permission can be refused.
 - **Placing on the map without precise pointing:**
   - **Keyboard crosshair:** arrow keys move 10 m, Shift+arrows 50 m, Enter places the tag, Esc cancels.
   - **Move map buttons** pan the map with single taps (§10.5).
@@ -638,7 +662,7 @@ are WCAG success criteria. Where our own rule is stricter than the criterion, th
   - **Zoom:** + and − buttons.
   - **Pan:** a **Move map** button opens four arrow buttons, and each tap moves the map half a screen. Keyboard
     arrows alone don't meet 2.5.7, because a touch user who can't drag has no keyboard.
-  - **Placing:** tap, keyboard, or Choose by street (§10.3).
+  - **Placing:** tap, keyboard, Use my location, or Choose by street (§10.3).
   - **The sheet is not draggable.** Its height follows what it is showing (§12), and it closes with a button.
   - Map rotation is off.
 - **No time limits** on any action (2.2.1). That includes the photo: the server sets no deadline for attaching it
@@ -655,7 +679,7 @@ are WCAG success criteria. Where our own rule is stricter than the criterion, th
   too. Any A or AA failure it finds blocks the release until it is fixed.
 - **Manual, at every milestone:**
   - VoiceOver on iOS Safari and TalkBack on Android Chrome, including tagging a bike from start to finish with Choose
-    by street;
+    by street and with Use my location;
   - keyboard only on desktop;
   - touch without dragging: reach a spot that starts off screen and tag it using taps alone;
   - 200% zoom, 320 px width, and the largest system text size on an SE-sized phone, checking that each form's
@@ -787,6 +811,7 @@ under 100 visits a day there may be too little data to judge these, so they are 
   - Placement is its own step with the whole map usable. The pin's tip sits exactly on the tapped point, tapping
     somewhere else moves it, and **Use this spot** opens the form (§3).
   - From the form, **Change location** comes back to this step.
+  - **Use my location** proposes a pin when the phone's location is accurate to 50 m or better (§4.1).
   - Tags up to 20 m outside the boundary are accepted (§4.1).
 - **Gestures:**
   - pinch, double-tap zoom and one-finger pan, each with a button that does the same: +/− and Move map (§10.5);
@@ -815,6 +840,7 @@ under 100 visits a day there may be too little data to judge these, so they are 
     - the largest system text size, landscape, and the browser's toolbar both expanded and collapsed;
     - the street search with the on-screen keyboard open;
     - a real photo from the camera and one from the library, on both iOS and Android;
+    - Use my location outdoors, both allowed and refused, on both iOS and Android;
     - the map on the oldest supported Safari (16.4).
 
 ## 13. Open questions
@@ -833,8 +859,6 @@ under 100 visits a day there may be too little data to judge these, so they are 
    - **Bikes close together:** a nearby tag is a suggestion, and the visitor can always say "No, it's another bike"
      (§4.2).
    - **Instant photos:** kept, with the risk written down in §6.
-   - **Placement:** "tap the map only" now has a second route, street plus nearest corner, because tagging otherwise
-     needs sight and a steady finger (§10.3). Still no GPS.
    - **Paused uploads** stay paused until Michael resumes them, with no automatic restart (§4.6).
 
 ## 14. Milestones
@@ -843,16 +867,17 @@ under 100 visits a day there may be too little data to judge these, so they are 
 |---|---|---|
 | **M0 Infra** | GitHub repo; Turborepo skeleton; Vercel projects (`web`, `admin`) in `michael-lebot's projects`, region `syd1`; Neon via the Vercel Marketplace (Sydney); Blob stores (public and private); Resend; `CRON_SECRET`; CI (lint, typecheck, Vitest, axe, Lighthouse CI and the Playwright performance checks from §11.4, contrast test); spend alert | Empty apps deploy; Prisma migration runs on Neon; CI gates run; the bare build is measured and the §11.1 budgets are confirmed or reset |
 | **M1 Map prototype** | PMTiles extract on Blob; Overworld MapLibre style with pattern sprites; mask and gold council line; Atkinson Hyperlegible glyphs; HTML-marker pins with the crowded-pin chooser; zoom and Move map buttons; static preview image and the map-failed fallback; bottom sheet with its three heights and inner scrolling | On a real mid-range Android over 4G, the §11.1 budgets pass, including "map ready"; the PMTiles checks in §11.2 pass; street names are legible at zoom 16 on a 320 px screen; VoiceOver and TalkBack can reach every pin; a spot that starts off screen can be reached with taps alone; contrast test passes |
-| **M2 Tags** | Placement step and form dialog (zoom ≥ 16, buffered boundary, keyboard crosshair, Choose by street, Change location); nearby-tag suggestion; still-there and removed under the §4.2 rules; safe retries (§5.3); BotID; rate limits; the hourly job; `/list` and `/tag/[id]`; admin Tags screen with Undo and Take down | Playwright (desktop and mobile projects): create → confirm → remove → admin undo, by touch, by keyboard, and by Choose by street with no map; the §5.5 tests for expiry edges, two at once, repeats, access and the hourly job pass; axe finds no A or AA violations; at the largest text size on an SE-sized screen, the form can be submitted and cancelled |
+| **M2 Tags** | Placement step and form dialog (zoom ≥ 16, buffered boundary, keyboard crosshair, Use my location, Choose by street, Change location); nearby-tag suggestion; still-there and removed under the §4.2 rules; safe retries (§5.3); BotID; rate limits; the hourly job; `/list` and `/tag/[id]`; admin Tags screen with Undo and Take down | Playwright (desktop and mobile projects): create → confirm → remove → admin undo, by touch, by keyboard, by Use my location, and by Choose by street with no map; the §5.5 tests for expiry edges, two at once, repeats, access, the hourly job and Use my location pass; axe finds no A or AA violations; at the largest text size on an SE-sized screen, the form can be submitted and cancelled |
 | **M3 Photos and moderation** | Upload pipeline; photo attach with its own retry; private serving; reports; email with digest retry; admin queue; pause switch and circuit breaker | A reported photo returns 404 on the next request and stays hidden through remove → undo; a photo returns 404 once its tag is no longer live; restore works; the §5.5 photo, bad-image and outside-failure tests pass; generated alt text is present; the admin app passes axe |
 | **M4 Launch** | `/why`, `/accessibility`, `/privacy`, `/terms`; eSafety classification and response procedure (§7); domain; OSM and NSW attribution; manual assistive-technology pass (§10.6); launch checklist | Michael signs off |
 
 ## 15. Out of scope for v1
 
-Hosting-cost tracker and contributions (deferred, §4.5); accounts; free-text notes; automated image moderation; GPS or
-photo-location placement; operator or council integrations and notifications; multiple photos per tag; a stats or
-heat-map page (the data is kept for later); dark mode; an offline queue and installable-app (PWA) support; other
-councils; an abuse dashboard and visitor blocking; a draggable sheet; a CDN cache for tag data.
+Hosting-cost tracker and contributions (deferred, §4.5); accounts; free-text notes; automated image moderation;
+placing a tag from a photo's stored location; live location tracking; operator or council integrations and
+notifications; multiple photos per tag; a stats or heat-map page (the data is kept for later); dark mode; an offline
+queue and installable-app (PWA) support; other councils; an abuse dashboard and visitor blocking; a draggable sheet; a
+CDN cache for tag data.
 
 ## Appendix A — Cost tracking and contributions research (parked)
 
