@@ -1,8 +1,8 @@
-# SPEC — Inner West Bikes (working title)
+# SPEC — The Inner West E-bike Graveyard
 
-> Status: **draft for review** · Author: Michael Levot (with Claude) · 2026-11-09
-> Source of decisions: product interview on 2026-11-09, plus four research passes (map stack, payments and cost APIs,
-> abuse protection, share-bike operators). Sources are listed at the end.
+> Status: **draft for review, rev 2** · Author: Michael Levot (with Claude) · 2026-11-09
+> Rev 2 adds the name and the chosen visual direction. It drops the cost tracker and contributions, records the
+> verified Neon plan, and adds the boundary buffer. Sources are listed at the end.
 
 ## 1. What we're building
 
@@ -12,9 +12,7 @@ tap the map to tag a dumped or badly parked **share bike** (Lime, Hello, Ario), 
 - A tag disappears automatically **48 hours** after it was last confirmed.
 - Other visitors can mark a tag **Still there**, which restarts the 48 hours, or **Removed**, which hides the tag
   straight away.
-- Anyone can report a photo. It is hidden immediately and queued for the owner to restore or delete.
-- The site shows its **weekly hosting cost** and lets visitors chip in. When contributions reach 100% of the week's
-  cost, the button greys out and reads **"Costs covered by our generous community"**.
+- Anyone can report a photo. It is hidden immediately and queued for Michael to restore or delete.
 - A **"Why this page exists"** link leads to a page whose copy Michael will supply.
 
 **Why now.** NSW's shared e-bike laws took effect on 14 August 2026. They let councils set parking rules and fine
@@ -22,46 +20,52 @@ operators that don't move bikes. Complaints are rising sharply: Snap Send Solve 
 there's no public map just for dumped share bikes. Inner West Council tells residents to report bikes to the
 operators, and has no reporting channel of its own.
 
-## 2. Decisions from the interview
+## 2. Decisions
 
 | Topic | Decision |
 |---|---|
-| Bike type | Share-scheme bikes and e-bikes only (Lime, Hello, Ario, plus "Other / not sure") |
+| Name | **The Inner West E-bike Graveyard** |
+| Visual direction | **Overworld Quest**, with the interface around the map toned down for legibility and easy navigation (§9) |
+| Bike type | Share-scheme bikes and e-bikes only (Lime, Hello, Ario, plus "Not sure") |
 | Who acts on tags | **Public visibility only** in v1. No operator or council integrations |
 | Map realism | **Real streets and real street names, with a retro game skin**. Must be accurate enough to walk to |
-| Placing a tag | **Tap the map** only. No GPS prompt, and no reading location from photos |
+| Placing a tag | **Tap the map** only. Tags up to **20 m outside the council boundary** are accepted (§4.1) |
 | Tag fields | Operator picker + problem pick-list + optional photo. **No free text** |
 | "Removed" | Instant, but **rate-limited per visitor**. Every removal is logged so the admin can undo it |
 | Photo screening | **Published instantly**. Community reports are the safety net; no automated scan |
 | Report review | **Email alert + a protected admin page** |
-| Hosting | New projects **inside StoryCraft's existing paid Vercel team and Neon org** |
-| Cost figure | **Pulled automatically** from the providers' APIs |
-| Contribution cycle | **Resets weekly** (Monday 00:00 Australia/Sydney) |
-| Who gets paid | **Michael personally.** No ABN and no existing payment accounts |
+| Hosting | New projects inside StoryCraft's existing Vercel team and its **Vercel-managed Neon organisation, which is on the paid Launch plan** (verified, §5) |
+| Cost tracker and contributions | **Dropped.** Estimated running cost is about A$1.50–4 a week. Revisit only if that changes (§4.5) |
 | History | **Keep anonymous records** of expired and removed tags (location, operator, problem, times). Photos and visitor data are deleted |
 | Domain | Michael will buy one. Use `*.vercel.app` until then |
 | Repo | **Public**, under `michael-lebot` |
 | Expected traffic | Under 100 visits a day at first |
-| Mockups | Five distinct style directions (see §9) |
 
 ## 3. Core user flows
 
+The three main screens are shown in `docs/mockups/graveyard-overworld-v2.html`.
+
 1. **Browse.** The map opens on the whole council area, with everything outside it greyed out and active tags shown as
-   pixel pins. Each pin is coloured by operator and also carries a letter (L/H/A/?), so colour is never the only cue.
-   Visitors can zoom down to street level.
+   pixel pins.
+   - Each pin is coloured by operator and also carries a letter (L/H/A/?), so colour is never the only cue.
+   - The panel below the map shows "N bikes in the graveyard", the operator key and one primary action.
+   - Visitors can zoom down to street level.
 2. **Tag a bike.**
-   1. Tap "+ Tag a dumped bike". The map enters placement mode with a crosshair.
-   2. Tap the spot. Taps outside the council are rejected with a friendly message.
-   3. Pick the operator, pick the problem, optionally add a photo, then submit.
-   4. If an active tag already exists within about 25 m, the app asks "Is it this one?" and offers **Still there** on
+   1. Tap "Tag a dumped bike", then tap the spot. The pin drops there, a hint names the street ("Pin dropped on
+      Llewellyn St, Marrickville. Tap the map to move it."), and taps outside the council plus 20 m are rejected with
+      a friendly message.
+   2. Choose **Whose bike?** (Lime / Hello / Ario / Not sure) and **What's wrong?**, optionally add a photo, then tap
+      **Add to the map**.
+   3. If an active tag already exists within about 25 m, the app asks "Is it this one?" and offers **Still there** on
       that tag instead of creating a duplicate.
-3. **Confirm.** Tap a pin to open a card showing the photo, operator, problem, suburb, "spotted Xh ago" and
-   "vanishes in Yh". The card offers **Still there** and **Removed** buttons, and a **Report this photo** link.
+3. **Confirm.** Tap a pin to open a card showing:
+   - the photo, operator, problem and street;
+   - "Last seen Xh ago · Disappears in Yh", with a timer bar;
+   - "Is it still there?" with **Still there** and **Removed** buttons;
+   - a low-key **Report this photo** link.
 4. **Report a photo.** Choose a reason. The photo is hidden for everyone at once, and Michael gets an email.
-5. **Chip in.** The tracker shows "$X this week · N% covered". The button opens the contributions provider. At 100% it
-   greys out and reads "Costs covered by our generous community".
-6. **Admin (Michael).** Review the queue of reported photos and restore or delete each one. Review recent removals and
-   undo any that were malicious. Glance at costs and contributions.
+5. **Admin (Michael).** Review the queue of reported photos and restore or delete each one. Review recent removals and
+   undo any that were malicious.
 
 ## 4. Functional requirements
 
@@ -75,8 +79,8 @@ operators, and has no reporting channel of its own.
     - Its styling can't change fonts or pixelate the map.
     - Its terms forbid restyling tiles beyond colours, caching, re-hosting, and using it alongside non-Google maps.
     - It would cost about US$140/month at 30K loads, against about $0 for PMTiles.
-- **Retro look**, as prototyped in the mockups:
-  - a custom MapLibre style with a 12–16 colour palette;
+- **Overworld look**, as prototyped in the mockups:
+  - a custom MapLibre style with the Overworld palette (§9);
   - an open-licence pixel font for labels (as PBF glyphs, or a web font on MapLibre ≥ 5.11);
   - `pixelRatio: 0.5` with `image-rendering: pixelated` on the canvas, so the map draws at half resolution and is
     scaled up in hard pixels;
@@ -86,9 +90,9 @@ operators, and has no reporting channel of its own.
   This is the first thing to prototype (milestone M1).
 - **Mask:** a fill layer with a local rectangle as the outer ring and the council boundary as the hole. Check the ring
   winding, or MapLibre will grey out the council area too.
-  - Grey with a dither pattern, to match the chosen direction.
+  - Greyscale with a dither pattern.
   - Label layers are filtered with `within` so places outside the council don't get labels.
-  - The boundary line is drawn from the same polygon.
+  - The boundary line (the gold "council wall") is drawn from the same polygon.
 - **Bounds:** `maxBounds` set to the padded extract box. Min zoom about 12, max zoom about 18; above zoom 15 the
   map enlarges the zoom-15 data.
 - **Boundary data:** the NSW Spatial Services gazetted council polygon (`NSW_Administrative_Boundaries_Theme`, layer 8,
@@ -97,26 +101,35 @@ operators, and has no reporting channel of its own.
   - Attribution: "© State of New South Wales (Spatial Services, DCS NSW)", CC BY 4.0.
   - Map data attribution: "© OpenStreetMap contributors".
   - Don't use the ABS statistical boundaries for validation; they drift up to about 760 m from the gazetted line.
-- **Suburbs:** worked out by overlapping the NSW suburb polygons with the council polygon. This is used for the tag
-  card's "Denison St, Newtown" style line, which we derive from the tap position with no geocoding API.
+- **20 m buffer for tags (decided).** Some boundary lines run down the middle of streets such as King St and
+  Parramatta Rd, so a bike on the far footpath should still count.
+  - At build time, generate a second polygon by buffering the council outline outwards by 20 m with turf `buffer`.
+  - Accept tags inside that **buffered** polygon. The mask and the gold wall still use the true boundary.
+  - A pin in the buffer strip sits on the grey side of the wall. That's acceptable, and the hint text still names
+    the street.
+- **Suburbs:** worked out by overlapping the NSW suburb polygons with the council polygon. They give the card's street
+  and suburb line without a geocoding API.
   - **Wholly inside (17):** Ashfield, Balmain, Balmain East, Birchgrove, Dulwich Hill, Enmore, Haberfield, Leichhardt,
     Lewisham, Lilyfield, Marrickville, Petersham, Rozelle, Stanmore, Summer Hill, Sydenham, Tempe.
   - **Partly inside (9):** Annandale 94%, St Peters 83%, Newtown 57%, Croydon 38%, Camperdown 28%,
     Hurlstone Park 9%, Croydon Park 7%, Ashbury 6%, Mascot 2%.
+  - The bundled suburb set must include the neighbouring suburbs that touch the buffer. A pin on the far side of
+    King St is in Newtown's City of Sydney half, but it is still "Newtown".
   - Street names come from the nearest named road segment, using the same NSW data bundled as a small lookup.
-- **Inside-the-council check:** turf `booleanPointInPolygon` against the bundled polygon, run in the browser for
+- **Inside-the-council check:** turf `booleanPointInPolygon` against the buffered polygon, run in the browser for
   instant feedback and again on the server as the rule that counts. PostGIS isn't needed in v1.
-  - **Open:** add a ~20 m buffer for streets that form the boundary, such as King St and Parramatta Rd.
-- **Accessibility:** a keyboard placement mode (arrow keys move the crosshair, Enter places the tag). Pins carry
-  letters as well as colours. Bobbing and blinking animations respect `prefers-reduced-motion`.
+- **Accessibility:**
+  - A keyboard placement mode: arrow keys move the crosshair, Enter places the tag.
+  - Pins carry letters as well as colours.
+  - The bobbing animation for the selected or new pin respects `prefers-reduced-motion`.
 
 ### 4.2 Tags
 
 - **Fields:** location (lat/lng, computed suburb, nearest street), operator, problem, optional photo, timestamps.
-- **Operators:** Lime, Hello (HelloBike), Ario, Other / not sure. All three operate in the Inner West per the council
-  page updated 2 October 2026. The list lives in config, so operators can be added or retired without a deploy.
-- **Problems (pick-list):** Blocking footpath · Blocking ramp / driveway · Knocked over · In park or reserve ·
-  In waterway · Damaged / vandalised.
+- **Operators:** Lime, Hello (HelloBike), Ario, Not sure. All three operate in the Inner West per the council page
+  updated 2 October 2026. The list lives in config, so operators can be added or retired without a deploy.
+- **Problems (pick-list):** Blocking footpath · Knocked over · Blocking ramp / driveway · In waterway ·
+  In park or reserve · Damaged.
 - **Expiry:** `expires_at = last_confirmed_at + 48h`.
   - Reads filter on `status = 'active' AND expires_at > now()`, so tags vanish on time even if a scheduled job is late.
   - An hourly cron job marks them expired and deletes their photos.
@@ -145,67 +158,24 @@ operators, and has no reporting channel of its own.
 - **Serving:** `/photo/[id]` and `/photo/[id]/thumb` check that the photo is visible in Postgres, then stream it with
   `Cache-Control: private, no-cache`. No Vercel image optimisation (`unoptimized`). The result is that a hidden photo
   stops loading on the very next request, and restoring it is just a status flip.
-- **One photo per tag** in v1, uploaded when the tag is created. Allowing a fresh photo on "Still there" is out of
-  scope.
+- **One photo per tag** in v1, uploaded when the tag is created.
 - **Report reasons:** Not a share bike · Shows a person, face or number plate (privacy) · Offensive or inappropriate ·
   Other.
 
 ### 4.4 "Why this page exists"
 
-- A static page at `/why`, linked from the header on every screen. Michael will supply the copy; launch is blocked
-  until it arrives.
+- A static page at `/why`. It's linked from the header, top right, on every screen. Michael will supply the copy;
+  launch is blocked until it arrives.
 
-### 4.5 Hosting cost tracker and contributions
+### 4.5 Hosting costs and contributions — dropped (deferred)
 
-**Contributions provider — recommended: Ko-fi (free plan) paid out to a personal PayPal account.**
-- Ko-fi takes 0% on one-off tips. PayPal's donation rate for non-charities is 2.9% + A$0.30 (+1% for overseas
-  payers).
-- No ABN or account is needed for donors. The page can be priced in AUD, and there's a tip panel or overlay embed.
-- A webhook delivers `amount`, `currency`, `timestamp` and `kofi_transaction_id` for each payment.
-- **Weaknesses:**
-  - Ko-fi can't stop taking money once the week is covered; we can only grey out our button. That matches the brief.
-  - The webhook is authenticated by a shared token rather than a signature.
-  - Ko-fi doesn't document a retry policy.
-  - **Mitigations:** constant-time token comparison, storing each transaction ID only once, and a weekly manual
-    reconciliation against Ko-fi in admin.
-
-**Runner-up: Stripe Checkout.**
-- Lowest fees (1.65% + A$0.30 for Australian cards).
-- The server can refuse payment or cap the amount once the week is covered, and webhooks are signed and retried.
-- **Blocked:** Stripe's Australian policy "cannot support donations which are not linked to a specific good or
-  service". Only build on Stripe if Stripe confirms in writing that tips for a free public map are acceptable.
-- Rejected: Buy Me a Coffee (5% fee, USD base), GitHub Sponsors (donors need a GitHub account, USD only),
-  Open Collective (no usable Australian host), Liberapay (no webhooks).
-
-**Weekly cost (automatic):**
-- **Vercel:** a daily cron job calls `GET /v1/billing/charges` (FOCUS v1.3 JSONL). It keeps rows whose `Tags` hold
-  this project's ID and whose `ChargeCategory = Usage`.
-  - It uses a token from a dedicated **Billing**-role user (free, read-only on projects, one per Pro team).
-  - It re-pulls the last 7 UTC days each run, because usage arrives late, and the previous month on the 3rd.
-- **Neon:** `GET /consumption_history/v2/projects`, hourly data for this project, priced at Launch rates:
-  - US$0.106 per CU-hour
-  - US$0.35 per GB-month of storage
-  - **Requires a paid Neon plan; check StoryCraft's org plan.**
-- **Other items:**
-  - domain, spread evenly as annual cost × 7/365;
-  - Resend ($0 while within its free tier);
-  - BotID Deep Analysis (US$1 per 1K checks);
-  - payment-processor fees on that week's contributions.
-- **Currency:** convert USD with the RBA's daily rate. Prices live in a table with effective dates, so a price
-  change never rewrites past weeks.
-- **Formula:**
-  `week = Σ Vercel_project + α · share_of_unused_Pro_credit + Neon_project + other_items`
-  - α = 1 adds this project's share of whatever is left of the $20/month Pro credit after the team's usage.
-  - α = 0 shows usage only. **Open decision; default α = 0** (honest marginal cost).
-- **Rough estimate:** about A$1.50–4/week. That's mostly Neon compute (scale-to-zero, about 40–50 CU-hours/month),
-  the domain, and BotID checks. The real figure comes from M4.
-
-**What "100%" measures:** a week's cost isn't final until the week ends.
-- The target is the larger of the **cost so far this week** and the **average of the last 4 completed weeks**, so the
-  bar can't hit 100% on Monday morning by accident.
-- The tracker reads "$X this week · N% covered", with N capped at 100.
-- **Open:** what happens to any surplus. The suggestion is to show "Thanks! Extra goes to next week" and stay
-  honest about it.
+- The weekly cost tracker and Chip in button are **out of v1**. The estimated cost is about A$1.50–4 a week (§8),
+  which doesn't justify the build.
+- **How we'll notice if costs change:**
+  - Set a Vercel spend-management alert on the team. Neon is Vercel-managed, so its usage appears on the same Vercel
+    invoice.
+  - Check this project's line items monthly.
+- **Trigger to revisit:** sustained cost above A$10 a week. The research to reuse then is in Appendix A.
 
 ### 4.6 Admin
 
@@ -217,8 +187,6 @@ operators, and has no reporting channel of its own.
 - **Screens:**
   - **Reported photos:** photo, reasons, report count and tag, with Restore and Delete buttons.
   - **Removals log:** with Undo.
-  - **Costs:** daily lines and weekly totals.
-  - **Contributions:** list and reconciliation.
   - **Abuse dashboard:** top hashed visitors and IPs by action.
 - **Email alerts (Resend):**
   - One email per report for the first 10 each day, then an hourly digest, so a flood can't use up the free tier
@@ -231,15 +199,14 @@ operators, and has no reporting channel of its own.
 
 | Layer | Choice (mirrors StoryCraft where sensible) |
 |---|---|
-| Repo | Turborepo monorepo: `apps/web` (public), `apps/admin` (protected), `packages/db` (Prisma schema and client), `packages/shared` (Zod schemas, boundary GeoJSON, operator and problem config, cost formula) |
+| Repo | Turborepo monorepo: `apps/web` (public), `apps/admin` (protected), `packages/db` (Prisma schema and client), `packages/shared` (Zod schemas, boundary and buffered GeoJSON, operator and problem config) |
 | Framework | Next.js 16 App Router, TypeScript strict, route handlers (no server actions), Tailwind 4 |
-| Database | Neon Postgres in a **new project in StoryCraft's org**, region AWS ap-southeast-2 (Sydney), Prisma 6 |
+| Database | Neon Postgres 18, Prisma 6 — **new project in Sydney (`aws-ap-southeast-2`)**, created through the **Vercel Marketplace Neon integration** in the `michael-lebot's projects` Vercel team. It then lands in the Vercel-managed org "Vercel: michael-lebot's projects", which is on the **Launch** plan (verified 2026-11-09 with `neonctl orgs list`) and billed through Vercel |
 | Functions | Vercel, **region `syd1`** (Vercel's default is Washington DC, iad1) |
 | Storage | Vercel Blob: a **public** store for PMTiles and a **private** store for photos |
-| Map | MapLibre GL JS + `pmtiles` protocol + custom pixel style |
+| Map | MapLibre GL JS + `pmtiles` protocol + custom Overworld pixel style |
 | Bot defence | Vercel BotID (Basic free; Deep Analysis on) |
 | Email | Resend |
-| Contributions | Ko-fi webhook (see §4.5) |
 | Tests | Vitest (unit and integration) + Playwright (end-to-end), as in StoryCraft |
 
 ### 5.1 Data model (first cut)
@@ -255,11 +222,6 @@ photos          id uuid · tag_id (unique) · blob_path · thumb_path · width �
 photo_reports   id · photo_id · reason enum · created_at · visitor_hash · ip_hash
                 resolved_at · resolution enum(restored, deleted)
 rate_counters   key (action:subject:window) PK · count · window_start
-cost_lines      day · source enum(vercel, neon, domain, resend, botid, processor) · sku
-                amount_usd · amount_aud · raw jsonb · fetched_at        unique(day, source, sku)
-prices          provider · metric · unit_price_usd · effective_from
-fx_rates        day PK · usd_aud
-contributions   provider_txn_id PK · provider · amount · currency · amount_aud · fee_aud · received_at · raw
 ```
 
 ### 5.2 Endpoints (`apps/web`)
@@ -267,16 +229,13 @@ contributions   provider_txn_id PK · provider · amount · currency · amount_a
 | Route | Notes |
 |---|---|
 | `GET /api/tags` | Active tags. Cached at the CDN under a `tags` cache tag and refreshed whenever a tag is created or changed. This keeps the database mostly asleep. The client hides tags locally as they pass `expires_at` |
-| `POST /api/tags` | BotID → rate limit → Zod validation → inside-council check → duplicate check (~25 m) → insert |
+| `POST /api/tags` | BotID → rate limit → Zod validation → buffered-boundary check → duplicate check (~25 m) → insert |
 | `POST /api/tags/:id/still-there` | BotID → rate limit → reset expiry |
 | `POST /api/tags/:id/removed` | BotID → rate limit → soft remove and log |
 | `POST /api/tags/:id/photo` | Accepted only within a few minutes of creating the tag, from the same visitor. Then the §4.3 pipeline |
 | `GET /photo/:id[/thumb]` | Visibility check, then stream from the private store |
 | `POST /api/photos/:id/report` | BotID → rate limit → hide → log → email |
-| `GET /api/costs/week` | Current week's cost, contributions and % covered (cached for 5 minutes) |
-| `POST /api/webhooks/kofi` | Token check → store each transaction once |
-| `GET /api/cron/expire` (hourly) | Expire tags, delete photos due for deletion, purge old hashes |
-| `GET /api/cron/costs` (daily, ~03:00 Sydney) | Vercel charges, Neon consumption, RBA exchange rate → `cost_lines` |
+| `GET /api/cron/expire` (hourly) | Expire tags, delete photos due for deletion, purge old hashes and salts |
 
 ## 6. Abuse protection and privacy
 
@@ -318,7 +277,7 @@ mobile users share one IP.
 - **Privacy note:**
   - what we collect and how it's hashed;
   - how long it's kept (§4.2, §6);
-  - providers and regions: Vercel `syd1`, Neon Sydney, Resend, Ko-fi/PayPal;
+  - providers and regions: Vercel `syd1`, Neon Sydney, Resend;
   - BotID's browser signals;
   - a contact address.
 
@@ -329,14 +288,15 @@ mobile users share one IP.
     be met within 24h.
   - Keep a one-page self-assessment placing the site in the lowest risk tier (Tier 3).
 - **Attribution:** © OpenStreetMap contributors (collapsible "i" button); © State of NSW (Spatial Services), CC BY 4.0.
-- **Tax:** pure donations to an individual running a hobby site are generally not assessable income, per ATO
-  crowdfunding guidance. Keep records, and check with an adviser if contributions regularly exceed costs.
+- **Name:** "Graveyard" is tongue-in-cheek. The `/why` copy should make clear the site is about getting bikes
+  collected, not shaming operators or riders.
 
-## 8. Costs and limits (inside StoryCraft's teams)
+## 8. Expected costs (for awareness; no tracker)
 
 - **No hard pauses.** The Hobby and Neon Free limits discussed in the interview don't apply.
-- **Neon:**
-  - compute about 40–50 CU-hours/month thanks to scale-to-zero and CDN-cached reads, roughly US$4–5/month;
+- **Neon (Launch):**
+  - compute about 40–50 CU-hours/month thanks to scale-to-zero and CDN-cached reads, at US$0.106 per CU-hour,
+    roughly US$4–5/month;
   - storage well under 1 GB.
 - **Vercel:**
   - functions and CDN usage are tiny at under 100 visits a day;
@@ -347,53 +307,80 @@ mobile users share one IP.
 - **Other:** Resend $0. BotID Deep Analysis about US$0.30–2/month. Domain: `.com.au` or `.au`, about A$20–40/year
   (to confirm at purchase).
 
-## 9. Visual direction — choose one
+## 9. Visual direction — Overworld, toned down
 
-Five mockups were made with **real NSW boundary, suburb, road, rail and park data**. They're rendered at low
-resolution and snapped to each palette, which is the same technique the production map would use. They're in
-`docs/mockups/`, and each shows the council view and a street-level view with a selected tag and a covered tracker.
+The reference is **`docs/mockups/graveyard-overworld-v2.html`**. The five original explorations are kept in
+`docs/mockups/explorations/` for the record.
 
-| # | Direction | One line | Main risk |
-|---|---|---|---|
-| 1 | **Overworld Quest** | 16-bit RPG world map, gold council wall, dialogue-box UI | Busiest palette; pins must stand out against the grass |
-| 2 | **Pocket LCD** | Four-shade green handheld screen, dithered outside, segmented bars | Operators can't be colour-coded; the letter does the work |
-| 3 | **Sim Council** | Isometric city-builder with pixel houses; cost tracker as the council "Budget" window | Tilt makes precise tapping and north-up reading harder |
-| 4 | **Neon Arcade** | Glowing vector streets on black; "INSERT COIN" to contribute | Dark map is harder to read in bright sun |
-| 5 | **Sunset Kart (Mode 7)** | Tilted view looking east to a pixel CBD; pins stand upright | Far pins shrink; needs a flat mode for precise tagging |
-
-Directions 1, 2 and 4 are straightforward with MapLibre styling. Directions 3 and 5 rely on MapLibre's bearing and
-pitch, and would flatten automatically in tag-placement mode.
+- **The map keeps the full Overworld treatment:**
+  - grass-green council and sandy roads with brown edging;
+  - dashed suburb borders and a gold council wall;
+  - tree and tuft stamps, with greyscale and dither outside the council;
+  - Press Start 2P suburb labels;
+  - street names on cream signpost boxes;
+  - chunky black-outlined pins with operator letters.
+- **The interface around the map is calm:**
+  - parchment panels (`#fbf6e6`) with dark-ink text (`#2b2116`) and a night-slate header (`#1f2a36`) carrying a pixel
+    headstone icon;
+  - **Pixelify Sans** only for the name, headings and buttons; **Atkinson Hyperlegible** for body and meta text;
+  - one gold primary button per screen, with 44 px buttons and 36 px zoom controls;
+  - selected options marked with a tick as well as a colour;
+  - the operator key in the panel, not on the map;
+  - "Why this page exists" in the same header position on every screen.
+- **Copy tone:** plain and friendly — "14 bikes in the graveyard", "Disappears in 31 h", "Is it still there?".
+- Check contrast for every text and background pair against WCAG AA during M1.
 
 ## 10. Open questions
 
-1. **Style direction:** which of the five, or a mix (for example, Overworld's map with LCD's restraint)?
-2. **Product name and domain.** "Inner West Bikes" is a placeholder.
-3. **Contributions:** go with Ko-fi + PayPal for v1, or first ask Stripe whether tips for a free public map are
-   acceptable?
-4. **Cost allocation:** α = 0 (marginal usage only) or α = 1 (include a share of the unused Pro credit)? And what
-   should happen to any surplus?
-5. **Neon org plan:** the consumption API needs Launch or above. Is StoryCraft's org on a paid plan?
-6. **Boundary streets:** accept tags up to ~20 m outside the line (for example, the far footpath of King St)?
-7. **Operator report links:** should the tag card show a "Report to Lime" contact link? It's still public-visibility
-   only, but it helps the bike actually get moved.
-8. **"Why this page exists" copy:** to be supplied by Michael; launch is blocked until then.
+1. **"Why this page exists" copy:** to be supplied by Michael; launch is blocked until then.
+2. **Operator report links:** should the tag card show a small "Report to Lime" contact link? It's still
+   public-visibility only, but it helps the bike actually get moved. The contact details are in Appendix B.
+3. **Domain:** which one to buy, for example a `.com.au` or `.au` built on "ebikegraveyard". Availability hasn't been
+   checked.
 
 ## 11. Milestones
 
 | Milestone | Scope | Exit criteria |
 |---|---|---|
-| **M0 Infra** | GitHub repo; Turborepo skeleton; Vercel projects (`web`, `admin`) in StoryCraft's team, region `syd1`; Neon project (Sydney); Blob stores (public and private); Resend; CI (lint, typecheck, Vitest) | Empty apps deploy; Prisma migration runs on Neon |
-| **M1 Map prototype** | PMTiles extract on Blob; chosen pixel style; mask; pixel font; pins; tested on real iPhone and Android | Street names legible at street zoom on a 390 px phone; tile requests per load measured |
-| **M2 Tags** | Create, still-there, removed, expiry, duplicate check, BotID, rate limits, CDN cache and refresh | Playwright: create → confirm → remove → admin undo |
+| **M0 Infra** | GitHub repo; Turborepo skeleton; Vercel projects (`web`, `admin`) in `michael-lebot's projects`, region `syd1`; Neon via the Vercel Marketplace (Sydney); Blob stores (public and private); Resend; CI (lint, typecheck, Vitest); spend alert | Empty apps deploy; Prisma migration runs on Neon |
+| **M1 Map prototype** | PMTiles extract on Blob; Overworld MapLibre style; mask and gold wall; pixel font; pins; tested on real iPhone and Android | Street names legible at street zoom on a 390 px phone; tile requests per load measured; AA contrast checked |
+| **M2 Tags** | Tag placement (buffered boundary), still-there, removed, expiry, duplicate check, BotID, rate limits, CDN cache and refresh | Playwright: create → confirm → remove → admin undo |
 | **M3 Photos and moderation** | Upload pipeline, private serving, reports, email, admin queue, circuit breaker | Reported photo returns 404 on the next request; restore works |
-| **M4 Costs and contributions** | Cost cron (Vercel, Neon, FX), prices table, Ko-fi webhook, tracker, 100% state | Tracker matches a hand-calculated week; covered state greys out the button |
-| **M5 Launch** | `/why` page, terms, privacy note, eSafety self-assessment, domain, OSM and NSW attribution, launch checklist | Michael signs off |
+| **M4 Launch** | `/why` page, terms, privacy note, eSafety self-assessment, domain, OSM and NSW attribution, launch checklist | Michael signs off |
 
 ## 12. Out of scope for v1
 
-Accounts; free-text notes; automated image moderation; GPS or photo-location placement; operator or council
-integrations and notifications; multiple photos per tag; a stats or heat-map page (the data is kept for later);
-other councils.
+Hosting-cost tracker and contributions (deferred, §4.5); accounts; free-text notes; automated image moderation; GPS or
+photo-location placement; operator or council integrations and notifications; multiple photos per tag; a stats or
+heat-map page (the data is kept for later); other councils.
+
+## Appendix A — Cost tracking and contributions research (parked)
+
+Kept so the feature can be revived quickly if costs grow.
+
+**Contributions**
+- **Recommended:** Ko-fi on the free plan, paid out to a personal PayPal account.
+  - Ko-fi takes 0% on one-off tips. PayPal charges 2.9% + A$0.30 for donations to non-charities.
+  - No ABN is needed, and a webhook reports each payment's amount and timestamp.
+  - Weakness: Ko-fi can't stop taking money once a target is met.
+- **Stripe** has the lowest fees and the best controls. But its Australian policy "cannot support donations which are
+  not linked to a specific good or service", so get written confirmation from Stripe before relying on it.
+
+**Cost data**
+- **Vercel:** `GET /v1/billing/charges` returns daily FOCUS rows. Filter on the project ID in `Tags` and
+  `ChargeCategory = Usage`, using a Billing-role token.
+- **Neon:** `GET /consumption_history/v2/projects` works on the Launch plan, which the org now has.
+- Convert to AUD with the RBA's daily rate, and keep prices in a table with effective dates.
+- **Defining 100%:** a week's cost isn't final until the week ends. Use the larger of the cost so far and the average
+  of the last 4 weeks.
+
+## Appendix B — Operators (as at Nov 2026)
+
+| Operator | Reporting channel |
+|---|---|
+| Lime | 1800 861 305 · help-sydney@li.me · in-app |
+| Hello (HelloBike) | serviceos@hellobike.com · in-app (unverified) |
+| Ario | 1800 882 764 · support@ario.com · in-app (unverified) |
 
 ## Sources
 
@@ -409,29 +396,17 @@ other councils.
   - [Protomaps downloads](https://docs.protomaps.com/basemaps/downloads)
   - [MapLibre MapOptions (`pixelRatio`)](https://maplibre.org/maplibre-gl-js/docs/API/type-aliases/MapOptions/)
   - [MapLibre `within`](https://maplibre.org/maplibre-style-spec/expressions/#within)
+  - [turf buffer](https://turfjs.org/docs/api/buffer)
   - [OSM attribution guidelines](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines)
   - [NSW Spatial Services copyright](https://www.spatial.nsw.gov.au/copyright)
   - [Neon extensions](https://neon.com/docs/extensions/pg-extensions)
-- **Platform limits:**
+- **Platform:**
   - [Vercel fair use](https://vercel.com/docs/limits/fair-use-guidelines)
   - [Vercel pricing](https://vercel.com/docs/pricing)
   - [Vercel WAF rate limiting](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting)
   - [Vercel Sydney pricing](https://vercel.com/docs/pricing/regional-pricing/syd1)
   - [Neon plans](https://neon.com/docs/introduction/plans)
-- **Costs:**
-  - [Vercel FOCUS billing charges](https://vercel.com/docs/rest-api/reference/endpoints/billing/list-focus-billing-charges)
-  - [Vercel Pro plan](https://vercel.com/docs/plans/pro-plan)
-  - [Vercel access roles](https://vercel.com/docs/rbac/access-roles)
-  - [Neon consumption API v2](https://neon.com/docs/reference/api/consumption/get-consumption-history-per-project-v2)
   - [Neon pricing](https://neon.com/pricing)
-  - [RBA exchange rates](https://www.rba.gov.au/statistics/frequency/exchange-rates.html)
-- **Contributions:**
-  - [Ko-fi fees](https://help.ko-fi.com/hc/en-us/articles/360002506494)
-  - [Ko-fi webhook schema](https://apis.io/asyncapis/ko-fi/ko-fi-asyncapi/)
-  - [PayPal AU fees](https://www.paypal.com/au/webapps/mpp/merchant-fees)
-  - [Stripe tips and donations policy](https://support.stripe.com/questions/requirements-for-accepting-tips-or-donations)
-  - [Stripe AU pricing](https://stripe.com/au/pricing)
-  - [ATO crowdfunding](https://www.ato.gov.au/businesses-and-organisations/income-deductions-and-concessions/income-and-deductions-for-business/assessable-income/what-income-to-include/crowdfunding)
 - **Security:**
   - [Vercel BotID](https://vercel.com/docs/botid)
   - [Vercel Blob private storage](https://vercel.com/docs/vercel-blob/private-storage)
@@ -441,3 +416,9 @@ other councils.
   - [Resend pricing](https://resend.com/pricing)
   - [OAIC small business](https://www.oaic.gov.au/privacy/privacy-guidance-for-organisations-and-government-agencies/organisations/small-business)
   - [eSafety cyberbullying scheme guidance](https://www.esafety.gov.au/sites/default/files/2025-01/Cyberbullying-Scheme-Regulatory-Guidance-Updated-January2025_0.pdf)
+- **Parked (Appendix A):**
+  - [Ko-fi fees](https://help.ko-fi.com/hc/en-us/articles/360002506494)
+  - [PayPal AU fees](https://www.paypal.com/au/webapps/mpp/merchant-fees)
+  - [Stripe tips and donations policy](https://support.stripe.com/questions/requirements-for-accepting-tips-or-donations)
+  - [Vercel FOCUS billing charges](https://vercel.com/docs/rest-api/reference/endpoints/billing/list-focus-billing-charges)
+  - [Neon consumption API v2](https://neon.com/docs/reference/api/consumption/get-consumption-history-per-project-v2)
