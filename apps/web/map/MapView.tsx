@@ -196,7 +196,7 @@ export function MapView({ tags, now, selected, onPick, onStatus, spot, onPlace, 
     <div className="group absolute inset-0">
       {/* overflow: clip, not MapLibre's hidden, so focusing a pin off the edge can't scroll the map out of place. */}
       <div ref={container} className="h-full w-full" style={{ overflow: 'clip' }} />
-      {map && tags && <Pins map={map} tags={tags} now={now} selected={selected} onPick={onPick} />}
+      {map && tags && <Pins map={map} tags={tags} now={now} selected={selected} placing={placing} onPick={onPick} />}
       {map && spot && <SpotPin map={map} spot={spot} />}
       {map && <MapControls map={map} />}
       {placing && (
@@ -250,8 +250,9 @@ function Pins({
   tags,
   now,
   selected,
+  placing,
   onPick,
-}: Omit<Props, 'onStatus'> & { map: maplibregl.Map; tags: PublicTag[] }) {
+}: Omit<Props, 'onStatus'> & { map: maplibregl.Map; tags: PublicTag[]; placing: boolean }) {
   const shown = useMemo(() => tags.toSorted(byPlace).slice(0, MAX_PINS), [tags])
 
   // Pins that arrive with a refresh are added last: move each after the one before it, so Tab follows the list.
@@ -275,7 +276,15 @@ function Pins({
   }
 
   return shown.map((tag) => (
-    <Pin key={tag.id} map={map} tag={tag} label={pinLabel(tag, now)} selected={tag.id === selected} onPick={pick} />
+    <Pin
+      key={tag.id}
+      map={map}
+      tag={tag}
+      label={pinLabel(tag, now)}
+      selected={tag.id === selected}
+      placing={placing}
+      onPick={pick}
+    />
   ))
 }
 
@@ -284,12 +293,15 @@ function Pin({
   tag,
   label,
   selected,
+  placing,
   onPick,
 }: {
   map: maplibregl.Map
   tag: PublicTag
   label: string
   selected: boolean
+  /** While a new pin is placed, Tab skips the pins: past each one it would pan the map, between the bar and the map. */
+  placing: boolean
   onPick: (tag: PublicTag, pin: HTMLElement, byKeyboard: boolean) => void
 }) {
   const [element] = useState(() => {
@@ -311,6 +323,7 @@ function Pin({
       type="button"
       aria-label={label}
       aria-expanded={selected}
+      tabIndex={placing ? -1 : undefined}
       className={`flex size-11 cursor-pointer items-end justify-center ${HOVER_RING} ${selected ? SELECTED : ''}`}
       // A click from Enter or Space has no pointer position, so detail is 0.
       onClick={(event) => onPick(tag, event.currentTarget, event.detail === 0)}

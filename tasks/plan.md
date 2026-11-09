@@ -1020,7 +1020,9 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   crosshair and a one-line key hint show on the map only while it has keyboard focus (`:has(canvas:focus-visible)`),
   and the canvas's name says what the keys do; Enter with no pin yet puts it at the crosshair. The new pin is the
   "Not sure" pin and lets taps through. In the browse sheet "Tag a dumped bike" shares a row with `Map | List` where
-  both fit, so the map keeps its height on a phone.
+  both fit, so the map keeps its height on a phone. While placing, the live pins leave the tab order: from the bar,
+  Shift+Tab passes the map's four buttons (which zoom and pan while MapLibre's own keys are off) and reaches the map,
+  where it used to pass every pin and pan the map to each.
 - **Accept:** the pin lands exactly where tapped; keyboard-only placement works; the whole map stays usable.
 - **Files:** `components/{Placement,MapScreen}.tsx`, `map/MapView.tsx`.
 - **Verify:** `pnpm e2e e2e/tag-map.spec.ts`.
@@ -1074,8 +1076,9 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   errors. `perf.spec.ts`: pick a chip and open the form each ≤ 200 ms.
   As built: picking a chip keeps §11.1's 200 ms (16 to 24 ms on a laptop, CPU at full speed). Opening the form has
   the card's 600 ms lab gate, for the card's reason: the map pans the new pin into the strip above the dialog in
-  that frame, and GitHub's runner, drawing WebGL in software, measured 296 ms (72 to 104 ms on a laptop). The keyboard run starts at the crosshair, beside the seeded
-  tag on Liverpool Rd, so it also answers the nearby question by keyboard. Opening a pin's card from the keyboard
+  that frame, and GitHub's runner, drawing WebGL in software, measured 296 ms (72 to 104 ms on a laptop).
+  The keyboard run puts the pin at the crosshair, the middle of the map, where no tag is within 25 m, so it goes
+  straight to the form; taps and clicks answer the nearby question. Opening a pin's card from the keyboard
   focuses the pin directly, as `browse.spec.ts` does, since its place in the tab order depends on where it is.
 - **Accept:** green on three projects.
 - **Files:** `e2e/{tag-map,perf}.spec.ts`.

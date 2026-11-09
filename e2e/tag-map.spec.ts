@@ -146,9 +146,16 @@ test.describe('placing the pin', () => {
       await page.getByRole('button', { name: 'Tag a dumped bike' }).focus()
       await page.keyboard.press('Enter')
       await expect(page.getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
-      // Back past the map's buttons and pins to the map itself.
+      // Back past the map's own buttons to the map. The pins are out of the way: past each, the map would pan to it.
+      const pin = page.getByRole('button', { name: /Liverpool Rd, Ashfield/ })
+      await expect(pin).toHaveAttribute('tabindex', '-1')
+      for (const name of ['About this map', 'Move map', 'Zoom out', 'Zoom in']) {
+        await page.keyboard.press('Shift+Tab')
+        await expect(page.getByRole('button', { name, exact: true })).toBeFocused()
+      }
+      await page.keyboard.press('Shift+Tab')
       const canvas = page.locator('.maplibregl-canvas')
-      await tabTo(page, canvas, 'Shift+Tab')
+      await expect(canvas).toBeFocused()
       await expect(canvas).toHaveAccessibleName(/arrow keys move the pin/)
       await expect(page.getByText('Arrow keys move the pin 10 m, with Shift 50 m.')).toBeVisible()
 
@@ -175,6 +182,7 @@ test.describe('placing the pin', () => {
       await page.keyboard.press('Escape')
       await expect(newPin(page)).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Tag a dumped bike' })).toBeFocused()
+      await expect(pin).not.toHaveAttribute('tabindex')
     })
   })
 })
@@ -405,11 +413,8 @@ test.describe('a tag from start to end', () => {
     await tabTo(page, page.locator('.maplibregl-canvas'), 'Shift+Tab')
     // Enter puts the pin at the crosshair, and Enter again uses it.
     await page.keyboard.press('Enter')
-    await expect(bar(page)).toHaveText('Pin on Liverpool Rd, Ashfield')
-    await page.keyboard.press('Enter')
-    // The crosshair starts beside the seeded tag on Liverpool Rd, so the nearby question comes first.
-    await expect(dialog(page).getByRole('heading', { name: 'Is it one of these?' })).toBeFocused()
-    await tabTo(page, page.getByRole('button', { name: "No, it's another bike" }))
+    // The middle of the map, with no live tag within 25 m, so the form comes next.
+    await expect(bar(page)).toHaveText('Pin on Palace St, Petersham')
     await page.keyboard.press('Enter')
     await expect(dialog(page).getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
 
