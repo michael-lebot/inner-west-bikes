@@ -1,0 +1,43 @@
+import { expect, test } from '@playwright/test'
+import { expectNoAxeViolations, resetDb } from './support'
+
+test.use({ baseURL: 'http://localhost:3001' })
+
+test.beforeEach(() => resetDb())
+
+test('lists the recent tags and passes axe on both screens', async ({ page }) => {
+  await page.goto('/')
+  await expect(page).toHaveURL('/tags')
+  await expect(page.getByRole('row')).toHaveCount(1 + 14)
+  await expect(page.getByRole('row', { name: /Llewellyn St/ })).toContainText('Yes')
+  await expectNoAxeViolations(page)
+
+  await page.getByRole('link', { name: 'Reported photos' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Reported photos')
+  await expectNoAxeViolations(page)
+})
+
+test('has 44 px nav links with room for the whole focus ring', async ({ page }) => {
+  await page.goto('/tags')
+  for (const name of ['Reported photos', 'Tags']) {
+    const box = await page.getByRole('link', { name }).boundingBox()
+    expect(box?.width, name).toBeGreaterThanOrEqual(44)
+    expect(box?.height, name).toBeGreaterThanOrEqual(44)
+    // The ring is 3 px wide and 2 px out from the link, so it needs 5 px clear above it.
+    expect(box?.y, name).toBeGreaterThanOrEqual(5)
+  }
+})
+
+test('scrolls the tags table, not the page, on a 320 px screen, and passes axe there', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 })
+  await page.goto('/tags')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
+  await expectNoAxeViolations(page)
+})
+
+test('is never indexed and sends its security headers', async ({ request }) => {
+  const headers = (await request.get('/tags')).headers()
+  expect(headers['x-robots-tag']).toBe('noindex, nofollow')
+  expect(headers['content-security-policy']).toContain("frame-ancestors 'none'")
+  expect(headers['x-content-type-options']).toBe('nosniff')
+})

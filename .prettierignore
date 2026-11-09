@@ -1,0 +1,5 @@
+# Hand-formatted documents and generated files. Prettier also skips everything in .gitignore.
+SPEC.md
+tasks/plan.md
+docs/mockups/
+pnpm-lock.yaml
