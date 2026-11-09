@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { listFiles, putFile } from './blob'
 import { db } from './client'
 import { env } from './env'
-import { attachPhoto, type NewPhoto, uploadsPaused } from './photos'
-import { getLiveTag, listLiveTags } from './tags'
+import { attachPhoto, type NewPhoto, openPhoto, uploadsPaused } from './photos'
+import { getLiveTag, listLiveTags, markRemoved, takeDown, undoRemoval } from './tags'
 import type { Visitor } from './visitors'
 
 // The real seam on the tests' own folder, watched, so a test can make it fail once.
@@ -137,5 +137,45 @@ describe('a live tag shows its photo', () => {
     expect((await listLiveTags())[0]?.photoId).toEqual(expect.any(String))
     await db.$executeRaw`UPDATE photos SET status = 'hidden'`
     expect((await listLiveTags())[0]?.photoId).toBeNull()
+  })
+})
+
+describe('openPhoto', () => {
+  /** What the public site would stream for the photo and its thumbnail, or null for each it may not see. */
+  const opened = async (id: string) =>
+    Promise.all(
+      (['full', 'thumb'] as const).map(async (size) => {
+        const stream = await openPhoto(id, size)
+        return stream && new Response(stream).text()
+      }),
+    )
+  let photoId: string
+  beforeEach(async () => {
+    photoId = (await attach()).tag!.photoId!
+  })
+
+  it('streams the photo and its thumbnail while the photo is visible and its tag live', async () => {
+    expect(await opened(photoId)).toEqual(['full', 'thumb'])
+    expect(await opened('00000000-0000-4000-8000-000000000000')).toEqual([null, null])
+  })
+
+  it('§5.5 photo and tag together: nothing once the tag is removed, and the photo again after an undo', async () => {
+    await markRemoved({ tagId: TAG, requestId: crypto.randomUUID(), visitor: bob })
+    expect(await opened(photoId)).toEqual([null, null])
+    await undoRemoval(TAG)
+    expect(await opened(photoId)).toEqual(['full', 'thumb'])
+  })
+
+  it('§5.5 photo and tag together: nothing once the tag has expired or is taken down', async () => {
+    await db.$executeRaw`UPDATE tags SET expires_at = now() WHERE id = ${TAG}::uuid`
+    expect(await opened(photoId)).toEqual([null, null])
+    await db.$executeRaw`UPDATE tags SET expires_at = now() + interval '1 hour' WHERE id = ${TAG}::uuid`
+    await takeDown(TAG)
+    expect(await opened(photoId)).toEqual([null, null])
+  })
+
+  it('nothing while the photo is hidden, even on a live tag', async () => {
+    await db.$executeRaw`UPDATE photos SET status = 'hidden'`
+    expect(await opened(photoId)).toEqual([null, null])
   })
 })

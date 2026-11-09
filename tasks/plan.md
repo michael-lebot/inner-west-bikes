@@ -1376,6 +1376,10 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
 - **Does:** `GET /photo/[id]` and `/photo/[id]/thumb` stream the file only when the photo is `visible` and its tag
   is live (one query in `photos.ts` using `LIVE` from `tags.ts`); otherwise 404. Headers `Content-Type: image/webp`,
   `Cache-Control: private, no-cache`, `X-Content-Type-Options: nosniff`.
+  As built: `openPhoto(id, size)` in `photos.ts` makes the check and opens the file; the two routes are one line
+  each, from `servePhoto(size)` in `lib/serve-photo.ts`, which answers 404 for an id that isn't a UUID too
+  (`PhotoParams`). The §5.5 case runs against `openPhoto` in `photos.test.ts`, where SQL can expire a tag; the
+  route test checks the answers and their headers.
 - **Accept:** §5.5 photo and tag together, first half: the URL returns 404 once the tag is removed, expired or taken
   down, and 200 again after an undo while the photo is still visible.
 - **Files:** `app/photo/[id]/route.ts`, `app/photo/[id]/thumb/route.ts` (+ tests), `packages/server/src/photos.ts`.

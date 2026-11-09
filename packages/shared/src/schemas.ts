@@ -8,6 +8,8 @@ export const ZodError = z.core.$ZodError
 
 /** The [id] of a tag URL. */
 export const TagParams = z.object({ id: z.uuid() })
+/** The [id] of a photo URL. */
+export const PhotoParams = TagParams
 
 /** Still there or Removed: the id the browser made for this one action, kept for its retries (§5.3). */
 export const ActionBody = z.object({ requestId: z.uuid() })

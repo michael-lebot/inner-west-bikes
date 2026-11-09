@@ -1,8 +1,9 @@
-// Photos (§4.3): attaching a tag's one photo, and whether uploads are paused (§4.6). Owns photos, site_state and the
-// photo files. A photo's files are written before its row, and deleted again if the row isn't (plan §1.4).
+// Photos (§4.3): attaching a tag's one photo, who may see it, and whether uploads are paused (§4.6). Owns photos,
+// site_state and the photo files. A photo's files are written before its row, and deleted again if the row isn't
+// (plan §1.4).
 import { randomUUID } from 'node:crypto'
 import { AppError } from '@iwb/shared'
-import { deleteFiles, putFile } from './blob'
+import { deleteFiles, getFile, putFile } from './blob'
 import { db } from './client'
 import { Prisma } from './generated/prisma/client'
 import { countAction } from './limits'
@@ -71,4 +72,15 @@ export async function attachPhoto({ tagId, visitor, photo }: { tagId: string; vi
       return { tag: await getLiveTag(tagId) }
     throw error
   }
+}
+
+/**
+ * A photo's file, or its thumbnail's, as a stream, while the photo is visible and its tag is live (§4.3); otherwise
+ * null. It is checked on every request, so a photo that is reported, or whose tag has gone, stops loading at once.
+ */
+export async function openPhoto(id: string, size: 'full' | 'thumb') {
+  const [photo] = await db.$queryRaw<{ blobPath: string; thumbPath: string }[]>`
+    SELECT blob_path AS "blobPath", thumb_path AS "thumbPath" FROM photos
+    WHERE id = ${id}::uuid AND status = 'visible' AND tag_id IN (SELECT id FROM tags WHERE ${LIVE})`
+  return photo ? getFile(size === 'full' ? photo.blobPath : photo.thumbPath) : null
 }
