@@ -742,7 +742,7 @@ dependency versions. If Next.js and MapLibre alone don't fit, the budgets are re
 | Total Blocking Time (the lab stand-in for INP) | ≤ 200 ms |
 | Scripted interactions: open a card, pick a chip, zoom, open the form | Each ≤ 200 ms to the next paint |
 | **Map ready for placement:** tiles, labels and pins drawn, and taps accepted | ≤ 6 s (to be set properly from M1 measurements) |
-| JavaScript before the map loads (compressed, as transferred) | ≤ 120 KB |
+| JavaScript before the map loads (gzip, as transferred) | ≤ 150 KiB (reset at M0: the framework alone is 139 KB gzip, 119 KB Brotli) |
 | Map bundle: MapLibre + `pmtiles` + style (compressed, as transferred) | ≤ 300 KB, loaded after first paint |
 | First map view | ≤ 40 tile requests, ≤ 1.5 MB |
 | Fonts | 2 woff2 files (400 and 700), Latin subset, ≤ 60 KB total |

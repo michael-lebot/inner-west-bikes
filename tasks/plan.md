@@ -291,7 +291,7 @@ must equal the request host), run, then `303` redirect back with a `?notice=` co
 **Keeping the map out of pages that must not load it.**
 - Only `apps/web/map/` imports MapLibre or pmtiles (ESLint).
 - `MapScreen` loads `@/map/MapView` with `import()` in an effect, which runs after first paint.
-- `/list` and `/tag/[id]` never render `MapScreen`. A perf test asserts their JavaScript stays under the 120 KB
+- `/list` and `/tag/[id]` never render `MapScreen`. A perf test asserts their JavaScript stays under the 150 KiB
   pre-map budget, which MapLibre alone (about 275 KB) would break.
 - Heavy data loads the same way: `@iwb/shared/geo` when placement or Use my location starts, `@iwb/shared/picker` when
   the street picker opens, one `addresses/<suburb>.json` when a street is chosen.
@@ -571,7 +571,7 @@ budgets confirmed or reset.
   truncate + `seed.sql`, `expectNoAxeViolations(page)` with tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`,
   `wcag22aa`, failing on any violation whatever its impact), `e2e/pages.spec.ts` (list, tag page, empty state,
   text pages, 404, each with axe), `e2e/admin.spec.ts` (admin tags + axe), `e2e/perf.spec.ts` (on `/` and
-  `/list`: JavaScript transferred ≤ 120 KB and fonts = 2 files ≤ 60 KB, from `request.sizes()`),
+  `/list`: JavaScript transferred ≤ 150 KiB (reset at M0) and fonts = 2 files ≤ 60 KB, from `request.sizes()`),
   `lighthouserc.json` (`/` and `/list`, mobile preset, 3 runs, `startServerCommand`, assertions on the median run
   LCP ≤ 2500 ms, CLS ≤ 0.1, TBT ≤ 200 ms, upload to filesystem only).
 - **Accept:** `pnpm e2e` passes on all three projects; `pnpm lhci` passes; a deliberately added axe violation
@@ -765,7 +765,7 @@ them.
   chooser, map-failed. `perf.spec.ts` on `pixel` with CPU throttling ×4 and a 4G profile: map ready ≤ 6 s; first
   view ≤ 40 tile requests and ≤ 1.5 MB; map bundle (all JS after first paint, including the worker) ≤ 300 KB
   transferred; open a card and a zoom-button tap each ≤ 200 ms to next paint (Event Timing entries via
-  `PerformanceObserver`); `/list` and `/tag/[id]` JS ≤ 120 KB. Record the map-bundle measurement and confirm or
+  `PerformanceObserver`); `/list` and `/tag/[id]` JS ≤ 150 KiB. Record the map-bundle measurement and confirm or
   reset its budget per §11.1.
 - **Accept:** all green on three projects; measurements in the PR description.
 - **Files:** `e2e/{browse,perf}.spec.ts`.
