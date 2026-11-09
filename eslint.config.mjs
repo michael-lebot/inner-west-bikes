@@ -58,6 +58,16 @@ export default defineConfig([
   { files: ['apps/**'], rules: { 'no-restricted-imports': bansExcept('@iwb/server') } },
   { files: ['apps/*/components/**'], rules: { 'no-restricted-imports': bansExcept() } },
   { files: ['apps/web/map/**'], rules: { 'no-restricted-imports': bansExcept('maplibre-gl', 'pmtiles') } },
+  // A type written as import('@iwb/server').X is no import statement, so no-restricted-imports can't see it.
+  {
+    files: ['apps/*/components/**', 'apps/web/map/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        { selector: "TSImportType Literal[value='@iwb/server']", message: BANS['@iwb/server'] },
+      ],
+    },
+  },
   {
     files: ['apps/web/lib/image.ts', 'apps/web/scripts/build-preview.ts'],
     rules: { 'no-restricted-imports': bansExcept('@iwb/server', 'sharp') },

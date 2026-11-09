@@ -41,3 +41,15 @@ export type PublicTag = {
   lastConfirmedAt: Date
   expiresAt: Date
 }
+
+/** A tag's state (§4.2). It is live only while active and its time hasn't run out. */
+export type TagStatus = 'active' | 'removed' | 'taken_down'
+
+/** A tag in any state, as the admin app sees it. It never carries visitor data either. */
+export type AdminTag = PublicTag & {
+  status: TagStatus
+  live: boolean
+  createdAt: Date
+  removedAt: Date | null
+  confirmCount: number
+}

@@ -1,7 +1,7 @@
 // Tags (§4.2): the one definition of "live", every read of the tags table, and every transition. Owns tags and
 // tag_events. A visitor's write is one transaction: the repeat check, the rate count and one conditional statement,
 // with Postgres's now() as the only clock (plan §1.4).
-import { AppError, type NewTag, type PublicTag, TAG_LIFETIME_HOURS } from '@iwb/shared'
+import { type AdminTag, AppError, type NewTag, type PublicTag, TAG_LIFETIME_HOURS } from '@iwb/shared'
 import { where } from '@iwb/shared/geo'
 import { db } from './client'
 import { Prisma, type TagEventType, type TagStatus } from './generated/prisma/client'
@@ -28,15 +28,6 @@ export async function getLiveTag(id: string, client: Client = db) {
   const [tag] = await client.$queryRaw<PublicTag[]>`
     SELECT ${PUBLIC_FIELDS} FROM tags WHERE id = ${id}::uuid AND ${LIVE}`
   return tag ?? null
-}
-
-/** A tag in any state, as the admin app sees it. */
-export type AdminTag = PublicTag & {
-  status: TagStatus
-  live: boolean
-  createdAt: Date
-  removedAt: Date | null
-  confirmCount: number
 }
 
 const ADMIN_FIELDS = Prisma.sql`

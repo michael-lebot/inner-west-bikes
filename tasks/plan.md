@@ -128,7 +128,9 @@ What does **not** go where:
    `instrumentation-client.ts` and `next.config.ts`.
 6. Apps never import each other. Packages never import apps.
 
-Enforced by ESLint `no-restricted-imports` overrides in `eslint.config.mjs` (task 1.1). A client component that
+Enforced by ESLint `no-restricted-imports` overrides in `eslint.config.mjs` (task 1.1), and for rule 3 by
+`no-restricted-syntax`, which also refuses an `import('@iwb/server')` type in `components/` and `map/`; shapes those
+need, such as `PublicTag` and `AdminTag`, live in `@iwb/shared`. A client component that
 imports `@iwb/server` also fails `next build`, because `pg` and `node:crypto` can't be bundled for the browser.
 
 ### 1.4 The write path — one shape for every public write
@@ -1220,7 +1222,8 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   `e2e/admin-access.spec.ts` that asserts an unauthenticated request to `ADMIN_PREVIEW_URL` is refused.
   As built: the per-hash counts come with the events, from one query (`listTagEvents`), rather than a separate
   `countActionsByHashOnDay`; the day is the event's UTC day, the day an IP salt covers. `getTag` and
-  `listRecentRemovals` read tags in any state as `AdminTag` (the tables' type, which replaces `RecentTag`). The
+  `listRecentRemovals` read tags in any state as `AdminTag` (the tables' type, which replaces `RecentTag`, in
+  `@iwb/shared` with its `TagStatus`). The
   lookup takes the first UUID in what is pasted. Take down's link reloads the page with `?confirm=take-down`, which
   shows the question and the one form that posts. `action()` answers a post without a matching `Origin` with 403.
 - **Accept:** a cross-origin POST is rejected; undo makes the tag live again with only its remaining time; admin

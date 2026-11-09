@@ -1,8 +1,6 @@
-import { dateTime, OPERATORS, PROBLEMS } from '@iwb/shared'
+import { type AdminTag, dateTime, OPERATORS, PROBLEMS } from '@iwb/shared'
 import Link from 'next/link'
 import { CELL, Table } from './Table'
-
-type AdminTag = import('@iwb/server').AdminTag
 
 const COLUMNS = ['Street', 'Suburb', 'Status', 'Live', 'Operator', 'Problem', 'Created', 'Removed', 'Expires']
 
