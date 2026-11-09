@@ -6,6 +6,7 @@ import { isStreetNear, where } from '@iwb/shared/geo'
 import { db } from './client'
 import { Prisma, type TagEventType, type TagStatus } from './generated/prisma/client'
 import { countAction } from './limits'
+import { deleteTagPhoto } from './photos'
 import type { Visitor } from './visitors'
 
 /** Live: active, and its time has not run out by the database's clock. Expiry is never stored (§4.2). */
@@ -13,10 +14,11 @@ export const LIVE = Prisma.sql`status = 'active' AND expires_at > now()`
 /** A new tag's time, and a sighting's: 48 hours from now, never added on top (§4.2). */
 const LIFETIME = Prisma.sql`now() + ${TAG_LIFETIME_HOURS} * interval '1 hour'`
 
-const PUBLIC_FIELDS = Prisma.sql`
+const FIELDS = Prisma.sql`
   id, lat::float8 AS lat, lng::float8 AS lng, suburb, street, operator, problem,
-  last_confirmed_at AS "lastConfirmedAt", expires_at AS "expiresAt",
-  (SELECT id FROM photos WHERE tag_id = tags.id AND status = 'visible') AS "photoId"`
+  last_confirmed_at AS "lastConfirmedAt", expires_at AS "expiresAt"`
+const PUBLIC_FIELDS = Prisma.sql`
+  ${FIELDS}, (SELECT id FROM photos WHERE tag_id = tags.id AND status = 'visible') AS "photoId"`
 
 type Client = Prisma.TransactionClient
 type TagAction = { tagId: string; requestId: string; visitor: Visitor }
@@ -32,8 +34,9 @@ export async function getLiveTag(id: string, client: Client = db) {
 }
 
 const ADMIN_FIELDS = Prisma.sql`
-  ${PUBLIC_FIELDS}, status, (${LIVE}) AS live, created_at AS "createdAt", removed_at AS "removedAt",
-  confirm_count AS "confirmCount"`
+  ${FIELDS}, status, (${LIVE}) AS live, created_at AS "createdAt", removed_at AS "removedAt",
+  confirm_count AS "confirmCount",
+  (SELECT json_build_object('id', id, 'status', status) FROM photos WHERE tag_id = tags.id) AS photo`
 
 /** For the admin app: the latest tags in any state, newest first. */
 export function listRecentTags() {
@@ -167,7 +170,10 @@ export async function undoRemoval(tagId: string) {
   return tag?.status === 'removed' ? 'expired' : 'not_removed'
 }
 
-/** Take down (admin, §4.2): final, whatever the tag's state. False when it was already down. */
+/**
+ * Take down (admin, §4.2): final, whatever the tag's state, and its photo is deleted at once. False when it was
+ * already down. A repeat deletes the photo too, in case the first time failed after the tag went down.
+ */
 export async function takeDown(tagId: string) {
   const taken = await db.$executeRaw(
     withEvent(
@@ -175,5 +181,6 @@ export async function takeDown(tagId: string) {
       Prisma.sql`UPDATE tags SET status = 'taken_down' WHERE id = ${tagId}::uuid AND status <> 'taken_down'`,
     ),
   )
+  await deleteTagPhoto(tagId)
   return taken === 1
 }

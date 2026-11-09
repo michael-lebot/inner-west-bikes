@@ -51,11 +51,16 @@ export type PublicTag = {
 /** A tag's state (§4.2). It is live only while active and its time hasn't run out. */
 export type TagStatus = 'active' | 'removed' | 'taken_down'
 
+/** A photo's moderation state (§4.3). It never changes because its tag changed. */
+export type PhotoStatus = 'visible' | 'hidden' | 'deleted'
+
 /** A tag in any state, as the admin app sees it. It never carries visitor data either. */
-export type AdminTag = PublicTag & {
+export type AdminTag = Omit<PublicTag, 'photoId'> & {
   status: TagStatus
   live: boolean
   createdAt: Date
   removedAt: Date | null
   confirmCount: number
+  /** Its photo in any state, for the admin app's /photo/<id> while it isn't deleted. */
+  photo: { id: string; status: PhotoStatus } | null
 }

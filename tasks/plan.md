@@ -1418,6 +1418,12 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   detail: taking a tag down marks its photo deleted, then deletes the files; admin tag detail shows the photo through
   an admin-only `GET /photo/[id]` route in `apps/admin` that streams any non-deleted photo with `Cache-Control:
   private, no-store`.
+  As built: one `deletePhotos(which)` in `photos.ts` marks the rows and then deletes the files, for both
+  `deleteExpiredPhotos` and `deleteTagPhoto`. `takeDown` calls it after its update every time, so a repeat finishes a
+  take down whose file deletion failed; until then the sweep would (assumption 16). The sweep compares the listed
+  files' times with Postgres's `now()`, in one query over `unnest`. `AdminTag` has `photo: { id, status }` in any
+  state instead of `photoId`, so the admin tag page names a hidden or deleted photo and shows any that isn't deleted,
+  through `openAnyPhoto`. Closing the reports on a deleted photo stays with task 6.1, as PR 5 has none.
 - **Accept:** §5.5 hourly job twice still holds with photos; a half-failed deletion (spy makes `deleteFiles` throw
   once) is finished by the next run; a taken-down tag's files are gone.
 - **Files:** `packages/server/src/{photos,tags,hourly}.ts`, `src/hourly.test.ts`, `apps/admin/app/photo/[id]/route.ts`,

@@ -1,9 +1,10 @@
 // The hourly job (§5.4), run by GET /api/cron/hourly. It only calls the owners' cleanup steps, in the spec's order.
 // Each step acts only on rows still in their "before" state, so two runs, in a row or at once, leave what one leaves.
 import { deleteOldCounters } from './limits'
+import { deleteExpiredPhotos, sweepOrphanFiles } from './photos'
 import { clearOldHashes, deleteOldSalts } from './visitors'
 
-const STEPS = { clearOldHashes, deleteOldCounters, deleteOldSalts }
+const STEPS = { deleteExpiredPhotos, sweepOrphanFiles, clearOldHashes, deleteOldCounters, deleteOldSalts }
 
 /** Runs every step, even after one fails, and returns how many rows each changed and which failed. */
 export async function runHourly() {

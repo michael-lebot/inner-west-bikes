@@ -58,7 +58,7 @@ acceptance criteria pass and `pnpm verify` is green.
 - [x] 5.3 Attach rule and photo route (attach, repeat and Blob-failure tests); `uploadsPaused` in the API
 - [x] 5.4 Private serving routes (404 unless visible and live)
 - [x] 5.5 Photo input, two-step submit with Try again / Skip, thumbnail, full size, alt text
-- [ ] 5.6 Hourly steps 1–2, Take down deletes the photo, admin photo route
+- [x] 5.6 Hourly steps 1–2, Take down deletes the photo, admin photo route
 - [ ] 5.7 Photo E2E
 - [ ] Checkpoint: CI green, browser verification at both sizes, PR opened against `build/04-tag-without-map`
 

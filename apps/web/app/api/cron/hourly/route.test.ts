@@ -29,6 +29,8 @@ describe('GET /api/cron/hourly', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(await response.json()).toEqual({
       done: {
+        deleteExpiredPhotos: expect.any(Number),
+        sweepOrphanFiles: expect.any(Number),
         clearOldHashes: expect.any(Number),
         deleteOldCounters: expect.any(Number),
         deleteOldSalts: expect.any(Number),

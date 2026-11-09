@@ -1,9 +1,9 @@
-// Photos (§4.3): attaching a tag's one photo, who may see it, and whether uploads are paused (§4.6). Owns photos,
-// site_state and the photo files. A photo's files are written before its row, and deleted again if the row isn't
-// (plan §1.4).
+// Photos (§4.3): attaching a tag's one photo, who may see it, deleting it, and whether uploads are paused (§4.6). Owns
+// photos, site_state and the photo files. A photo's files are written before its row, and deleted again if the row
+// isn't; its row is marked deleted before its files are deleted (plan §1.4).
 import { randomUUID } from 'node:crypto'
 import { AppError } from '@iwb/shared'
-import { deleteFiles, getFile, putFile } from './blob'
+import { deleteFiles, getFile, listFiles, putFile } from './blob'
 import { db } from './client'
 import { Prisma } from './generated/prisma/client'
 import { countAction } from './limits'
@@ -83,4 +83,42 @@ export async function openPhoto(id: string, size: 'full' | 'thumb') {
     SELECT blob_path AS "blobPath", thumb_path AS "thumbPath" FROM photos
     WHERE id = ${id}::uuid AND status = 'visible' AND tag_id IN (SELECT id FROM tags WHERE ${LIVE})`
   return photo ? getFile(size === 'full' ? photo.blobPath : photo.thumbPath) : null
+}
+
+/** For the admin app: a photo's file whatever its state or its tag's, until it is deleted. */
+export async function openAnyPhoto(id: string) {
+  const [photo] = await db.$queryRaw<{ blobPath: string }[]>`
+    SELECT blob_path AS "blobPath" FROM photos WHERE id = ${id}::uuid AND status <> 'deleted'`
+  return photo ? getFile(photo.blobPath) : null
+}
+
+/** Marks the photos `which` picks deleted, then deletes their files, so a half-deleted photo is never served (§4.3). */
+async function deletePhotos(which: Prisma.Sql) {
+  const deleted = await db.$queryRaw<{ blobPath: string; thumbPath: string }[]>`
+    UPDATE photos SET status = 'deleted', deleted_at = now() WHERE status <> 'deleted' AND ${which}
+    RETURNING blob_path AS "blobPath", thumb_path AS "thumbPath"`
+  await deleteFiles(deleted.flatMap((photo) => [photo.blobPath, photo.thumbPath]))
+  return deleted.length
+}
+
+/** Take down (§4.2): the tag's photo goes at once. */
+export const deleteTagPhoto = (tagId: string) => deletePhotos(Prisma.sql`tag_id = ${tagId}::uuid`)
+
+/** Hourly step 1 (§5.4): the photos of tags whose time has run out, whatever their state, as none can come back. */
+export const deleteExpiredPhotos = () =>
+  deletePhotos(Prisma.sql`tag_id IN (SELECT id FROM tags WHERE expires_at <= now())`)
+
+/**
+ * Hourly step 2 (§5.4): files over an hour old that no photo has, counting a deleted photo's as unused (assumption 16):
+ * a failed attach's or a failed deletion's. A file whose row is still being written is younger.
+ */
+export async function sweepOrphanFiles() {
+  const files = await listFiles()
+  const orphans = await db.$queryRaw<{ path: string }[]>`
+    SELECT path FROM unnest(${files.map((file) => file.path)}::text[],
+                            ${files.map((file) => file.uploadedAt)}::timestamptz[]) AS file (path, uploaded_at)
+    WHERE uploaded_at < now() - interval '1 hour'
+      AND NOT EXISTS (SELECT 1 FROM photos WHERE status <> 'deleted' AND path IN (blob_path, thumb_path))`
+  await deleteFiles(orphans.map((orphan) => orphan.path))
+  return orphans.length
 }

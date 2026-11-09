@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { listFiles, putFile } from './blob'
 import { db } from './client'
 import { env } from './env'
-import { attachPhoto, type NewPhoto, openPhoto, uploadsPaused } from './photos'
-import { getLiveTag, listLiveTags, markRemoved, takeDown, undoRemoval } from './tags'
+import { attachPhoto, type NewPhoto, openAnyPhoto, openPhoto, uploadsPaused } from './photos'
+import { getLiveTag, getTag, listLiveTags, markRemoved, takeDown, undoRemoval } from './tags'
 import type { Visitor } from './visitors'
 
 // The real seam on the tests' own folder, watched, so a test can make it fail once.
@@ -137,6 +137,32 @@ describe('a live tag shows its photo', () => {
     expect((await listLiveTags())[0]?.photoId).toEqual(expect.any(String))
     await db.$executeRaw`UPDATE photos SET status = 'hidden'`
     expect((await listLiveTags())[0]?.photoId).toBeNull()
+  })
+})
+
+describe('takeDown', () => {
+  it("deletes the tag's photo at once: the row is marked deleted, then the files go", async () => {
+    await attach()
+    expect(await takeDown(TAG)).toBe(true)
+    expect(await db.$queryRaw`SELECT status::text FROM photos`).toEqual([{ status: 'deleted' }])
+    expect(await files()).toEqual([])
+  })
+})
+
+describe('the admin app', () => {
+  it('sees and opens the photo in any state, its tag live or not, until the photo is deleted', async () => {
+    const photoId = (await attach()).tag!.photoId!
+    const opened = async () => {
+      const stream = await openAnyPhoto(photoId)
+      return stream && new Response(stream).text()
+    }
+    await db.$executeRaw`UPDATE photos SET status = 'hidden'`
+    await markRemoved({ tagId: TAG, requestId: crypto.randomUUID(), visitor: bob })
+    expect(await getTag(TAG)).toMatchObject({ photo: { id: photoId, status: 'hidden' } })
+    expect(await opened()).toBe('full')
+    await takeDown(TAG)
+    expect(await getTag(TAG)).toMatchObject({ photo: { id: photoId, status: 'deleted' } })
+    expect(await opened()).toBeNull()
   })
 })
 
