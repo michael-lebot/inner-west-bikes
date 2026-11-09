@@ -130,7 +130,7 @@ export function MapScreen() {
               {status === 'failed' ? (
                 <>
                   The map couldn&apos;t load.{' '}
-                  <Link href="/list" className="underline underline-offset-2">
+                  <Link href="/list" className="inline-flex min-h-11 items-center underline underline-offset-2">
                     Use the list instead.
                   </Link>
                 </>

@@ -74,7 +74,10 @@ test('offers the list when the tiles fail to load', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText("The map couldn't load.")).toHaveText("The map couldn't load. Use the list instead.")
   await expectNoAxeViolations(page)
-  await page.getByRole('link', { name: 'Use the list instead.' }).click()
+  const list = page.getByRole('link', { name: 'Use the list instead.' })
+  // axe allows a small link inside a sentence; our own rule is 44 px for every target (§10.5).
+  expect((await list.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+  await list.click()
   await expect(page).toHaveURL('/list')
   await expect(page.getByRole('heading', { name: '14 bikes in the graveyard' })).toBeVisible()
   expect(errors).toEqual([])
