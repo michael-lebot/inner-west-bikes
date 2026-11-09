@@ -1234,6 +1234,12 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   `deleteOldSalts` in `visitors.ts`, older than 48 h). `apps/web/vercel.json`: `{"regions": ["syd1"], "crons":
   [{"path": "/api/cron/hourly", "schedule": "0 * * * *"}]}`; `apps/admin/vercel.json`: `{"regions": ["syd1"]}`.
   `CRON_SECRET` in `lib/env.ts` (local default `dev-cron-secret`) and `.env.example`.
+  As built: the 30 days and 48 hours are `HASH_RETENTION_DAYS` and `COUNTER_RETENTION_HOURS` in `config.ts`. A
+  salt goes 48 hours after its UTC day starts, and a counter 48 hours after its window starts. The summary is
+  `{ done: { step: rows changed }, failed: [step names] }`, answered with 500 when a step failed so the cron log
+  shows it; the error itself goes to `console.error`. `cronSecret()` in `lib/env.ts` checks the variable with no
+  Zod, which the web app doesn't depend on, and throws on Vercel when it is missing. The route test watches the real
+  `runHourly` with `vi.fn` to show a refused request runs nothing.
 - **Accept:** §5.5 access: 401 without or with a wrong token; §5.5 hourly job twice: two runs in a row and two at
   once (`Promise.all`) leave the same rows as one run.
 - **Files:** `app/api/cron/hourly/route.ts` (+ test), `packages/server/src/{hourly,visitors,limits}.ts`,

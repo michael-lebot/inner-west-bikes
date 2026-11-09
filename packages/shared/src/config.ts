@@ -76,6 +76,10 @@ export const STREET_TYPES: Record<string, string> = {
 
 /** A tag disappears this long after it was last confirmed (§1). */
 export const TAG_LIFETIME_HOURS = 48
+/** Visitor and IP hashes on events and reports are cleared this long after they were stored (§6). */
+export const HASH_RETENTION_DAYS = 30
+/** Rate counters and IP salts are deleted this long after their window or their day starts (§6). */
+export const COUNTER_RETENTION_HOURS = 48
 /** Live tags this close to a new spot are offered as "Is it one of these?" (§4.2). */
 export const NEARBY_METERS = 25
 /** Tags are accepted this far outside the council boundary (§4.1). */

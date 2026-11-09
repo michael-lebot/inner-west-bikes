@@ -47,7 +47,7 @@ acceptance criteria pass and `pnpm verify` is green.
 - [x] 4.2 Street picker on the map screen and on `/list` (no MapLibre on `/list`)
 - [x] 4.3 Use my location with Playwright mocked-position tests
 - [x] 4.4 Admin Tags screen: lookup, events, same-day counts, Undo removal, Take down; admin-access spec
-- [ ] 4.5 Hourly job route (401, steps 3–4, twice and concurrent), `vercel.json` for both apps
+- [x] 4.5 Hourly job route (401, steps 3–4, twice and concurrent), `vercel.json` for both apps
 - [ ] 4.6 M2 exit E2E: create → confirm → remove → admin undo by touch, keyboard, location and street
 - [ ] Checkpoint: CI green, browser verification at both sizes, PR opened against `build/03-tag-on-map`
 

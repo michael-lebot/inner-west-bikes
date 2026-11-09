@@ -13,4 +13,5 @@ export {
   takeDown,
   undoRemoval,
 } from './tags'
+export { runHourly } from './hourly'
 export { type Visitor, visitorFrom } from './visitors'
