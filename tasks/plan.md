@@ -1065,6 +1065,10 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   (`desktop`); the nearby question both ways; outside rejection; Change location keeps answers; offline submit shows
   the error and keeps the form, then succeeds once online with one tag. axe on placement, match dialog, form, form
   errors. `perf.spec.ts`: pick a chip and open the form each ≤ 200 ms.
+  As built: the form keeps §11.1's 200 ms: with the CPU at full speed, opening it measured 72 to 104 ms and picking a
+  chip 16 to 24 ms on a laptop, under 60% of the gate. The keyboard run starts at the crosshair, beside the seeded
+  tag on Liverpool Rd, so it also answers the nearby question by keyboard. Opening a pin's card from the keyboard
+  focuses the pin directly, as `browse.spec.ts` does, since its place in the tab order depends on where it is.
 - **Accept:** green on three projects.
 - **Files:** `e2e/{tag-map,perf}.spec.ts`.
 - **Verify:** `pnpm verify`.

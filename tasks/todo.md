@@ -38,7 +38,7 @@ acceptance criteria pass and `pnpm verify` is green.
 - [x] 3.5 Placement step: tap, readback, outside message, keyboard crosshair
 - [x] 3.6 Native dialog, "Is it one of these?", tag form with Change location
 - [x] 3.7 Still there and Removed on the card, `/list` and `/tag/[id]`
-- [ ] 3.8 Tagging E2E (touch and keyboard), axe on dialogs, interaction perf
+- [x] 3.8 Tagging E2E (touch and keyboard), axe on dialogs, interaction perf
 - [ ] Checkpoint: CI green, browser verification at both sizes, PR opened against `build/02-browse-map`
 
 ## PR 4 — `build/04-tag-without-map` (from `build/03-tag-on-map`)

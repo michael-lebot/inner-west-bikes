@@ -24,6 +24,13 @@ async function tap(page: Page, isMobile: boolean, { x, y }: { x: number; y: numb
   else await page.mouse.click(x, y)
 }
 
+/** Presses Tab, or Shift+Tab, until `target` has the focus. */
+async function tabTo(page: Page, target: Locator, key = 'Tab') {
+  for (let i = 0; i < 40 && !(await target.evaluate((element) => element === document.activeElement)); i++)
+    await page.keyboard.press(key)
+  await expect(target).toBeFocused()
+}
+
 async function startTagging(page: Page) {
   await page.goto('/')
   await expect(page.locator('[data-map-ready]')).toBeAttached()
@@ -118,9 +125,7 @@ test.describe('placing the pin', () => {
       await expect(page.getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
       // Back past the map's buttons and pins to the map itself.
       const canvas = page.locator('.maplibregl-canvas')
-      for (let i = 0; i < 30 && !(await canvas.evaluate((map) => map === document.activeElement)); i++)
-        await page.keyboard.press('Shift+Tab')
-      await expect(canvas).toBeFocused()
+      await tabTo(page, canvas, 'Shift+Tab')
       await expect(canvas).toHaveAccessibleName(/arrow keys move the pin/)
       await expect(page.getByText('Arrow keys move the pin 10 m, with Shift 50 m.')).toBeVisible()
 
@@ -337,5 +342,100 @@ test.describe('Still there and Removed', () => {
     await page.getByRole('button', { name: 'Still there' }).click()
     await expect(page.getByText('This tag has already gone.')).toBeFocused()
     await expect(page.locator('#announcer')).toHaveText('This tag has already gone.')
+  })
+})
+
+test.describe('a tag from start to end', () => {
+  const newTag = async () => (await sql(`SELECT id FROM tags WHERE id::text NOT LIKE '5eed%'`))[0].id as string
+  const events = (id: string) =>
+    sql(`SELECT type FROM tag_events WHERE tag_id = '${id}' ORDER BY at`).then((rows) => rows.map((row) => row.type))
+
+  test('by touch: add it, then mark it Still there and Removed', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'the phone projects')
+    await startTagging(page)
+    await placeAwayFromTags(page, true)
+    await page.getByRole('button', { name: 'Use this spot' }).tap()
+    await chip(page, 'Ario').tap()
+    await chip(page, 'Damaged').tap()
+    await page.getByRole('button', { name: 'Add to the map' }).tap()
+    await expect(page.locator('#announcer')).toHaveText('Tag added')
+    const id = await newTag()
+
+    await page.locator(`[data-tag="${id}"] button`).tap()
+    const card = page.getByRole('region', { name: 'Ario e-bike' })
+    await expect(card).toContainText('Damaged')
+    await card.getByRole('button', { name: 'Still there' }).tap()
+    await expect(page.locator('#announcer')).toHaveText('Marked still there')
+    await card.getByRole('button', { name: 'Removed' }).tap()
+    await expect(page.locator('#announcer')).toHaveText('Removed.')
+    await expect(page.locator(`[data-tag="${id}"]`)).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: '14 bikes in the graveyard' })).toBeVisible()
+    expect(await events(id)).toEqual(['created', 'still_there', 'removed'])
+  })
+
+  test('by keyboard: add it, then mark it Still there and Removed', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'the desktop project')
+    await page.goto('/')
+    await expect(page.locator('[data-map-ready]')).toBeAttached()
+    await page.getByRole('button', { name: 'Tag a dumped bike' }).focus()
+    await page.keyboard.press('Enter')
+    await tabTo(page, page.locator('.maplibregl-canvas'), 'Shift+Tab')
+    // Enter puts the pin at the crosshair, and Enter again uses it.
+    await page.keyboard.press('Enter')
+    await expect(bar(page)).toHaveText('Pin on Liverpool Rd, Ashfield')
+    await page.keyboard.press('Enter')
+    // The crosshair starts beside the seeded tag on Liverpool Rd, so the nearby question comes first.
+    await expect(dialog(page).getByRole('heading', { name: 'Is it one of these?' })).toBeFocused()
+    await tabTo(page, page.getByRole('button', { name: "No, it's another bike" }))
+    await page.keyboard.press('Enter')
+    await expect(dialog(page).getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
+
+    await tabTo(page, page.getByRole('radio', { name: 'Lime' }))
+    await page.keyboard.press('Space')
+    await tabTo(page, page.getByRole('group', { name: "What's wrong?" }).getByRole('radio').first())
+    await page.keyboard.press('Space')
+    await tabTo(page, page.getByRole('button', { name: 'Add to the map' }))
+    await page.keyboard.press('Enter')
+    await expect(page.locator('#announcer')).toHaveText('Tag added')
+    await expect(page.getByRole('button', { name: 'Tag a dumped bike' })).toBeFocused()
+    const id = await newTag()
+
+    // A pin is a button in the map's tab order; this one is reached directly, as the order depends on where it is.
+    await page.locator(`[data-tag="${id}"] button`).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('heading', { name: 'Lime e-bike' })).toBeFocused()
+    await tabTo(page, page.getByRole('button', { name: 'Still there' }))
+    await page.keyboard.press('Enter')
+    await expect(page.locator('#announcer')).toHaveText('Marked still there')
+    await tabTo(page, page.getByRole('button', { name: 'Removed' }))
+    await page.keyboard.press('Enter')
+    await expect(page.locator('#announcer')).toHaveText('Removed.')
+    await expect(page.getByRole('heading', { name: '14 bikes in the graveyard' })).toBeFocused()
+    expect(await events(id)).toEqual(['created', 'still_there', 'removed'])
+  })
+
+  test('offline, the form keeps its answers; back online, it adds the tag once', async ({
+    page,
+    context,
+    isMobile,
+  }) => {
+    await startTagging(page)
+    await placeAwayFromTags(page, isMobile)
+    await page.getByRole('button', { name: 'Use this spot' }).click()
+    await chip(page, 'Hello').click()
+    await chip(page, 'In waterway').click()
+
+    await context.setOffline(true)
+    await page.getByRole('button', { name: 'Add to the map' }).click()
+    await expect(dialog(page)).toContainText("Couldn't send. Check your connection and try again.")
+    await expect(page.locator('#announcer')).toHaveText("Couldn't send. Check your connection and try again.")
+    await expect(page.getByRole('radio', { name: 'Hello' })).toBeChecked()
+    await expect(page.getByRole('radio', { name: 'In waterway' })).toBeChecked()
+
+    await context.setOffline(false)
+    await page.getByRole('button', { name: 'Add to the map' }).click()
+    await expect(dialog(page)).toHaveCount(0)
+    await expect(page.locator('#announcer')).toHaveText('Tag added')
+    expect(await sql(`SELECT count(*)::int AS tags FROM tags`)).toEqual([{ tags: 15 }])
   })
 })
