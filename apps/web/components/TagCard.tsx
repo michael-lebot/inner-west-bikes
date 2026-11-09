@@ -1,3 +1,4 @@
+'use client'
 import { bikeName, PROBLEMS, type PublicTag } from '@iwb/shared'
 import { useEffect, useRef, useState } from 'react'
 import { PinIcon } from './PinIcon'
