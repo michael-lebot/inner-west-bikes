@@ -96,6 +96,7 @@ describe('pinLabel', () => {
       problem: 'blocking_footpath',
       lastConfirmedAt: new Date('2026-11-08T13:40:00Z'),
       expiresAt,
+      photoId: null,
     } as const
     expect(pinLabel(tag, new Date(expiresAt.getTime() - (31 * 60 + 20) * 60_000))).toBe(
       'Lime e-bike, blocking footpath, Denison St, Newtown, disappears in 31 hours, at 3:40 pm Tuesday',
@@ -115,6 +116,7 @@ describe('parseTag', () => {
       problem: 'blocking_footpath',
       lastConfirmedAt: new Date('2026-11-09T01:00:00Z'),
       expiresAt: new Date('2026-11-11T01:00:00Z'),
+      photoId: '0f0f0000-0000-4000-8000-000000000001',
     }
     expect(parseTag(JSON.parse(JSON.stringify(tag)))).toEqual(tag)
   })

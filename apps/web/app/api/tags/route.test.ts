@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { isBot } from '@/lib/bot'
 import { POST as removed } from './[id]/removed/route'
 import { POST as stillThere } from './[id]/still-there/route'
-import { POST as create } from './route'
+import { POST as create, GET } from './route'
 
 vi.mock('@/lib/bot', () => ({ isBot: vi.fn(async () => false) }))
 
@@ -35,6 +35,14 @@ async function expectError(response: Response, code: ErrorCode) {
   expect(await response.json()).toEqual({ error: { code, message: ERRORS[code].message } })
 }
 
+describe('GET /api/tags', () => {
+  it('lists the live tags, says whether photo uploads are paused, and is never cached', async () => {
+    const response = await GET()
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(await response.json()).toEqual({ tags: expect.any(Array), uploadsPaused: false })
+  })
+})
+
 describe('POST /api/tags', () => {
   it('adds the tag and answers with it, never cached', async () => {
     const tag = newTag()
@@ -48,6 +56,7 @@ describe('POST /api/tags', () => {
         street: 'Llewellyn St',
         lastConfirmedAt: expect.any(String),
         expiresAt: expect.any(String),
+        photoId: null,
       },
     })
   })
@@ -73,6 +82,16 @@ describe('POST /api/tags', () => {
     const tag = newTag()
     await expectError(await create(request('/api/tags', tag, 'text/plain'), { params: Promise.resolve({}) }), 'invalid')
     expect(await getLiveTag(tag.id)).toBeNull()
+  })
+
+  it('refuses a form, which only the photo route reads, with 400', async () => {
+    const body = new FormData()
+    for (const [name, value] of Object.entries(newTag())) body.append(name, String(value))
+    const response = await create(
+      new NextRequest('http://localhost:3000/api/tags', { method: 'POST', headers, body }),
+      { params: Promise.resolve({}) },
+    )
+    await expectError(response, 'invalid')
   })
 
   it.each([

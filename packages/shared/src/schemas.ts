@@ -42,6 +42,8 @@ export type PublicTag = {
   problem: Problem
   lastConfirmedAt: Date
   expiresAt: Date
+  /** Its photo's id while the photo is visible (§4.3), for /photo/<id> and /photo/<id>/thumb. */
+  photoId: string | null
 }
 
 /** A tag's state (§4.2). It is live only while active and its time hasn't run out. */

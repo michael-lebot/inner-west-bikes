@@ -9,13 +9,14 @@ import { countAction } from './limits'
 import type { Visitor } from './visitors'
 
 /** Live: active, and its time has not run out by the database's clock. Expiry is never stored (§4.2). */
-const LIVE = Prisma.sql`status = 'active' AND expires_at > now()`
+export const LIVE = Prisma.sql`status = 'active' AND expires_at > now()`
 /** A new tag's time, and a sighting's: 48 hours from now, never added on top (§4.2). */
 const LIFETIME = Prisma.sql`now() + ${TAG_LIFETIME_HOURS} * interval '1 hour'`
 
 const PUBLIC_FIELDS = Prisma.sql`
   id, lat::float8 AS lat, lng::float8 AS lng, suburb, street, operator, problem,
-  last_confirmed_at AS "lastConfirmedAt", expires_at AS "expiresAt"`
+  last_confirmed_at AS "lastConfirmedAt", expires_at AS "expiresAt",
+  (SELECT id FROM photos WHERE tag_id = tags.id AND status = 'visible') AS "photoId"`
 
 type Client = Prisma.TransactionClient
 type TagAction = { tagId: string; requestId: string; visitor: Visitor }

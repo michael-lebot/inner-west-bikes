@@ -1356,6 +1356,14 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   `uploadsPaused()` lives here. `POST /api/tags/[id]/photo` uses `write()` with `request.formData()` and
   `processPhoto`. `PublicTag.photo` = `{ id, width, height }` only while `visible`. `GET /api/tags` becomes
   `{ tags, uploadsPaused }`, and `/list` passes `uploadsPaused()` to its tagging flow as a prop.
+  As built: `PublicTag.photoId` is the visible photo's id or null, with no width or height: task 5.5 shows the
+  thumbnail in the mockup's fixed 96 × 72 px box, which needs neither. The rules are SQL fragments in `photos.ts`
+  (`LIVE`, now exported from `tags.ts`, `taggedBy`, `PAUSED`), shared by the check and the insert. A photo is checked
+  for before the tag's time, so a repeat after the tag has gone answers `{ tag: null }`, as a tag write's repeat does.
+  If the insert matches nothing, something changed after the check: the files are deleted, and the check runs again
+  to give the reason, or the photo a simultaneous request attached first. The answer is `{ tag }`, as for every tag
+  write, now carrying its `photoId`. `write()` lets `multipart/form-data` through, and the photo route answers a body
+  it can't read as a form with 400. `/list` passes `uploadsPaused` in task 5.5, where the form reads it.
 - **Accept:** `photos.test.ts` covers §5.5 photo attach (refused for another visitor, a tag that isn't live, a second
   photo, and while paused) and §5.5 outside failures for Blob (`vi.spyOn` makes `putFile` throw: tag saved, no row,
   no stray files); §5.5 repeats: a repeated upload returns the first photo with one count.

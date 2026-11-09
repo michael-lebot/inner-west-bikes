@@ -57,6 +57,7 @@ describe('listLiveTags', () => {
       problem: 'blocking_footpath',
       lastConfirmedAt: expect.any(Date),
       expiresAt: expect.any(Date),
+      photoId: null,
     })
   })
 })
