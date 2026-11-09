@@ -27,18 +27,21 @@ You need Node 24 or later, pnpm 9.15.9 (`corepack enable` picks it up from `pack
 
 ```sh
 pnpm install
-pnpm db:up        # Postgres 18 on localhost:54318, waits until it is healthy
+pnpm db:up                                        # Postgres 18 on localhost:54318
+cp packages/db/.env.example packages/db/.env      # the Prisma CLI reads DATABASE_URL from here
+pnpm db:reset                                     # migrate the dev database and load 14 seeded tags
 ```
 
-| Script           | What it does                                     |
-| ---------------- | ------------------------------------------------ |
-| `pnpm db:up`     | Start Postgres in Docker                         |
-| `pnpm db:down`   | Stop it (the data volume is kept)                |
-| `pnpm lint`      | ESLint, including the import rules, and Prettier |
-| `pnpm typecheck` | TypeScript in every package                      |
-| `pnpm test`      | Vitest in every package                          |
-| `pnpm build`     | Production builds                                |
-| `pnpm verify`    | All of the above, in that order                  |
+| Script           | What it does                                                         |
+| ---------------- | -------------------------------------------------------------------- |
+| `pnpm db:up`     | Start Postgres in Docker and wait until it is healthy                |
+| `pnpm db:down`   | Stop it (the data volume is kept)                                    |
+| `pnpm db:reset`  | Empty the dev database, apply every migration and load the seed      |
+| `pnpm lint`      | ESLint, including the import rules, and Prettier                     |
+| `pnpm typecheck` | TypeScript in every package                                          |
+| `pnpm test`      | Vitest in every package, against the `iwb_test` database in Postgres |
+| `pnpm build`     | Production builds                                                    |
+| `pnpm verify`    | All of the above, in that order                                      |
 
 ## Data attribution
 

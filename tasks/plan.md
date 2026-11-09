@@ -474,8 +474,10 @@ budgets confirmed or reset.
   4 Hello, 3 Ario) at real points inside the council across at least six suburbs, with `created` events and
   `expires_at` spread between 2 h and 46 h ahead. Scripts `generate` (also `postinstall`), `migrate`,
   `migrate:deploy`, `seed`, `test`, `typecheck`. `vitest.config.ts` with a global setup that runs
-  `prisma migrate reset --force --skip-seed` against `TEST_DATABASE_URL` (default
-  `postgresql://iwb:iwb@localhost:54318/iwb_test`) and `fileParallelism: false`. `.env.example`.
+  `prisma migrate deploy` against `TEST_DATABASE_URL` (default `postgresql://iwb:iwb@localhost:54318/iwb_test`),
+  refusing any database whose name doesn't end in `_test`, and `fileParallelism: false`. Deploy, not
+  `migrate reset`: it creates the database when missing and never drops anything, tests empty their own tables, and
+  Prisma 6.19 refuses `migrate reset` when an AI agent runs it. `.env.example`.
 - **Accept:** `prisma migrate dev` creates one initial migration; `listLiveTags` excludes removed, taken-down and
   expired tags (integration test); an enum-parity test proves `Problem` and `ReportReason` values equal the keys in
   `config.ts`; `pnpm db:reset` loads the seed.
