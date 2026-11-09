@@ -41,8 +41,8 @@ export function TagActions({ id, onDone }: { id: string; onDone?: (tag: TagJson 
     sending.current = true
     const { tag, message } = await tagAction(id, action)
     sending.current = false
-    setError(tag === undefined ? message : undefined)
-    if (tag === undefined) return
+    if (tag === undefined) return setError(message)
+    setError(undefined)
     if (onDone) onDone(tag)
     else if (tag) router.refresh()
     else setGone(message)
