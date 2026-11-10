@@ -6,3 +6,6 @@ export const SMALL = 'min-h-11 rounded-[10px] border border-edge px-4 font-bold'
 /** Hover draws the keyboard focus ring, and nothing else (§13): on list rows, the street picker's choices and pins. */
 export const FOCUS_RING_ON_HOVER =
   'hover:outline-3 hover:outline-offset-2 hover:outline-focus hover:shadow-[0_0_0_2px_white]'
+/** On a label around a visually hidden input, the focus ring the input would have: on the chips and the photo button. */
+export const FOCUS_RING_WITHIN =
+  'has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus has-focus-visible:shadow-[0_0_0_2px_white]'

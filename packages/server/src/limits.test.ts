@@ -1,7 +1,7 @@
 import { AppError } from '@iwb/shared'
 import { beforeEach, expect, it } from 'vitest'
 import { db } from './client'
-import { type Action, countAction } from './limits'
+import { type Action, checkLimits, countAction } from './limits'
 import { visitorFrom, type Visitor } from './visitors'
 
 const TAG = '5eed0000-0000-4000-8000-000000000001'
@@ -71,4 +71,17 @@ it('keeps raw IP addresses and cookies out of the database', async () => {
                               (SELECT json_agg(s) FROM daily_salts s) AS salts`,
   )
   expect(everything).not.toMatch(/the-cookie|203\.0\.113\.7/)
+})
+
+it('checkLimits counts nothing, and refuses only once an action has reached a limit, with the wait', async () => {
+  await checkLimits('removed', alice)
+  expect(await db.$queryRaw`SELECT key FROM rate_counters`).toEqual([])
+  for (let i = 0; i < 2; i++) await count('removed')
+  await checkLimits('removed', alice)
+  await count('removed')
+  await expect(checkLimits('removed', alice)).rejects.toMatchObject({
+    code: 'rate_limited',
+    retryAfter: expect.any(Number),
+  })
+  await checkLimits('removed', { ...alice, visitorHash: 'b'.repeat(64) })
 })

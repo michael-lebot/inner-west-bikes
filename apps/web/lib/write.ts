@@ -1,5 +1,5 @@
-// The one wrapper for the public writes (plan §1.4): BotID first, then a JSON body only, then the visitor, then the
-// route's own parsing and its one call into @iwb/server. Every answer is JSON, never cached.
+// The one wrapper for the public writes (plan §1.4): BotID first, then a JSON or multipart body only, then the
+// visitor, then the route's own parsing and its one call into @iwb/server. Every answer is JSON, never cached.
 import { type Visitor, visitorFrom } from '@iwb/server'
 import { AppError, ERRORS, SEND_FAILED, ZodError } from '@iwb/shared'
 import type { NextRequest } from 'next/server'
@@ -14,8 +14,11 @@ export function write(run: (context: WriteContext) => Promise<object>) {
   return async (request: NextRequest, { params }: { params: Promise<unknown> }) => {
     try {
       if (await isBot()) throw new AppError('bot')
-      // A form on another site can post JSON-shaped text, but only as a form type; application/json needs CORS.
-      if (!request.headers.get('content-type')?.startsWith('application/json')) throw new AppError('invalid')
+      // A form on another site can post JSON-shaped text as text/plain, but application/json needs CORS. It can post
+      // multipart/form-data, which the JSON routes can't parse, and which the photo route takes only from the tag's
+      // creator, whose SameSite=Lax cookie never comes with another site's post.
+      const type = request.headers.get('content-type') ?? ''
+      if (!type.startsWith('application/json') && !type.startsWith('multipart/form-data')) throw new AppError('invalid')
       const visitor = await identify(request)
       return Response.json(await run({ request, params, visitor }), { headers: NO_STORE })
     } catch (error) {

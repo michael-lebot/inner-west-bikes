@@ -17,14 +17,14 @@
     "next": "catalog:",
     "pmtiles": "4.5.0",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "sharp": "0.35.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "catalog:",
     "@types/geojson": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "sharp": "0.35.5",
     "tailwindcss": "catalog:"
   }
 }

@@ -13,4 +13,5 @@ export {
   undoRemoval,
 } from './tags'
 export { runHourly } from './hourly'
+export { attachPhoto, openAnyPhoto, openPhoto, uploadsPaused } from './photos'
 export { type Visitor, visitorFrom } from './visitors'

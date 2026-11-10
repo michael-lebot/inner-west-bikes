@@ -12,10 +12,14 @@ export type Sent<T> = { ok: true; data: T } | { ok: false; error: SendError }
  * POSTs one action's body, made once with its request id, and tries again only what could still succeed (§5.3): a
  * dropped connection, a success whose body never arrives, a server error, or a 429 whose window ends within 30
  * seconds. Three tries at most; any other answer comes back at once. The server answers a repeat with the current
- * state and does nothing new, so a retry can't act twice.
+ * state and does nothing new, so a retry can't act twice. A form, as a photo is sent, goes as it is: the browser marks
+ * it multipart, and its tag's one photo is what makes a repeat one.
  */
 export async function send<T>(path: string, body: object): Promise<Sent<T>> {
-  const init = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+  const init =
+    body instanceof FormData
+      ? { method: 'POST', body }
+      : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
   for (let tries = 1; ; tries++) {
     let response = await fetch(path, init).catch(() => null)
     if (response?.ok) {

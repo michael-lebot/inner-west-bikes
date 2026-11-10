@@ -31,7 +31,7 @@ const READY_WITHIN_MS = 15_000
 export function MapScreen() {
   const [status, setStatus] = useState<Status>('loading')
   const [MapView, setMapView] = useState<MapModule['MapView']>()
-  const { tags, now, apply } = useLiveTags()
+  const { tags, now, apply, uploadsPaused } = useLiveTags()
   const [selected, setSelected] = useState<string>()
   const [crowd, setCrowd] = useState<string[]>()
   // The pin that opened the chooser, which gets focus back when it closes.
@@ -249,6 +249,7 @@ export function MapScreen() {
                 spot={tagging === 'describe' ? spot : undefined}
                 tags={tags ?? []}
                 now={now}
+                uploadsPaused={uploadsPaused}
                 apply={apply}
                 onChangeLocation={changeLocation}
                 onClose={endTagging}

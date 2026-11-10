@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { bikeCount, bikeName, byPlace, clockTime, dateTime, duration, isExpired, parseTag, pinLabel } from './format'
+import {
+  bikeCount,
+  bikeName,
+  byPlace,
+  clockTime,
+  dateTime,
+  duration,
+  isExpired,
+  parseTag,
+  photoAlt,
+  pinLabel,
+} from './format'
 import type { PublicTag } from './schemas'
 
 describe('bikeCount', () => {
@@ -96,6 +107,7 @@ describe('pinLabel', () => {
       problem: 'blocking_footpath',
       lastConfirmedAt: new Date('2026-11-08T13:40:00Z'),
       expiresAt,
+      photoId: null,
     } as const
     expect(pinLabel(tag, new Date(expiresAt.getTime() - (31 * 60 + 20) * 60_000))).toBe(
       'Lime e-bike, blocking footpath, Denison St, Newtown, disappears in 31 hours, at 3:40 pm Tuesday',
@@ -115,7 +127,22 @@ describe('parseTag', () => {
       problem: 'blocking_footpath',
       lastConfirmedAt: new Date('2026-11-09T01:00:00Z'),
       expiresAt: new Date('2026-11-11T01:00:00Z'),
+      photoId: '0f0f0000-0000-4000-8000-000000000001',
     }
     expect(parseTag(JSON.parse(JSON.stringify(tag)))).toEqual(tag)
+  })
+})
+
+describe('photoAlt', () => {
+  it("describes a tag's photo by the bike and its problem", () => {
+    expect(photoAlt({ operator: 'lime', problem: 'blocking_footpath' })).toBe(
+      'Photo of a Lime e-bike reported as blocking footpath',
+    )
+    expect(photoAlt({ operator: 'ario', problem: 'knocked_over' })).toBe(
+      'Photo of an Ario e-bike reported as knocked over',
+    )
+    expect(photoAlt({ operator: 'not_sure', problem: 'in_waterway' })).toBe(
+      'Photo of a share e-bike reported as in waterway',
+    )
   })
 })

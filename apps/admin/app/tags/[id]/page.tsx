@@ -1,5 +1,14 @@
 import { getTag, listTagEvents } from '@iwb/server'
-import { type AdminTag, dateTime, isExpired, OPERATORS, PROBLEMS, TagParams } from '@iwb/shared'
+import {
+  type AdminTag,
+  dateTime,
+  isExpired,
+  OPERATORS,
+  type PhotoStatus,
+  photoAlt,
+  PROBLEMS,
+  TagParams,
+} from '@iwb/shared'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Fragment } from 'react'
@@ -24,6 +33,12 @@ const EVENTS = {
   removed: 'Removed',
   restored: 'Undone by admin',
   taken_down: 'Taken down by admin',
+}
+
+const PHOTO: Record<PhotoStatus, string> = {
+  visible: 'Shown while the tag is live',
+  hidden: 'Hidden after a report',
+  deleted: 'Deleted',
 }
 
 const COLUMNS = ['Event', 'Time', 'Visitor', 'Their actions that day', 'IP', 'Its actions that day']
@@ -74,6 +89,7 @@ export default async function TagPage({ params, searchParams }: PageProps<'/tags
     ['Removed', tag.removedAt ? dateTime(tag.removedAt) : 'No'],
     ['Expires', dateTime(tag.expiresAt)],
     ['Position', `${tag.lat.toFixed(6)}, ${tag.lng.toFixed(6)}`],
+    ['Photo', tag.photo ? PHOTO[tag.photo.status] : 'None'],
     ['Id', tag.id],
   ]
 
@@ -93,6 +109,18 @@ export default async function TagPage({ params, searchParams }: PageProps<'/tags
           </Fragment>
         ))}
       </dl>
+      {tag.photo && tag.photo.status !== 'deleted' && (
+        <a href={`/photo/${tag.photo.id}`} className="mt-4 block w-fit">
+          {/* eslint-disable-next-line @next/next/no-img-element -- a private photo, streamed by this app's own route */}
+          <img
+            src={`/photo/${tag.photo.id}`}
+            alt={photoAlt(tag)}
+            width={320}
+            height={240}
+            className="h-60 w-80 rounded-[10px] bg-tint object-contain"
+          />
+        </a>
+      )}
 
       <h2 className="mt-8 text-xl font-bold">Actions</h2>
       <div className="mt-2 flex flex-col gap-4">

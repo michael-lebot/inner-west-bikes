@@ -57,6 +57,7 @@ describe('listLiveTags', () => {
       problem: 'blocking_footpath',
       lastConfirmedAt: expect.any(Date),
       expiresAt: expect.any(Date),
+      photoId: null,
     })
   })
 })
@@ -322,6 +323,7 @@ describe('the admin reads', () => {
       live: false,
       removedAt: expect.any(Date),
       confirmCount: 0,
+      photo: null,
     })
     expect(await getTag(TAKEN_DOWN)).toMatchObject({ status: 'taken_down', removedAt: null })
     expect(await getTag('00000000-0000-4000-8000-000000000000')).toBeNull()

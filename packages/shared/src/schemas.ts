@@ -8,6 +8,8 @@ export const ZodError = z.core.$ZodError
 
 /** The [id] of a tag URL. */
 export const TagParams = z.object({ id: z.uuid() })
+/** The [id] of a photo URL. */
+export const PhotoParams = TagParams
 
 /** Still there or Removed: the id the browser made for this one action, kept for its retries (§5.3). */
 export const ActionBody = z.object({ requestId: z.uuid() })
@@ -42,16 +44,23 @@ export type PublicTag = {
   problem: Problem
   lastConfirmedAt: Date
   expiresAt: Date
+  /** Its photo's id while the photo is visible (§4.3), for /photo/<id> and /photo/<id>/thumb. */
+  photoId: string | null
 }
 
 /** A tag's state (§4.2). It is live only while active and its time hasn't run out. */
 export type TagStatus = 'active' | 'removed' | 'taken_down'
 
+/** A photo's moderation state (§4.3). It never changes because its tag changed. */
+export type PhotoStatus = 'visible' | 'hidden' | 'deleted'
+
 /** A tag in any state, as the admin app sees it. It never carries visitor data either. */
-export type AdminTag = PublicTag & {
+export type AdminTag = Omit<PublicTag, 'photoId'> & {
   status: TagStatus
   live: boolean
   createdAt: Date
   removedAt: Date | null
   confirmCount: number
+  /** Its photo in any state, for the admin app's /photo/<id> while it isn't deleted. */
+  photo: { id: string; status: PhotoStatus } | null
 }

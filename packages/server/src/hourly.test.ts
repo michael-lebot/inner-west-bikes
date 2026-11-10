@@ -1,16 +1,26 @@
+import { rm, utimes } from 'node:fs/promises'
+import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { deleteFiles, listFiles, putFile } from './blob'
 import { db } from './client'
+import { env } from './env'
 import { runHourly } from './hourly'
 import { clearOldHashes } from './visitors'
 
-// The real first step, watched, so a test can make it fail once.
+// The real steps and seam, watched, so a test can make them fail.
 vi.mock('./visitors', async (importOriginal) => {
   const visitors = await importOriginal<typeof import('./visitors')>()
   return { ...visitors, clearOldHashes: vi.fn(visitors.clearOldHashes) }
 })
+vi.mock('./blob', async (importOriginal) => {
+  const blob = await importOriginal<typeof import('./blob')>()
+  return { ...blob, deleteFiles: vi.fn(blob.deleteFiles) }
+})
 
 const TAG = '5eed0000-0000-4000-8000-000000000001'
 const PHOTO = '5eed0000-0000-4000-8000-0000000000f1'
+const EXPIRED_TAG = '5eed0000-0000-4000-8000-000000000002'
+const EXPIRED_PHOTO = '5eed0000-0000-4000-8000-0000000000f2'
 // Request ids name the rows: 0b… past 30 days with hashes, 0c… past 30 days already cleared, 0d… inside 30 days.
 const OLD = '0b000000-0000-4000-8000-000000000000'
 const CLEARED = '0c000000-0000-4000-8000-000000000000'
@@ -20,9 +30,11 @@ const RECENT = '0d000000-0000-4000-8000-000000000000'
 async function seed() {
   await db.$executeRaw`TRUNCATE tags, rate_counters, daily_salts CASCADE`
   await db.$executeRaw`
-    INSERT INTO tags (id, lat, lng, suburb, street, operator, problem, expires_at)
+    INSERT INTO tags (id, lat, lng, suburb, street, operator, problem, status, expires_at)
     VALUES (${TAG}::uuid, -33.904497, 151.171932, 'Marrickville', 'Llewellyn St', 'lime', 'blocking_footpath',
-            now() + interval '1 hour')`
+            'active', now() + interval '1 hour'),
+           (${EXPIRED_TAG}::uuid, -33.904497, 151.171932, 'Marrickville', 'Llewellyn St', 'lime', 'damaged',
+            'removed', now() - interval '1 second')`
   await db.$executeRaw`
     INSERT INTO tag_events (tag_id, type, request_id, visitor_hash, ip_hash, at)
     VALUES (${TAG}::uuid, 'created', ${OLD}::uuid, 'visitor', 'ip', now() - interval '30 days 1 minute'),
@@ -30,7 +42,15 @@ async function seed() {
            (${TAG}::uuid, 'removed', ${RECENT}::uuid, 'visitor', 'ip', now() - interval '29 days 23 hours')`
   await db.$executeRaw`
     INSERT INTO photos (id, tag_id, blob_path, thumb_path, width, height, bytes)
-    VALUES (${PHOTO}::uuid, ${TAG}::uuid, 'photo.webp', 'thumb.webp', 2048, 1536, 300000)`
+    VALUES (${PHOTO}::uuid, ${TAG}::uuid, 'photo.webp', 'thumb.webp', 1600, 1200, 200000),
+           (${EXPIRED_PHOTO}::uuid, ${EXPIRED_TAG}::uuid, 'expired.webp', 'expired-thumb.webp', 1600, 1200, 200000)`
+  // The photos' files and one with no row are two hours old; a file whose row isn't in yet is new.
+  await rm(env.LOCAL_BLOB_DIR, { recursive: true, force: true })
+  const old = new Date(Date.now() - 2 * 3600 * 1000)
+  for (const path of ['photo.webp', 'thumb.webp', 'expired.webp', 'expired-thumb.webp', 'orphan.webp', 'new.webp']) {
+    await putFile(path, Buffer.from(path))
+    if (path !== 'new.webp') await utimes(join(env.LOCAL_BLOB_DIR, path), old, old)
+  }
   await db.$executeRaw`
     INSERT INTO photo_reports (photo_id, reason, request_id, visitor_hash, ip_hash, created_at)
     VALUES (${PHOTO}::uuid, 'other', ${OLD}::uuid, 'visitor', 'ip', now() - interval '30 days 1 minute'),
@@ -46,6 +66,8 @@ async function seed() {
 
 /** Everything the job may change, in a fixed order. */
 const rows = async () => ({
+  photos: await db.$queryRaw`SELECT id::text, status::text FROM photos ORDER BY id`,
+  files: (await listFiles()).map((file) => file.path).toSorted(),
   events: await db.$queryRaw`SELECT request_id::text, visitor_hash, ip_hash FROM tag_events ORDER BY request_id`,
   reports: await db.$queryRaw`SELECT request_id::text, visitor_hash, ip_hash FROM photo_reports ORDER BY request_id`,
   counters: await db.$queryRaw`SELECT key FROM rate_counters ORDER BY key`,
@@ -55,12 +77,17 @@ const rows = async () => ({
 beforeEach(seed)
 
 describe('runHourly', () => {
-  it('clears hashes past 30 days and deletes counters and salts past 48 hours, keeping the rest (§5.4 steps 3, 4)', async () => {
+  it('deletes expired photos and orphan files, clears hashes past 30 days, and deletes counters and salts past 48 hours, keeping the rest (§5.4 steps 1 to 4)', async () => {
     expect(await runHourly()).toEqual({
-      done: { clearOldHashes: 2, deleteOldCounters: 1, deleteOldSalts: 2 },
+      done: { deleteExpiredPhotos: 1, sweepOrphanFiles: 1, clearOldHashes: 2, deleteOldCounters: 1, deleteOldSalts: 2 },
       failed: [],
     })
     expect(await rows()).toEqual({
+      photos: [
+        { id: PHOTO, status: 'visible' },
+        { id: EXPIRED_PHOTO, status: 'deleted' },
+      ],
+      files: ['new.webp', 'photo.webp', 'thumb.webp'],
       events: [
         { request_id: OLD, visitor_hash: null, ip_hash: null },
         { request_id: CLEARED, visitor_hash: null, ip_hash: null },
@@ -79,7 +106,7 @@ describe('runHourly', () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.mocked(clearOldHashes).mockRejectedValueOnce(new Error('connection lost'))
     expect(await runHourly()).toEqual({
-      done: { deleteOldCounters: 1, deleteOldSalts: 2 },
+      done: { deleteExpiredPhotos: 1, sweepOrphanFiles: 1, deleteOldCounters: 1, deleteOldSalts: 2 },
       failed: ['clearOldHashes'],
     })
     expect(await rows()).toMatchObject({ counters: [{ key: 'recent' }], salts: [{ back: 0 }, { back: 1 }] })
@@ -94,7 +121,7 @@ describe('runHourly', () => {
     await seed()
     await runHourly()
     expect(await runHourly()).toEqual({
-      done: { clearOldHashes: 0, deleteOldCounters: 0, deleteOldSalts: 0 },
+      done: { deleteExpiredPhotos: 0, sweepOrphanFiles: 0, clearOldHashes: 0, deleteOldCounters: 0, deleteOldSalts: 0 },
       failed: [],
     })
     expect(await rows()).toEqual(once)
@@ -102,5 +129,26 @@ describe('runHourly', () => {
     await seed()
     await Promise.all([runHourly(), runHourly()])
     expect(await rows()).toEqual(once)
+  })
+
+  it('§5.5 outside failures: a photo whose files the store fails to delete is gone from view, and its files go next run', async () => {
+    // Attached moments before its tag's time ran out: its files are newer than the hour a file with no row waits.
+    for (const path of ['expired.webp', 'expired-thumb.webp'])
+      await utimes(join(env.LOCAL_BLOB_DIR, path), new Date(), new Date())
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const down = new Error('Blob store down')
+    vi.mocked(deleteFiles).mockRejectedValueOnce(down).mockRejectedValueOnce(down)
+    expect(await runHourly()).toMatchObject({ failed: ['deleteExpiredPhotos', 'sweepOrphanFiles'] })
+    expect(await rows()).toMatchObject({
+      photos: [
+        { id: PHOTO, status: 'visible' },
+        { id: EXPIRED_PHOTO, status: 'deleted' },
+      ],
+      files: ['expired-thumb.webp', 'expired.webp', 'new.webp', 'orphan.webp', 'photo.webp', 'thumb.webp'],
+    })
+
+    expect(await runHourly()).toMatchObject({ done: { deleteExpiredPhotos: 0, sweepOrphanFiles: 3 }, failed: [] })
+    expect(await rows()).toMatchObject({ files: ['new.webp', 'photo.webp', 'thumb.webp'] })
+    logged.mockRestore()
   })
 })

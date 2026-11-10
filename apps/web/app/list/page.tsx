@@ -1,4 +1,4 @@
-import { listLiveTags } from '@iwb/server'
+import { listLiveTags, uploadsPaused } from '@iwb/server'
 import { bikeCount, TAG_LIFETIME_HOURS } from '@iwb/shared'
 import type { Metadata } from 'next'
 import { Footer } from '@/components/Footer'
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: 'List of bikes' }
  * map either (§10.3).
  */
 export default async function ListPage() {
-  const tags = await listLiveTags()
+  const [tags, paused] = await Promise.all([listLiveTags(), uploadsPaused()])
   const now = new Date()
 
   return (
@@ -27,7 +27,7 @@ export default async function ListPage() {
         </div>
         {/* One row where both fit, as on the map screen; tagging takes the whole row. */}
         <div className="flex flex-wrap gap-2">
-          <ListTagButton tags={tags} now={now} />
+          <ListTagButton tags={tags} now={now} uploadsPaused={paused} />
           <div className="grow basis-36">
             <ViewToggle current="/list" />
           </div>

@@ -124,7 +124,8 @@ What does **not** go where:
    import `@iwb/server`: they get data as props or over `/api/*`.
 4. `maplibre-gl` and `pmtiles` are imported only inside `apps/web/map/`. `apps/web/map/*` is reached only through
    `import('@/map/MapView')` in `components/MapScreen.tsx`.
-5. `sharp` is imported only in `apps/web/lib/image.ts` (and the preview script). `botid` only in `lib/bot.ts`,
+5. `sharp` is imported only in `apps/web/lib/image.ts` (and the preview script, and tests, which make their pictures
+   with it). `botid` only in `lib/bot.ts`,
    `instrumentation-client.ts` and `next.config.ts`.
 6. Apps never import each other. Packages never import apps.
 
@@ -291,7 +292,7 @@ a flick threshold, stay beside the behaviour they control.
 **Server and client components.**
 - Server components by default. `'use client'` only on interactive leaves: `MapScreen`, `Sheet`, `TagCard`,
   `TagActions`, `TagFlow`, `Dialog`, `TagForm`, `MatchDialog`, `StreetPicker`, `LocateButton`, `ListTagButton`,
-  `ReportDialog`, `PhotoInput`, `Announcer`, and everything in `map/`.
+  `ReportDialog`, `PhotoInput`, `TagPhoto`, `Announcer`, and everything in `map/`.
 - `TagRow`, `TagList`, `TagDetails`, `PinIcon` have no `'use client'` and no server-only imports, so they render on
   the server (`/list`, `/tag/[id]`) and inside client islands (chooser, desktop panel) alike.
 - Every page is rendered per request (`await connection()` in the root layout), because the nonce-based CSP needs it
@@ -1321,6 +1322,8 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   with `access: 'private'` (confirm the private read call in the Vercel Blob private-storage docs linked from the
   spec); without it, a folder at `LOCAL_BLOB_DIR` (default `<repo>/.data/blob`, resolved as `../../.data/blob` from
   each package's working directory). `env.ts` requires the token on Vercel.
+  As built: `putFile(path, bytes)` takes no content type, as the store reads it from the `.webp` extension. The tests
+  set `LOCAL_BLOB_DIR` to `.data/blob-test` and an empty token, so they never touch the dev folder or a real store.
 - **Accept:** `blob.test.ts` round-trips put/get/list/delete on the local folder; `deleteFiles` on a missing path
   succeeds.
 - **Files:** `packages/server/src/{blob,env}.ts`, `src/blob.test.ts`, `.gitignore`.
@@ -1333,6 +1336,12 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   reject bytes after the end marker (JPEG `FF D9`, PNG `IEND`, RIFF size) as a polyglot (assumption 24); decode with
   `sharp(buf, { limitInputPixels: 50e6, failOn: 'warning', autoOrient: true })`; full = max 1600 px WebP q75; thumb
   = 320 px WebP; return buffers, width, height, bytes. Any sharp error → `bad_image`.
+  As built: `processPhoto` returns the two buffers and the full photo's width and height; `attachPhoto` stores the
+  full buffer's length as `bytes`. The 4 MB is `PHOTO_MAX_BYTES` in `config.ts`; 1600 px, 320 px, quality 75 and the
+  50 MP budget stay beside the code they tune. `sharp` moves to the web app's dependencies, as it now runs in
+  production, and tests may import it to make their pictures (§1.3). No `content-length` check: it measures the
+  multipart envelope, not the file, so it refused a photo of exactly 4 MB; Vercel's 4.5 MB request cap bounds what is
+  read before `file.size` is checked (a `shortcut:` in the route).
 - **Accept:** `image.test.ts` (fixtures generated in the test with sharp) covers §5.5 bad images: oversized, wrong
   magic bytes, truncated, a decompression bomb (a 20,000 × 20,000 single-colour PNG), and polyglots (JPEG + appended
   ZIP or HTML) are all rejected; a valid JPEG with EXIF GPS comes out as WebP with no metadata.
@@ -1349,6 +1358,17 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   `uploadsPaused()` lives here. `POST /api/tags/[id]/photo` uses `write()` with `request.formData()` and
   `processPhoto`. `PublicTag.photo` = `{ id, width, height }` only while `visible`. `GET /api/tags` becomes
   `{ tags, uploadsPaused }`, and `/list` passes `uploadsPaused()` to its tagging flow as a prop.
+  As built: `PublicTag.photoId` is the visible photo's id or null, with no width or height: task 5.5 shows the
+  thumbnail in the mockup's fixed 96 × 72 px box, which needs neither. The rules are SQL fragments in `photos.ts`
+  (`LIVE`, now exported from `tags.ts`, `taggedBy`, `PAUSED`), shared by the check and the insert. A photo is checked
+  for before the tag's time, so a repeat after the tag has gone answers `{ tag: null }`, as a tag write's repeat does.
+  If the insert matches nothing, something changed after the check: the files are deleted, and the check runs again
+  to give the reason, or the photo a simultaneous request attached first. The answer is `{ tag }`, as for every tag
+  write, now carrying its `photoId`. `write()` lets `multipart/form-data` through, and the photo route answers a body
+  it can't read as a form with 400. `/list` passes `uploadsPaused` in task 5.5, where the form reads it. Revisited in
+  PR 5's review: `attachPhoto` takes `makePhoto`, the route's `processPhoto` not yet run, and calls it only after the
+  check and `checkLimits` (a read-only look at the counters, in `limits.ts`) allow the photo, so a refused upload
+  costs no decoding and writes no file; the count and the conditional insert stay the authority.
 - **Accept:** `photos.test.ts` covers §5.5 photo attach (refused for another visitor, a tag that isn't live, a second
   photo, and while paused) and §5.5 outside failures for Blob (`vi.spyOn` makes `putFile` throw: tag saved, no row,
   no stray files); §5.5 repeats: a repeated upload returns the first photo with one count.
@@ -1361,6 +1381,10 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
 - **Does:** `GET /photo/[id]` and `/photo/[id]/thumb` stream the file only when the photo is `visible` and its tag
   is live (one query in `photos.ts` using `LIVE` from `tags.ts`); otherwise 404. Headers `Content-Type: image/webp`,
   `Cache-Control: private, no-cache`, `X-Content-Type-Options: nosniff`.
+  As built: `openPhoto(id, size)` in `photos.ts` makes the check and opens the file; the two routes are one line
+  each, from `servePhoto(size)` in `lib/serve-photo.ts`, which answers 404 for an id that isn't a UUID too
+  (`PhotoParams`). The §5.5 case runs against `openPhoto` in `photos.test.ts`, where SQL can expire a tag; the
+  route test checks the answers and their headers.
 - **Accept:** §5.5 photo and tag together, first half: the URL returns 404 once the tag is removed, expired or taken
   down, and 200 again after an undo while the photo is still visible.
 - **Files:** `app/photo/[id]/route.ts`, `app/photo/[id]/thumb/route.ts` (+ tests), `packages/server/src/photos.ts`.
@@ -1378,6 +1402,15 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   reported as blocking the footpath"); a photo that 404s is replaced by text, never a broken image.
 - **Accept:** the tag exists even when the photo fails; Try again attaches to the same tag; no layout shift when the
   thumbnail loads.
+  As built: the thumbnail sits in a fixed 96 × 72 px box (`object-cover`), and is a link to the full size in a new
+  tab, so the card or page stays as it was. `TagPhoto` is the one client leaf inside `TagDetails`, swapping the image
+  for "Photo no longer shown" when it fails to load. The alt text uses the problem's label as it is: "Photo of a Lime
+  e-bike reported as blocking footpath". `send()` passes a `FormData` body as it is. While the photo is sent, the new
+  tag is already among the live tags, so `TagFlow` leaves it out of the "is this the same bike?" question. The Terms
+  link opens a new tab, so the form keeps what is filled in. The form learns of a pause from `GET /api/tags` on the
+  map and from the server render on `/list`. A 12 MP, 3.4 MB JPEG is re-encoded in about 0.3 s on the Pixel
+  project (1.3 s on the desktop one) into a 2048 × 1536 JPEG of 675 KB; the server keeps a 1600 × 1200 WebP of
+  195 KB and a 3.4 KB thumbnail.
 - **Files:** `components/{PhotoInput,TagForm,TagFlow,TagDetails}.tsx`, `lib/photo.ts`,
   `packages/shared/src/format.ts`.
 - **Verify:** `pnpm e2e e2e/photos.spec.ts`.
@@ -1390,6 +1423,18 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   detail: taking a tag down marks its photo deleted, then deletes the files; admin tag detail shows the photo through
   an admin-only `GET /photo/[id]` route in `apps/admin` that streams any non-deleted photo with `Cache-Control:
   private, no-store`.
+  As built: one `deletePhotos(which)` in `photos.ts` marks the rows and then deletes the files, for both
+  `deleteExpiredPhotos` and `deleteTagPhoto`. `takeDown` calls it after its update every time, so a repeat finishes a
+  take down whose file deletion failed; until then the sweep would (assumption 16). `takeDown` imports `photos.ts`
+  inside the function, so the static dependency runs one way, from photos to tags, with no cycle. Attach's insert
+  locks its tag's row (`FOR UPDATE`) until the photo is committed, so a Take down waits and then deletes it; expiry
+  deletion locks the expired tags that still have a photo before marking it, so a Still there in progress is waited
+  for and a tag it brought back keeps its photo. A repeated Take down deletes the files of a photo already marked
+  deleted, and the sweep deletes a deleted photo's files at once, keeping the hour's wait for files with no row, so a
+  failed deletion of a photo attached just before its tag expired is finished by the next run. The sweep compares the listed
+  files' times with Postgres's `now()`, in one query over `unnest`. `AdminTag` has `photo: { id, status }` in any
+  state instead of `photoId`, so the admin tag page names a hidden or deleted photo and shows any that isn't deleted,
+  through `openAnyPhoto`. Closing the reports on a deleted photo stays with task 6.1, as PR 5 has none.
 - **Accept:** §5.5 hourly job twice still holds with photos; a half-failed deletion (spy makes `deleteFiles` throw
   once) is finished by the next run; a taken-down tag's files are gone.
 - **Files:** `packages/server/src/{photos,tags,hourly}.ts`, `src/hourly.test.ts`, `apps/admin/app/photo/[id]/route.ts`,
@@ -1403,6 +1448,15 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   Try again → attached; Skip leaves the tag without a photo; after Removed the photo URL is 404. axe on the form with
   a photo and on the failure state.
 - **Accept:** green on three projects.
+  As built: the JPEG is drawn by the browser's own canvas in the test, so the root needs no `sharp`. The servers
+  under test keep their photos in `.data/blob-e2e`, apart from the dev server's, as their database is. The spec also
+  covers a file the browser can't read (said in the form), a card whose photo was hidden after the tags were fetched
+  ("Photo no longer shown"), and the admin side: the tag page shows a removed tag's photo, and Take down makes both
+  apps' URLs 404. That card test opens a thumbnail the tab has never loaded: WebKit was seen reusing an image from its
+  memory cache after the photo was hidden, `no-cache` notwithstanding, until the page next refreshes its data
+  (§4.3). Measured (2026-11-10): 147,566 B of JavaScript before the map on `/` (PR 4: 146,901 B; the card's
+  thumbnail is in it, the photo input and its canvas code are not), a 291,082 B map bundle, and 3,530 B for the
+  tagging chunk with the photo step.
 - **Files:** `e2e/photos.spec.ts`.
 - **Verify:** `pnpm verify`.
 - **Depends:** 5.5, 5.6.

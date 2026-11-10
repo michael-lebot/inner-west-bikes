@@ -5,12 +5,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 const MINUTE = 60_000
 
 /**
- * The live tags (§11.3): fetched on mount, when the tab comes back or regains focus, every 5 minutes while it is
- * visible, and after each of the page's own writes, which `apply` shows at once. Between fetches, tags drop out as
- * their time runs out. `tags` is undefined until the first fetch succeeds.
+ * The live tags (§11.3), and whether photo uploads are paused (§4.6): fetched on mount, when the tab comes back or
+ * regains focus, every 5 minutes while it is visible, and after each of the page's own writes, which `apply` shows at
+ * once. Between fetches, tags drop out as their time runs out. `tags` is undefined until the first fetch succeeds.
  */
 export function useLiveTags() {
   const [tags, setTags] = useState<PublicTag[]>()
+  const [uploadsPaused, setUploadsPaused] = useState(false)
   const [now, setNow] = useState(() => new Date())
   // Focus and visibility often fire together: only the latest request may set the tags, whichever answers last.
   const latest = useRef(0)
@@ -27,6 +28,7 @@ export function useLiveTags() {
         .then((body) => {
           if (request !== latest.current) return
           setTags(body.tags.map(parseTag))
+          setUploadsPaused(body.uploadsPaused)
           setNow(new Date())
         })
         // Offline, or a body without tags: keep what is showing, and try again at the next refresh.
@@ -59,5 +61,5 @@ export function useLiveTags() {
   )
 
   const live = useMemo(() => tags?.filter((tag) => !isExpired(tag, now)), [tags, now])
-  return { tags: live, now, apply }
+  return { tags: live, now, apply, uploadsPaused }
 }
