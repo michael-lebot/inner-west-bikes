@@ -70,7 +70,12 @@ export default defineConfig([
   },
   {
     // Tests make their pictures with it.
-    files: ['apps/web/lib/image.ts', 'apps/web/scripts/build-*.ts', 'apps/web/**/*.test.ts'],
+    files: [
+      'apps/web/lib/image.ts',
+      'apps/web/scripts/build-preview.ts',
+      'apps/web/scripts/build-icons.ts',
+      'apps/web/**/*.test.ts',
+    ],
     rules: { 'no-restricted-imports': bansExcept('@iwb/server', 'sharp') },
   },
   {
