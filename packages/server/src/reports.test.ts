@@ -28,7 +28,6 @@ vi.mock('./limits', async (importOriginal) => {
   return { ...limits, countAction: vi.fn(limits.countAction) }
 })
 const { countAction: realCountAction } = await vi.importActual<typeof import('./limits')>('./limits')
-const pause = () => new Promise((resolve) => setTimeout(resolve, 200))
 
 const TAG = '5eed0000-0000-4000-8000-000000000001'
 const alice: Visitor = { visitorHash: 'a'.repeat(64), ipHash: '1'.repeat(64) }
@@ -169,7 +168,7 @@ describe('a report still being written', () => {
     let acting: Promise<T> | undefined
     vi.mocked(countAction).mockImplementationOnce(async (...args) => {
       acting = act()
-      await pause()
+      await new Promise((resolve) => setTimeout(resolve, 200))
       return realCountAction(...args)
     })
     await report()
