@@ -2,6 +2,7 @@
 import { bikeName, PROBLEMS, type PublicTag, type TagJson } from '@iwb/shared'
 import { useEffect, useRef, useState } from 'react'
 import { SMALL } from './buttons'
+import { NotifyOperator } from './NotifyOperator'
 import { PinIcon } from './PinIcon'
 import { ReportLink } from './ReportLink'
 import { TagActions } from './TagActions'
@@ -86,6 +87,8 @@ export function TagCard({
         <PhotoState>
           <TagDetails tag={tag} now={now} />
           <TagActions id={tag.id} onDone={onDone} />
+          {/* The card opens only in the browser, never in the server's HTML, so location is there. */}
+          <NotifyOperator tag={tag} origin={location.origin} />
           {tag.photoId && <ReportLink photoId={tag.photoId} heading="card-heading" />}
         </PhotoState>
       </div>
