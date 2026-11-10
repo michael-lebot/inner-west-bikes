@@ -56,5 +56,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // BotID's paths (the long id) carry its own headers from withBotId, which let it frame itself.
-  matcher: '/((?!_next/static|fonts|glyphs|tiles|preview.webp|149e9513-01fa-4fb0-aad4-566afd725d1b).*)',
+  matcher:
+    '/((?!_next/static|fonts|glyphs|tiles|preview.webp|icon.svg|apple-icon.png|favicon.ico|149e9513-01fa-4fb0-aad4-566afd725d1b).*)',
 }
