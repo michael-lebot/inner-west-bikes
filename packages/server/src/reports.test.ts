@@ -4,6 +4,7 @@ import { listFiles } from './blob'
 import { db } from './client'
 import { sendEmail } from './email'
 import { env } from './env'
+import { countAction } from './limits'
 import {
   attachPhoto,
   deleteExpiredPhotos,
@@ -21,6 +22,13 @@ import { createTag, markRemoved, undoRemoval } from './tags'
 import type { Visitor } from './visitors'
 
 vi.mock('./email', () => ({ sendEmail: vi.fn(async () => {}) }))
+// The real count, watched, so a test can act while a report's transaction is still open.
+vi.mock('./limits', async (importOriginal) => {
+  const limits = await importOriginal<typeof import('./limits')>()
+  return { ...limits, countAction: vi.fn(limits.countAction) }
+})
+const { countAction: realCountAction } = await vi.importActual<typeof import('./limits')>('./limits')
+const pause = () => new Promise((resolve) => setTimeout(resolve, 200))
 
 const TAG = '5eed0000-0000-4000-8000-000000000001'
 const alice: Visitor = { visitorHash: 'a'.repeat(64), ipHash: '1'.repeat(64) }
@@ -135,7 +143,7 @@ describe('reportPhoto', () => {
 })
 
 describe('restorePhoto', () => {
-  it('shows a hidden photo again and closes its open reports as restored, in one statement', async () => {
+  it('shows a hidden photo again and closes its open reports as restored', async () => {
     await report()
     await report(alice)
     expect(await restorePhoto(photoId)).toBe(true)
@@ -149,6 +157,38 @@ describe('restorePhoto', () => {
     expect(await restorePhoto(photoId)).toBe(false)
     expect(await status()).toBe('deleted')
     expect((await reports()).map((row) => row.resolution)).toEqual(['deleted'])
+  })
+})
+
+describe('a report still being written', () => {
+  /** Runs `act` while Bob's report is written but not committed, and gives what it answers once both are done. */
+  async function whileReporting<T>(act: () => Promise<T>) {
+    let acting: Promise<T> | undefined
+    vi.mocked(countAction).mockImplementationOnce(async (...args) => {
+      acting = act()
+      await pause()
+      return realCountAction(...args)
+    })
+    await report()
+    return acting!
+  }
+
+  it('is waited for by a Restore, which closes it with the rest', async () => {
+    await report(alice)
+    expect(await whileReporting(() => restorePhoto(photoId))).toBe(true)
+    expect(await status()).toBe('visible')
+    expect((await reports()).map((row) => row.resolution)).toEqual(['restored', 'restored'])
+  })
+
+  it('is waited for by a Delete, which closes it as deleted', async () => {
+    expect(await whileReporting(() => deletePhoto(photoId))).toBe(1)
+    expect(await reports()).toEqual([{ reason: 'privacy', resolution: 'deleted', resolved: true }])
+  })
+
+  it("is waited for by the hourly job's expiry deletion, which closes it as expired", async () => {
+    await db.$executeRaw`UPDATE tags SET expires_at = now() WHERE id = ${TAG}::uuid`
+    expect(await whileReporting(deleteExpiredPhotos)).toBe(1)
+    expect((await reports()).map((row) => row.resolution)).toEqual(['expired'])
   })
 })
 

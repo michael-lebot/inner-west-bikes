@@ -202,9 +202,12 @@ How the spec's rules land:
   simultaneous requests, so they can't pass a limit together.
 - **Two simultaneous Removed** both reach the `UPDATE`; the second waits for the first's row lock, re-checks
   `status = 'active'`, matches nothing, throws `tag_gone` and rolls back its event: one removal.
-- **Reports take turns.** A report locks the one `site_state` row first (`SELECT … FOR UPDATE`), so each counts
-  every report committed before it: a flood at once can't pass the day's first 10 emails or the hour's 16th report
-  together (§4.6).
+- **Moderation locks rows in one order: the `site_state` row, then the photo's, then the tag's.** A report locks
+  `site_state` first (`SELECT … FOR UPDATE`), so reports take turns and each counts every report committed before
+  it: a flood at once can't pass the day's first 10 emails or the hour's 16th report together (§4.6). Its insert then
+  locks the photo's row until it commits. Restore, Delete, Take down's photo deletion and expiry lock the photo rows
+  first and change them in a later statement, so the change sees every report made before it and closes it; expiry
+  then locks the photos' tags, so a Still there in progress is waited for. Attach locks only its tag.
 - **Responses.** Every tag write returns `{ tag: PublicTag | null }` with status 200, first time or repeat.
   `null` means "not live". Errors are always `{ error: { code, message } }`.
 - **Side effects after commit.** Emails and Blob deletions happen after the transaction commits, using the

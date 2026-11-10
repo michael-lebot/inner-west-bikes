@@ -25,10 +25,12 @@ type Report = { photoId: string; requestId: string; reason: ReportReason; visito
  * conflict, and a photo that is deleted, or never was, has gone (assumption 14).
  */
 async function claimReport(tx: Prisma.TransactionClient, { photoId, requestId, reason, visitor }: Report) {
+  // The photo's row stays locked until the report commits, so a Restore, Delete or expiry waits, then closes it too.
   const [report] = await tx.$queryRaw<{ id: string }[]>`
     INSERT INTO photo_reports (photo_id, reason, request_id, visitor_hash, ip_hash)
     SELECT id, ${reason}::report_reason, ${requestId}::uuid, ${visitor.visitorHash}, ${visitor.ipHash}
     FROM photos WHERE id = ${photoId}::uuid AND status <> 'deleted'
+    FOR UPDATE
     ON CONFLICT (request_id) DO NOTHING
     RETURNING id::text`
   if (report) return report.id
