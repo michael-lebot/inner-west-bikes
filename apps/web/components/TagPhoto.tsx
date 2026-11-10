@@ -2,7 +2,7 @@
 import { createContext, useContext, useState } from 'react'
 
 /** The text in place of a tag's photo once it stops showing, or undefined while it shows; and how to put text there. */
-type Gone = [text: string | undefined, gone: (text: string) => void]
+type Gone = [gone: string | undefined, setGone: (text: string) => void]
 const PhotoGone = createContext<Gone | null>(null)
 
 /**
@@ -25,12 +25,12 @@ export function usePhotoGone(): Gone {
  * a new tab. A photo that stops showing gives way to text in a box the same size, never a broken image (§10.4).
  */
 export function TagPhoto({ id, alt }: { id: string; alt: string }) {
-  const [text, gone] = usePhotoGone()
+  const [gone, setGone] = usePhotoGone()
 
-  if (text)
+  if (gone)
     return (
       <p className="flex min-h-18 w-24 shrink-0 items-center rounded-lg border border-line px-1.5 py-1 text-sm text-muted">
-        {text}
+        {gone}
       </p>
     )
   return (
@@ -41,7 +41,7 @@ export function TagPhoto({ id, alt }: { id: string; alt: string }) {
         alt={alt}
         width={96}
         height={72}
-        onError={() => gone('Photo no longer shown')}
+        onError={() => setGone('Photo no longer shown')}
         className="h-18 w-24 rounded-lg object-cover"
       />
       <span className="sr-only"> (opens in a new tab)</span>

@@ -14,7 +14,7 @@ const ReportDialog = lazy(() => import('./ReportDialog').then((module) => ({ def
 export function ReportLink({ photoId, heading }: { photoId: string; heading: string }) {
   const [open, setOpen] = useState(false)
   const link = useRef<HTMLButtonElement>(null)
-  const [gone, photoGone] = usePhotoGone()
+  const [gone, setGone] = usePhotoGone()
 
   const close = () => {
     flushSync(() => setOpen(false))
@@ -28,7 +28,7 @@ export function ReportLink({ photoId, heading }: { photoId: string; heading: str
     }
     flushSync(() => {
       setOpen(false)
-      photoGone('Photo hidden while we check it')
+      setGone('Photo hidden while we check it')
     })
     document.getElementById(heading)?.focus()
     announce('Photo reported and hidden')
