@@ -1,6 +1,6 @@
 // "Notify the service provider?" (§4.2): an email to a tag's operator that the visitor's own email app sends.
 import { OPERATORS, type Problem, PROBLEMS } from './config'
-import { bikeName } from './format'
+import { bikeName, withArticle } from './format'
 import type { PublicTag } from './schemas'
 
 /** What's wrong, in the words that follow "there is a Lime e-bike". */
@@ -23,7 +23,7 @@ export function operatorEmail(tag: PublicTag, origin: string) {
   const place = [tag.street, tag.suburb].filter(Boolean).join(', ')
   const subject = `${bikeName(tag.operator)}, ${PROBLEMS[tag.problem].toLowerCase()}, ${place}`
   const message =
-    `I am reporting that there is a ${bikeName(tag.operator)} ${SAYS[tag.problem]} near ${place}.\n\n` +
+    `I am reporting that there is ${withArticle(bikeName(tag.operator))} ${SAYS[tag.problem]} near ${place}.\n\n` +
     `Coordinates: ${tag.lat}, ${tag.lng}\n` +
     `Tagged on The Inner West E-bike Graveyard: ${origin}/tag/${tag.id}`
   // A mailto body breaks its lines with CRLF (RFC 6068).

@@ -54,7 +54,10 @@ describe('operatorEmail', () => {
       to: 'support.au@hellobike.com',
       subject: 'Hello e-bike, blocking footpath, Llewellyn St, Marrickville',
     })
-    expect(operatorEmail({ ...tag, operator: 'ario' }, ORIGIN)?.to).toBe('feedback@ario.com')
+    expect(operatorEmail({ ...tag, operator: 'ario' }, ORIGIN)).toMatchObject({
+      to: 'feedback@ario.com',
+      message: expect.stringMatching(/^I am reporting that there is an Ario e-bike blocking the footpath near /),
+    })
   })
 
   it('has no one to write to when the visitor was not sure whose bike it is', () => {
