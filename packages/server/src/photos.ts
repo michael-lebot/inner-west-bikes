@@ -125,9 +125,8 @@ export async function openPhoto(id: string, size: 'full' | 'thumb') {
 
 /** For the admin app's lookup: the id of the tag whose photo has `id`, or undefined when no photo has it. */
 export async function tagOfPhoto(id: string) {
-  const [photo] = await db.$queryRaw<
-    { tagId: string }[]
-  >`SELECT tag_id::text AS "tagId" FROM photos WHERE id = ${id}::uuid`
+  const [photo] = await db.$queryRaw<{ tagId: string }[]>`
+    SELECT tag_id::text AS "tagId" FROM photos WHERE id = ${id}::uuid`
   return photo?.tagId
 }
 

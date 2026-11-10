@@ -111,9 +111,9 @@ export async function reportPhoto(report: Report) {
       await countAction(tx, 'report', report.visitor)
       await hidePhoto(tx, report.photoId)
     }
-    const [photo] = await tx.$queryRaw<{ hidden: boolean }[]>`
+    const [{ hidden }] = await tx.$queryRaw<[{ hidden: boolean }]>`
       SELECT status <> 'visible' AS hidden FROM photos WHERE id = ${report.photoId}::uuid`
-    return { hidden: photo!.hidden, email: id ? await claimEmail(tx, id, report.reason, photo!.hidden) : undefined }
+    return { hidden, email: id ? await claimEmail(tx, id, report.reason, hidden) : undefined }
   })
   if (email)
     await emailReports([email.id], email.subject, email.text, `report-${email.id}`).catch((error) =>
