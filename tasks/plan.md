@@ -324,7 +324,7 @@ a flick threshold, stay beside the behaviour they control.
 | Postgres | `docker compose up` → `postgres:18-alpine` on `localhost:54318` (volume at `/var/lib/postgresql`, the PG 18 layout). CI runs the same `pnpm db:up` | Neon via Vercel Marketplace, `DATABASE_URL` / `DATABASE_URL_UNPOOLED` |
 | Map tiles | `pnpm tiles` runs `apps/web/scripts/fetch-tiles.sh`: `pmtiles extract` of a **pinned** Protomaps daily build into `apps/web/public/tiles/inner-west.pmtiles` (git-ignored). `next start` serves it with range requests. CI caches the file keyed on the script's hash | Uploaded to the public Blob store under a versioned name; `NEXT_PUBLIC_TILES_URL` points at it |
 | Photos (Blob) | `blob.ts`: no `BLOB_READ_WRITE_TOKEN` → files under `<repo>/.data/blob/` (git-ignored) | Private Vercel Blob store |
-| Email (Resend) | `email.ts`: no `RESEND_API_KEY` → `console.info('[email]', subject)` | Resend API over `fetch` |
+| Email (Resend) | `email.ts`: no `RESEND_API_KEY` → `console.info` of the subject and text | Resend API over `fetch` |
 | BotID | `bot.ts`: not on Vercel → every request is human | `checkBotId()` |
 | Cron | `curl -H "Authorization: Bearer dev-cron-secret" localhost:3000/api/cron/hourly` | Vercel Cron hourly with `CRON_SECRET` |
 
@@ -1632,6 +1632,16 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   procedure, with an empty "Classification" section for Michael. Review every `.env.example` against `env.ts`
   files; update the README's Status section; re-read `/accessibility`, `/privacy` and `/terms` against what was
   built, then remove the "still being built" notice from `app/(text)/layout.tsx`.
+  As built: each variable is in the `.env.example` of every deployable that reads it, so `DATABASE_URL` and
+  `BLOB_READ_WRITE_TOKEN` are in both apps' (the projects share the database and the photo store) and `DATABASE_URL`
+  also in `packages/server`'s, for the Prisma CLI: Accept's "exactly one" is read as one per project.
+  `LOCAL_BLOB_DIR`, `TEST_DATABASE_URL` and `ADMIN_PREVIEW_URL` are local and test settings, so none has one, and
+  `VERCEL`, `NEXT_PUBLIC_VERCEL_ENV`, `NODE_ENV` and `CI` are set by the platform. `/privacy` now lists reported
+  photos and their reasons among what is kept, and `/terms` says a reported photo is hidden until checked. The
+  launch checklist points the device and assistive-technology checks at `docs/accessibility-checklist.md` rather
+  than repeating them. The BotID `curl` check sends the project's Protection Bypass for Automation secret, as
+  Vercel Authentication guards previews by default and would answer first. The eSafety procedure finds a photo's
+  tag from its address in Neon's SQL editor, as the admin lookup takes only a tag's address or ID.
 - **Accept:** every environment variable read in code appears in exactly one `.env.example` and the runbook; no
   step in the runbook is needed for local dev or CI; the text pages no longer show the "still being built" notice.
 - **Files:** `docs/{launch,accessibility-checklist,esafety}.md`, `apps/*/.env.example`, `README.md`,
