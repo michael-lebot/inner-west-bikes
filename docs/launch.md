@@ -140,6 +140,8 @@ Tick each when it is done. This is `tasks/plan.md` §6.
 
 - [ ] Operator report links on the tag card (`SPEC.md` §14.2, not built)
 - [ ] The domain (`SPEC.md` §14.3)
+- [ ] Whether a photo whose tag is no longer live can still be reported, as built: the report hides it, so an Undo
+      removal can't bring a harmful photo back (`tasks/plan.md` assumption 29)
 
 **Launch sign-off (M4)**
 

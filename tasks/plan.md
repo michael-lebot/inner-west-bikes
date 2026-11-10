@@ -439,6 +439,7 @@ One line each; the spec section is in brackets.
 26. CI uses the real Inner West extract (about 13 MB) from a pinned Protomaps build, cached by GitHub Actions, rather than a fixture, so the tile-count and byte gates stay honest (§11.1).
 27. Address points come from `NSW_Geocoded_Addressing_Theme_multiCRS` as §4.1 says; the research download used the older service and is only a cross-check (§4.1).
 28. Speed Insights is not added in code; Michael checks plan inclusion and enables it (§11.4).
+29. A photo can be reported while it is not deleted, even when its tag is no longer live (removed or expired), as the API allows though the public pages no longer show it. The report hides it, so a later Undo removal can't put a harmful photo back on the map; the spec doesn't decide reports that begin after the tag stopped being live, so Michael confirms this (§4.3, Left for Michael).
 
 ---
 
@@ -1771,5 +1772,6 @@ each one; `docs/launch.md` repeats the list as a checklist.
   keyboard-only passes in Chrome, Safari and Firefox; touch without dragging; 200% zoom and 320 px.
 - **Content and legal (M4):** the `/why` copy (§14.1); privacy and terms review; the eSafety classification in
   `docs/esafety.md`; the address-data licence confirmation (§14.4); the contact address.
-- **Decisions:** operator report links (§14.2, not built); the domain (§14.3).
+- **Decisions:** operator report links (§14.2, not built); the domain (§14.3); whether a photo whose tag is no
+  longer live can still be reported, as built (assumption 29).
 - **Launch sign-off (M4).**
