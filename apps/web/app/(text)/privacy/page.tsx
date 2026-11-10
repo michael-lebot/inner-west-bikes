@@ -1,74 +1,81 @@
+import { COUNTER_RETENTION_HOURS, FEEDBACK_EMAIL, HASH_RETENTION_DAYS, TAG_LIFETIME_HOURS } from '@iwb/shared'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'Privacy' }
 
+/** Michael's TLDR, checked against the code (§7), then the details. */
 export default function PrivacyPage() {
   return (
     <>
       <h1>Privacy</h1>
-      <p>This site has no accounts. It never asks for your name, email address or any other personal details.</p>
+      <p>
+        <strong>TLDR;</strong> I used AI to create this app. The app itself doesn&apos;t use any AI, except that my
+        host&apos;s bot check uses machine learning on signals from your browser. The app accesses your location (if you
+        allow it), but only in your browser, to suggest a pin; only the spot you confirm is stored, as part of a public
+        tag. It also gives your browser a random ID and sees your IP address, as any website does; scrambled (hashed)
+        versions of both are stored in a third party database for {HASH_RETENTION_DAYS} days when you add, mark or
+        report something. The app doesn&apos;t access your name, email address, or any other identifying details.
+      </p>
 
-      <h2>What we collect</h2>
+      <h2>What the app keeps</h2>
       <ul>
         <li>
-          The tags you add: a spot, whose bike it is, what is wrong and, if you add one, a photo. There is no free text.
-        </li>
-        <li>The photos you report, and the reason you choose.</li>
-        <li>
-          A random identifier in a cookie, so we can limit how often one visitor acts and undo abuse. We store only a
-          keyed hash of it.
+          <strong>Tags:</strong> the spot, whose bike it is and what is wrong. There is no free text. A tag is public
+          until {TAG_LIFETIME_HOURS} hours after the last sighting. After that it stays in the database as a record of
+          its spot, street, operator, problem and times.
         </li>
         <li>
-          A hash of your IP address, made with a key that changes every day. We never store or log the address itself.
+          <strong>Photos:</strong> public while their tag is, until someone reports them. Each one is re-encoded when it
+          arrives, which removes its location and other hidden details, and deleted when its tag&apos;s{' '}
+          {TAG_LIFETIME_HOURS} hours run out, or sooner if I delete it. Please leave out people, faces and number
+          plates.
+        </li>
+        <li>
+          <strong>Reports:</strong> which photo, and the reason you chose.
+        </li>
+        <li>
+          <strong>A random ID</strong> in a cookie, which your browser keeps for a year. It says nothing about you or
+          your device. Only a keyed hash of it is stored, with what you add, mark or report, so I can limit how often
+          one visitor acts and undo abuse.
+        </li>
+        <li>
+          <strong>Your IP address:</strong> only a hash of it is stored, made with a key that changes every day. Each
+          day&apos;s key is deleted after {COUNTER_RETENTION_HOURS} hours, and after that its hashes can&apos;t be
+          linked to an address. The app never stores or logs the address itself.
+        </li>
+        <li>
+          Both hashes are cleared after {HASH_RETENTION_DAYS} days, and the rate-limit counters that hold them after{' '}
+          {COUNTER_RETENTION_HOURS} hours.
+        </li>
+        <li>
+          <strong>Your location,</strong> only if you tap Use my location, and your browser asks you first. It is read
+          once, used in your browser to suggest a pin, and never sent. If you use that pin, the bike&apos;s spot is
+          where you were standing.
+        </li>
+        <li>
+          <strong>Reduce motion:</strong> your choice stays in your browser&apos;s local storage. It is never sent.
         </li>
       </ul>
 
-      <h2>How long we keep it</h2>
+      <h2>Who helps run the site</h2>
       <ul>
         <li>
-          Visitor and IP hashes are cleared from tags and reports after 30 days. The anonymous record is kept: a
-          tag&apos;s place, operator, problem and times, and a report&apos;s reason and times.
-        </li>
-        <li>Rate-limit counters are deleted 48 hours after they start.</li>
-        <li>
-          Each day&apos;s IP key is deleted after 48 hours. After that, that day&apos;s IP hashes can&apos;t be linked
-          to an address.
+          Vercel runs the site&apos;s server in Sydney and stores the photos there. Like any host, it sees your IP
+          address with every request: it is in the site&apos;s request logs, which I can see for a day, and
+          Vercel&apos;s firewall uses it to limit how many changes one address can send a minute.
         </li>
         <li>
-          Photos are deleted when their tag&apos;s 48 hours run out, or sooner if they are taken down or deleted after a
-          report.
+          Vercel BotID checks signals from your browser, so only people can add, mark or report something. Vercel says
+          it uses machine learning to tell people from bots.
         </li>
-      </ul>
-
-      <h2>Photos</h2>
-      <p>
-        Photos are public. Please leave out people, faces and number plates. Every photo is re-encoded when it arrives,
-        which removes its location and other hidden details.
-      </p>
-
-      <h2>Your location</h2>
-      <p>
-        Using your location is optional. Your browser asks for permission only when you choose it. The location is read
-        once, used in your browser to suggest a pin, and never sent or stored. Only the pin you confirm is sent, as for
-        any tag.
-      </p>
-
-      <h2>Bot checks</h2>
-      <p>
-        To keep out automated abuse, Vercel BotID checks signals from your browser when you add a tag, mark one, add a
-        photo or report one.
-      </p>
-
-      <h2>Who helps us run the site</h2>
-      <ul>
-        <li>Vercel hosts the site, in its Sydney region, and stores the photos.</li>
-        <li>Neon stores the database, in Sydney.</li>
-        <li>Resend sends report alerts to the site&apos;s owner. They contain no visitor details.</li>
+        <li>Neon runs the database, in Sydney.</li>
+        <li>Resend emails me alerts about reported photos. They contain no visitor details.</li>
       </ul>
 
       <h2>Contact</h2>
       <p>
-        <strong>Contact address to come.</strong>
+        Email <a href={`mailto:${FEEDBACK_EMAIL}`}>{FEEDBACK_EMAIL}</a>. It is forwarded to my own inbox, so I will see
+        your email address and whatever you write.
       </p>
     </>
   )
