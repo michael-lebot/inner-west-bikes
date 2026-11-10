@@ -567,6 +567,13 @@ The reference is **`docs/mockups/graveyard-v3.html`**. The five original explora
   - secondary buttons outlined;
   - option chips with a tick and a tinted fill when selected;
   - no game windows, bevels or 3D shadows.
+- **Site icon:** the header's headstone, in its own four colours.
+  - In browser tabs it sits on a 16 × 16 pixel grid with no background, so each of its pixels is a whole screen pixel
+    and it reads on light and dark tab bars. It is an SVG, with a 32 px `favicon.ico` for Safari before 26, which
+    can't show SVG icons, and for tools that only ask for that file.
+  - On an iPhone home screen (180 × 180 px) it is scaled up tenfold on the night slate, because iOS fills a
+    transparent icon with black.
+  - There is no web app manifest, as the site isn't an installable app (§16).
 - **Copy tone:** plain and friendly — "14 bikes in the graveyard", "Disappears in 31 h", "Is it still there?".
 
 ## 10. Accessibility plan
