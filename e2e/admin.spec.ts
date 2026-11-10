@@ -121,6 +121,8 @@ test('refuses a post from another site, or with no origin, and changes nothing',
   const origins: Record<string, string>[] = [
     { origin: 'https://evil.example' },
     { origin: 'http://localhost:3000' },
+    // The same host over plain HTTP is another origin, as on a deployment, which is HTTPS only.
+    { origin: 'http://admin.example', host: 'admin.example' },
     {},
   ]
   for (const headers of origins) {
@@ -139,12 +141,17 @@ test('refuses a post from another site, or with no origin, and changes nothing',
   expect(await resolutions()).toEqual([null, null, null])
   expect(await sql('SELECT uploads_paused_at FROM site_state')).toEqual([{ uploads_paused_at: null }])
 
-  const response = await request.post(`/api/tags/${LLEWELLYN}/undo`, {
-    headers: { origin: 'http://localhost:3001' },
-    maxRedirects: 0,
-  })
-  expect(response.status()).toBe(303)
-  expect(response.headers().location).toBe(`/tags/${LLEWELLYN}?notice=undone`)
+  // Its own forms: over HTTPS behind Vercel's proxy, and over HTTP on localhost only, as here.
+  const own: Record<string, string>[] = [
+    { origin: 'https://admin.example', host: 'admin.example' },
+    { origin: 'http://localhost:3001' },
+  ]
+  for (const headers of own) {
+    await remove(LLEWELLYN)
+    const response = await request.post(`/api/tags/${LLEWELLYN}/undo`, { headers, maxRedirects: 0 })
+    expect(response.status(), headers.origin).toBe(303)
+    expect(response.headers().location).toBe(`/tags/${LLEWELLYN}?notice=undone`)
+  }
 })
 
 test('answers 404 to a post for an id that is not a tag or photo id', async ({ request }) => {

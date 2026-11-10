@@ -217,8 +217,9 @@ How the spec's rules land:
   `notified_at`, which only a sender that stopped mid-send leaves. Blob writes for a photo happen before its row
   insert, with a compensating delete if the insert fails (§4.3).
 
-Admin writes use the same domain functions through `apps/admin/lib/action.ts`: same-origin check (`Origin` header
-must equal the request host), run, then `303` redirect back with a `?notice=` code. Admin pages use plain HTML
+Admin writes use the same domain functions through `apps/admin/lib/action.ts`: same-origin check (the `Origin`
+header must be exactly `https://` and the request's `Host`, or `http://` and it only on `localhost`, so it doesn't
+depend on the scheme the app sees behind Vercel's proxy), run, then `303` redirect back with a `?notice=` code. Admin pages use plain HTML
 `<form method="post">`, so they need no client JavaScript.
 
 ### 1.5 Where each rule lives (one place each)

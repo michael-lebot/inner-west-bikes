@@ -9,8 +9,7 @@ import { ZodError } from '@iwb/shared'
  */
 export function action(run: (params: Promise<unknown>, request: Request) => Promise<string>) {
   return async (request: Request, { params }: { params: Promise<unknown> }) => {
-    if (request.headers.get('origin')?.split('//')[1] !== request.headers.get('host'))
-      return new Response("Only this site's own forms can post here.", { status: 403 })
+    if (!ownOrigin(request)) return new Response("Only this site's own forms can post here.", { status: 403 })
     try {
       return new Response(null, { status: 303, headers: { Location: await run(params, request) } })
     } catch (error) {
@@ -18,6 +17,16 @@ export function action(run: (params: Promise<unknown>, request: Request) => Prom
       throw error
     }
   }
+}
+
+/**
+ * Whether the post came from this app's own pages: HTTPS on its host, as deployments serve only HTTPS, or HTTP on
+ * localhost (`next start`). The scheme is the header's own, never what the app sees behind Vercel's proxy.
+ */
+function ownOrigin(request: Request) {
+  const host = request.headers.get('host')
+  const origin = request.headers.get('origin')
+  return !!host && (origin === `https://${host}` || (origin === `http://${host}` && /^localhost(:\d+)?$/.test(host)))
 }
 
 /** The screen the uploads switch posted from, as its `?back=` says, to go back to: /tags, or else /reports. */
