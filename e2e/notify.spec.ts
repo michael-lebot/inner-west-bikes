@@ -44,11 +44,19 @@ test.describe('Notify the service provider?', () => {
     await cta(page).click()
     await copy(page).click()
     await expect(page.locator('#announcer')).toHaveText('Copied')
-    await expect(page.getByText('Copied', { exact: true })).toBeVisible()
+    await expect(page.getByRole('main').getByText('Copied', { exact: true })).toBeVisible()
     if (browserName === 'chromium') expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(MESSAGE)
   })
 
-  test("is on a pin's card too, by keyboard, writing to that tag's operator", async ({ page }) => {
+  test("says so when the browser won't copy, as the message can still be selected", async ({ page }) => {
+    await page.addInitScript(() => (navigator.clipboard.writeText = () => Promise.reject(new Error('Not allowed'))))
+    await page.goto(`/tag/${LLEWELLYN_ST}`)
+    await cta(page).click()
+    await copy(page).click()
+    await expect(page.locator('#announcer')).toHaveText("Couldn't copy. Select the message and copy it.")
+  })
+
+  test("is on a pin's card too, by keyboard, writing to that tag's operator", async ({ page, isMobile }) => {
     await page.goto('/')
     await expect(page.locator('[data-map-ready]')).toBeAttached()
     await page.locator(`[data-tag="${MARION_ST}"] button`).focus()
@@ -65,12 +73,15 @@ test.describe('Notify the service provider?', () => {
         'Coordinates: -33.883891, 151.155464\n' +
         `Tagged on The Inner West E-bike Graveyard: http://localhost:3000/tag/${MARION_ST}`,
     )
-    // The message, then Copy, follow the link in the tab order.
-    await emailLink(page, 'Ario').focus()
-    await page.keyboard.press('Tab')
-    await expect(message(page)).toBeFocused()
-    await page.keyboard.press('Tab')
-    await expect(copy(page)).toBeFocused()
+    // The message, then Copy, follow the link in the tab order of a desktop keyboard. (On a phone, WebKit's Tab skips
+    // buttons and links.)
+    if (!isMobile) {
+      await emailLink(page, 'Ario').focus()
+      await page.keyboard.press('Tab')
+      await expect(message(page)).toBeFocused()
+      await page.keyboard.press('Tab')
+      await expect(copy(page)).toBeFocused()
+    }
     await expectNoAxeViolations(page)
   })
 

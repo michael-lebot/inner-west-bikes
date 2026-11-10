@@ -41,9 +41,10 @@ export function NotifyOperator({ tag, origin }: { tag: PublicTag; origin: string
         <textarea
           id={`message-${tag.id}`}
           readOnly
-          rows={6}
+          // Tall enough for the whole message on a phone, where it can't size itself to fit (field-sizing).
+          rows={8}
           value={email.message}
-          className="rounded-[10px] border border-edge px-3 py-2"
+          className="field-sizing-content rounded-[10px] border border-edge px-3 py-2"
         />
         {/* Copying needs JavaScript; without it the message can still be selected and copied. */}
         <p className="flex flex-wrap items-center gap-x-3 noscript:hidden">
