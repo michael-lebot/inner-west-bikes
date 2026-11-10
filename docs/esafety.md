@@ -17,8 +17,10 @@ which is forwarded to Michael's phone. An eSafety removal notice must be met wit
 - **Many photos at once:** Pause uploads, on either screen, then deal with each one. Tags without photos can still be
   added.
 
-Anyone can report a photo from its card or its page, and a reported photo is hidden at once, until it is restored or
-deleted. If more than 15 photos are reported in an hour, uploads pause by themselves and Michael is emailed.
+Anyone can report a photo from its card or its page. The first report hides it at once, until Michael restores or
+deletes it. After a restore, later reports on that photo are recorded and queued, and reach Michael, but no longer hide
+it: a photo restored by mistake needs Delete or Take down. If more than 15 photos are reported in an hour, uploads
+pause by themselves and Michael is emailed.
 
 **While Michael is away.** He pauses photo uploads before leaving, and resumes them when he is back: they stay off
 until he does. Reported photos stay hidden until he reviews them, and every photo is deleted when its tag's 48
