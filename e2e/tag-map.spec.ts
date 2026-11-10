@@ -122,7 +122,15 @@ test.describe('placing the pin', () => {
         ]
         return Math.hypot(a.x - b.x, a.y - b.y)
       }
-      await expect.poll(apart).toBeGreaterThan(80)
+      // At street level, and still: a tap while the zoom is still running only zooms again (assumption 20), which a
+      // slow runner's software WebGL can leave it doing after the pins are 80 px apart.
+      let last = 0
+      await expect
+        .poll(async () => {
+          const [before, now] = [last, (last = await apart())]
+          return now > 80 && Math.abs(now - before) < 0.5
+        })
+        .toBe(true)
       const map = await mapBox(page)
       await tap(page, isMobile, { x: map.x + map.width / 2, y: map.y + map.height / 2 })
       await expect(bar(page)).toHaveText(/^Pin on /)
