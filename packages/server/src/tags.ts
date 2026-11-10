@@ -167,19 +167,13 @@ export async function undoRemoval(tagId: string) {
   return tag?.status === 'removed' ? 'expired' : 'not_removed'
 }
 
-/**
- * Take down (admin, §4.2): final, whatever the tag's state, and its photo is deleted at once. False when it was
- * already down. A repeat deletes the photo too, in case the first time failed after the tag went down.
- */
-export async function takeDown(tagId: string) {
+/** The tag's part of Take down (moderation.ts): final, whatever its state. False when it was already down. */
+export async function markTakenDown(tagId: string) {
   const taken = await db.$executeRaw(
     withEvent(
       'taken_down',
       Prisma.sql`UPDATE tags SET status = 'taken_down' WHERE id = ${tagId}::uuid AND status <> 'taken_down'`,
     ),
   )
-  // Imported here, so the modules depend one way: photos.ts on this one, for LIVE and getLiveTag.
-  const { deleteTagPhoto } = await import('./photos')
-  await deleteTagPhoto(tagId)
   return taken === 1
 }

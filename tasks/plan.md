@@ -131,8 +131,9 @@ What does **not** go where:
 7. Inside `packages/server`, the domain files depend one way: `reports.ts` on `photos.ts`, and `photos.ts` on
    `tags.ts`. A report hides its photo and may pause uploads through `photos.ts`; restoring or deleting a photo
    closes its open reports with SQL on `photo_reports` in the same statement (`withReportsClosed`), so `photos.ts`
-   imports nothing from `reports.ts`. `tags.ts` reaches `photos.ts` only through the `import()` in `takeDown`
-   (task 5.6), the one place a tag's change acts on its photo.
+   imports nothing from `reports.ts`. Take down, the one change that acts on a tag and its photo together, lives in
+   `moderation.ts`, which calls `markTakenDown` in `tags.ts` and `deleteTagPhoto` in `photos.ts`, so `tags.ts`
+   imports nothing from either. No server module imports another with `import()`.
 
 Enforced by ESLint `no-restricted-imports` overrides in `eslint.config.mjs` (task 1.1), and for rule 3 by
 `no-restricted-syntax`, which also refuses an `import('@iwb/server')` type in `components/` and `map/`; shapes those
@@ -1431,7 +1432,8 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   As built: one `deletePhotos(which)` in `photos.ts` marks the rows and then deletes the files, for both
   `deleteExpiredPhotos` and `deleteTagPhoto`. `takeDown` calls it after its update every time, so a repeat finishes a
   take down whose file deletion failed; until then the sweep would (assumption 16). `takeDown` imports `photos.ts`
-  inside the function, so the static dependency runs one way, from photos to tags, with no cycle. Attach's insert
+  inside the function, so the static dependency runs one way, from photos to tags (PR 6 moved Take down to
+  `moderation.ts` instead: §1.3 rule 7). Attach's insert
   locks its tag's row (`FOR UPDATE`) until the photo is committed, so a Take down waits and then deletes it; expiry
   deletion locks the expired tags that still have a photo before marking it, so a Still there in progress is waited
   for and a tag it brought back keeps its photo. A repeated Take down deletes the files of a photo already marked

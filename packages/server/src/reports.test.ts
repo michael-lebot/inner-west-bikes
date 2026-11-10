@@ -16,7 +16,8 @@ import {
   uploadsSwitch,
 } from './photos'
 import { listReportedPhotos, reportPhoto, sendDigest } from './reports'
-import { createTag, markRemoved, takeDown, undoRemoval } from './tags'
+import { takeDown } from './moderation'
+import { createTag, markRemoved, undoRemoval } from './tags'
 import type { Visitor } from './visitors'
 
 vi.mock('./email', () => ({ sendEmail: vi.fn(async () => {}) }))

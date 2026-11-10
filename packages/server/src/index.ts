@@ -9,9 +9,9 @@ export {
   listRecentTags,
   listTagEvents,
   markRemoved,
-  takeDown,
   undoRemoval,
 } from './tags'
+export { takeDown } from './moderation'
 export { runHourly } from './hourly'
 export {
   attachPhoto,
