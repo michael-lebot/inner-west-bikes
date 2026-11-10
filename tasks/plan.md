@@ -1526,7 +1526,8 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   throws when its send fails, so the hourly summary names the step. Every alert ends with a link to the queue, which
   needs one more variable, `ADMIN_URL` (default `http://localhost:3001`); `email.ts` adds it, and gives Resend 10 s.
   The email variables are optional when `env.ts` loads and checked by `email.ts` when it sends, because on Vercel
-  `next build` loads `env.ts` with only the variables `turbo.json` passes through; `env.test.ts` loads it that way.
+  `next build` loads `env.ts` with only the variables `turbo.json` passes through, `VERCEL` among them, so the build
+  knows it is on Vercel; `env.test.ts` loads it with exactly that list.
 - **Accept:** §5.5 repeats: a repeated report sends no second email; §5.5 outside failures for Resend: a throwing
   send leaves the report saved with `notified_at` null and the next hourly run sends it in the digest; two
   overlapping hourly runs send one digest.
@@ -1636,7 +1637,8 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   `BLOB_READ_WRITE_TOKEN` are in both apps' (the projects share the database and the photo store) and `DATABASE_URL`
   also in `packages/server`'s, for the Prisma CLI: Accept's "exactly one" is read as one per project.
   `LOCAL_BLOB_DIR`, `TEST_DATABASE_URL` and `ADMIN_PREVIEW_URL` are local and test settings, so none has one, and
-  `VERCEL`, `NEXT_PUBLIC_VERCEL_ENV`, `NODE_ENV` and `CI` are set by the platform. `/privacy` now lists reported
+  `VERCEL`, `NEXT_PUBLIC_VERCEL_ENV`, `NODE_ENV` and `CI` are set by the platform; `env.test.ts` checks the
+  examples against every variable the code reads, with that list as its exceptions. `/privacy` now lists reported
   photos and their reasons among what is kept, and `/terms` says a reported photo is hidden until checked. The
   launch checklist points the device and assistive-technology checks at `docs/accessibility-checklist.md` rather
   than repeating them. The BotID `curl` check sends the project's Protection Bypass for Automation secret, as
