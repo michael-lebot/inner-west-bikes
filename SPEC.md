@@ -517,7 +517,7 @@ Michael sees it. Reporting stops it loading from then on, but can't undo views o
   - The site isn't affiliated with Lime, Hello, Ario, Inner West Council or Transport for NSW.
 - **Privacy note:**
   - what we collect and how it's hashed;
-  - how long it's kept (§4.2, §6);
+  - how long it's kept (§4.2, §6), and the day of recovery history the database keeps;
   - providers and regions: Vercel `syd1`, Neon Sydney, Resend;
   - BotID's browser signals, which Vercel says it judges with machine learning: the one use of AI in running the
     site;

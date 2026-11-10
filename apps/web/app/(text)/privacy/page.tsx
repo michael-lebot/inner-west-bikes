@@ -13,30 +13,31 @@ export default function PrivacyPage() {
         host&apos;s bot check uses machine learning on signals from your browser. The app accesses your location (if you
         allow it), but only in your browser, to suggest a pin; only the spot you confirm is stored, as part of a public
         tag. It also gives your browser a random ID and sees your IP address, as any website does; scrambled (hashed)
-        versions of both are stored in a third party database for {HASH_RETENTION_DAYS} days when you add, mark or
-        report something. The app doesn&apos;t access your name, email address, or any other identifying details.
+        versions of both are stored in a third party database for up to {HASH_RETENTION_DAYS} days when you add, mark or
+        report something. Apart from that, the app doesn&apos;t access your name, email address, or any other
+        identifying details.
       </p>
 
       <h2>What the app keeps</h2>
       <ul>
         <li>
           <strong>Tags:</strong> the spot, whose bike it is and what is wrong. There is no free text. A tag is public
-          until {TAG_LIFETIME_HOURS} hours after the last sighting. After that it stays in the database as a record of
-          its spot, street, operator, problem and times.
+          for up to {TAG_LIFETIME_HOURS} hours after the last sighting, less if it is marked removed or I take it down.
+          After that it stays in the database as a record of its spot, street, operator, problem and times.
         </li>
         <li>
-          <strong>Photos:</strong> public while their tag is, until someone reports them. Each one is re-encoded when it
-          arrives, which removes its location and other hidden details, and deleted when its tag&apos;s{' '}
-          {TAG_LIFETIME_HOURS} hours run out, or sooner if I delete it. Please leave out people, faces and number
-          plates.
+          <strong>Photos:</strong> public while their tag is. A reported photo is hidden until I restore or delete it.
+          Each one is re-encoded when it arrives, which removes its location and other hidden details, and deleted when
+          its tag&apos;s {TAG_LIFETIME_HOURS} hours run out, or sooner if I delete it. Please leave out people, faces
+          and number plates.
         </li>
         <li>
-          <strong>Reports:</strong> which photo, and the reason you chose.
+          <strong>Reports:</strong> which photo, the reason you chose, and when. I keep that record, and what I decided.
         </li>
         <li>
-          <strong>A random ID</strong> in a cookie, which your browser keeps for a year. It says nothing about you or
-          your device. Only a keyed hash of it is stored, with what you add, mark or report, so I can limit how often
-          one visitor acts and undo abuse.
+          <strong>A random ID</strong> in a cookie, which your browser keeps for a year. It holds no details about you
+          or your device, but it lets the app recognise the same browser. Only a keyed hash of it is stored, with what
+          you add, mark or report, so I can limit how often one visitor acts and undo abuse.
         </li>
         <li>
           <strong>Your IP address:</strong> only a hash of it is stored, made with a key that changes every day. Each
@@ -45,12 +46,13 @@ export default function PrivacyPage() {
         </li>
         <li>
           Both hashes are cleared after {HASH_RETENTION_DAYS} days, and the rate-limit counters that hold them after{' '}
-          {COUNTER_RETENTION_HOURS} hours.
+          {COUNTER_RETENTION_HOURS} hours. The database keeps a day of history for recovery, so anything deleted lingers
+          there for a day.
         </li>
         <li>
           <strong>Your location,</strong> only if you tap Use my location, and your browser asks you first. It is read
-          once, used in your browser to suggest a pin, and never sent. If you use that pin, the bike&apos;s spot is
-          where you were standing.
+          once and stays in your browser, which uses it to suggest a pin. Only if you use that pin is the spot sent, and
+          then it is stored as the bike&apos;s public spot: where you were standing.
         </li>
         <li>
           <strong>Reduce motion:</strong> your choice stays in your browser&apos;s local storage. It is never sent.
@@ -61,12 +63,12 @@ export default function PrivacyPage() {
       <ul>
         <li>
           Vercel runs the site&apos;s server in Sydney and stores the photos there. Like any host, it sees your IP
-          address with every request: it is in the site&apos;s request logs, which I can see for a day, and
-          Vercel&apos;s firewall uses it to limit how many changes one address can send a minute.
+          address and browser type with every request: they are in the site&apos;s request logs, which I can see for a
+          day, and Vercel&apos;s firewall uses the address to limit how many changes one address can send a minute.
         </li>
         <li>
-          Vercel BotID checks signals from your browser, so only people can add, mark or report something. Vercel says
-          it uses machine learning to tell people from bots.
+          Vercel BotID runs a check in your browser that reads signals from it, to keep bots from adding, marking or
+          reporting things. Vercel says it uses machine learning to tell people from bots.
         </li>
         <li>Neon runs the database, in Sydney.</li>
         <li>Resend emails me alerts about reported photos. They contain no visitor details.</li>
