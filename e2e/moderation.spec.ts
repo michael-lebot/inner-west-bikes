@@ -13,6 +13,9 @@ const dialog = (page: Page) => page.getByRole('dialog')
 const announced = (page: Page) => page.locator('#announcer')
 const reportLink = (page: Page) => page.getByRole('button', { name: 'Report this photo' })
 const thumbnail = (page: Page) => page.getByRole('img', { name: ALT })
+/** Waits for the thumbnail to load: addPhoto's picture is 32 px wide. */
+const thumbnailLoaded = (page: Page) =>
+  expect.poll(() => thumbnail(page).evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(32)
 const reports = () => sql('SELECT reason::text FROM photo_reports')
 
 /** Opens a tag's card on the map from its pin, as the keyboard does, once its photo has loaded. */
@@ -21,7 +24,7 @@ async function openCard(page: Page, id: string) {
   await expect(page.locator('[data-map-ready]')).toBeAttached()
   await page.locator(`[data-tag="${id}"] button`).focus()
   await page.keyboard.press('Enter')
-  await expect.poll(() => thumbnail(page).evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(32)
+  await thumbnailLoaded(page)
 }
 
 /** The admin app beside the public site, as Michael has it (§4.6). */
@@ -112,7 +115,7 @@ test('a photo Michael restores shows again, and a later report reaches him but l
   await admin.getByRole('button', { name: 'Restore' }).click()
   await expect(admin.getByText('No reported photos.')).toBeVisible()
   await page.reload()
-  await expect.poll(() => thumbnail(page).evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(32)
+  await thumbnailLoaded(page)
 
   await report(page, 'Other')
   await expect(announced(page)).toHaveText('Photo reported. It was checked before, so it stays up.')
@@ -140,7 +143,7 @@ test('a photo restored after it was reported shows again on a page left and come
   await page.getByRole('link', { name: 'Terms' }).click()
   await expect(page).toHaveURL('/terms')
   await page.goBack()
-  await expect.poll(() => thumbnail(page).evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(32)
+  await thumbnailLoaded(page)
   await expect(reportLink(page)).toBeVisible()
 })
 
