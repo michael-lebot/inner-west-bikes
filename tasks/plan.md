@@ -128,6 +128,11 @@ What does **not** go where:
    with it). `botid` only in `lib/bot.ts`,
    `instrumentation-client.ts` and `next.config.ts`.
 6. Apps never import each other. Packages never import apps.
+7. Inside `packages/server`, the domain files depend one way: `reports.ts` on `photos.ts`, and `photos.ts` on
+   `tags.ts`. A report hides its photo and may pause uploads through `photos.ts`; restoring or deleting a photo
+   closes its open reports with SQL on `photo_reports` in the same statement (`withReportsClosed`), so `photos.ts`
+   imports nothing from `reports.ts`. `tags.ts` reaches `photos.ts` only through the `import()` in `takeDown`
+   (task 5.6), the one place a tag's change acts on its photo.
 
 Enforced by ESLint `no-restricted-imports` overrides in `eslint.config.mjs` (task 1.1), and for rule 3 by
 `no-restricted-syntax`, which also refuses an `import('@iwb/server')` type in `components/` and `map/`; shapes those
@@ -1495,6 +1500,11 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   14). `restorePhoto` (`hidden` → `visible`, open reports resolved `restored`) and `deletePhoto` (mark `deleted`,
   delete files, open reports resolved `deleted`) in `photos.ts`. `deleteExpiredPhotos` now also closes open reports as
   `expired`. `POST /api/photos/[id]/report` via `write()` with `ReportBody` (`requestId`, `reason`).
+  As built: the hiding statement is `hidePhoto` in `photos.ts`, which owns the photo's status, and `reportPhoto` calls
+  it inside its transaction (rule 7 of §1.3). A report answers `{ hidden }`, whether the public can no longer see the
+  photo, first time or repeat; a restored photo answers `false`. Restore, delete, expiry and Take down close the open
+  reports in the statement that changes the photo (`withReportsClosed`, as `withEvent` does for tags), and a photo's
+  restore reopens nothing: its later reports stay open for Michael.
 - **Accept:** §5.5 photo and tag together: report → remove → undo leaves the photo hidden; a restored photo isn't
   hidden by a later report (but the report is recorded); §5.5 repeats for reports (one row, one count); the photo URL
   is 404 on the very next request after a report.

@@ -1,7 +1,7 @@
 // What crosses a boundary: request schemas, and the shapes the public site is given. Zod Mini, the smaller build,
 // which is all these need. The browser never loads Zod: it sends plain objects, and `parseTag` reads the live tags.
 import * as z from 'zod/mini'
-import { type Operator, OPERATORS, type Problem, PROBLEMS } from './config'
+import { type Operator, OPERATORS, type Problem, PROBLEMS, REPORT_REASONS, type ReportReason } from './config'
 
 /** What a schema's `parse` throws on input it refuses: a write answers it with 400 `invalid`. */
 export const ZodError = z.core.$ZodError
@@ -32,6 +32,12 @@ export const CreateTagBody = z.object({
   street: z.optional(z.string().check(z.maxLength(100))),
 })
 export type NewTag = z.infer<typeof CreateTagBody>
+
+/** A photo's report (§4.3): why, and the id the browser made for it (§5.3). */
+export const ReportBody = z.object({
+  requestId: z.uuid(),
+  reason: z.enum(Object.keys(REPORT_REASONS) as [ReportReason, ...ReportReason[]]),
+})
 
 /** A live tag as the public site sees it. It never carries visitor data. */
 export type PublicTag = {

@@ -1,6 +1,7 @@
-// Photos (§4.3): attaching a tag's one photo, who may see it, deleting it, and whether uploads are paused (§4.6). Owns
-// photos, site_state and the photo files. A photo's files are written before its row, and deleted again if the row
-// isn't; its row is marked deleted before its files are deleted (plan §1.4).
+// Photos (§4.3): attaching a tag's one photo, who may see it, hiding, restoring and deleting it, and whether uploads
+// are paused (§4.6). Owns photos, site_state and the photo files. A photo's files are written before its row, and
+// deleted again if the row isn't; its row is marked deleted before its files are deleted (plan §1.4). Restoring or
+// deleting a photo closes its open reports in the same statement, so this file needs nothing from reports.ts.
 import { randomUUID } from 'node:crypto'
 import { AppError } from '@iwb/shared'
 import { deleteFiles, getFile, listFiles, putFile } from './blob'
@@ -105,28 +106,76 @@ export async function openAnyPhoto(id: string) {
   return photo ? getFile(photo.blobPath) : null
 }
 
-/** Marks the photos `which` picks deleted, then deletes their files, so a half-deleted photo is never served (§4.3). */
-async function deletePhotos(which: Prisma.Sql) {
-  const deleted = await db.$queryRaw<{ blobPath: string; thumbPath: string }[]>`
-    UPDATE photos SET status = 'deleted', deleted_at = coalesce(deleted_at, now()) WHERE ${which}
-    RETURNING blob_path AS "blobPath", thumb_path AS "thumbPath"`
+/** Reported: a visible photo is hidden, unless Michael restored it before, so one person can't keep hiding it (§4.3). */
+export async function hidePhoto(tx: Prisma.TransactionClient, id: string) {
+  await tx.$executeRaw`
+    UPDATE photos SET status = 'hidden', hidden_at = now()
+    WHERE id = ${id}::uuid AND status = 'visible'
+      AND NOT EXISTS (SELECT 1 FROM photo_reports WHERE photo_id = photos.id AND resolution = 'restored')`
+}
+
+/**
+ * A change to photos, which closes the open reports on each photo it changes as `resolution`, in the same statement.
+ * It answers with the changed photos' files.
+ */
+const withReportsClosed = (resolution: 'restored' | 'deleted' | 'expired', change: Prisma.Sql) => Prisma.sql`
+  WITH changed AS (${change} RETURNING id, blob_path, thumb_path),
+    closed AS (UPDATE photo_reports SET resolved_at = now(), resolution = ${resolution}::report_resolution
+               WHERE resolved_at IS NULL AND photo_id IN (SELECT id FROM changed))
+  SELECT blob_path AS "blobPath", thumb_path AS "thumbPath" FROM changed`
+
+/**
+ * Restore (admin, §4.3): the photo shows again while its tag is live, and its open reports are closed as restored, so
+ * later reports reach Michael but no longer hide it. False when the photo has been deleted, which is final.
+ */
+export async function restorePhoto(id: string) {
+  const restored = await db.$queryRaw<unknown[]>(
+    withReportsClosed(
+      'restored',
+      Prisma.sql`UPDATE photos SET status = 'visible' WHERE id = ${id}::uuid AND status <> 'deleted'`,
+    ),
+  )
+  return restored.length === 1
+}
+
+/**
+ * Marks the photos `which` picks deleted, closing their open reports as `resolution`, then deletes their files, so a
+ * half-deleted photo is never served (§4.3).
+ */
+async function deletePhotos(which: Prisma.Sql, resolution: 'deleted' | 'expired') {
+  const deleted = await db.$queryRaw<{ blobPath: string; thumbPath: string }[]>(
+    withReportsClosed(
+      resolution,
+      Prisma.sql`UPDATE photos SET status = 'deleted', deleted_at = coalesce(deleted_at, now()) WHERE ${which}`,
+    ),
+  )
   await deleteFiles(deleted.flatMap((photo) => [photo.blobPath, photo.thumbPath]))
   return deleted.length
 }
 
-/** Take down (§4.2): the tag's photo goes at once. One deleted already has its files deleted again, if that failed. */
-export const deleteTagPhoto = (tagId: string) => deletePhotos(Prisma.sql`tag_id = ${tagId}::uuid`)
+/** Delete (admin, §4.3): final, whatever the photo's state. One deleted already has its files deleted again. */
+export const deletePhoto = (id: string) => deletePhotos(Prisma.sql`id = ${id}::uuid`, 'deleted')
 
 /**
- * Hourly step 1 (§5.4): the photos of tags whose time has run out, whatever their state, as none can come back. Their
- * tags are locked first, so a Still there in progress is waited for, and a tag it brought back keeps its photo.
+ * Take down (§4.2): the tag's photo goes at once, its reports closed as deleted (assumption 15). One deleted already
+ * has its files deleted again, if that failed.
+ */
+export const deleteTagPhoto = (tagId: string) => deletePhotos(Prisma.sql`tag_id = ${tagId}::uuid`, 'deleted')
+
+/**
+ * Hourly step 1 (§5.4): the photos of tags whose time has run out, whatever their state, as none can come back, with
+ * their open reports closed as expired. Their tags are locked first, so a Still there in progress is waited for, and
+ * a tag it brought back keeps its photo.
  */
 export const deleteExpiredPhotos = () =>
-  deletePhotos(Prisma.sql`status <> 'deleted' AND tag_id IN (
-    SELECT id FROM tags
-    WHERE expires_at <= now()
-      AND EXISTS (SELECT 1 FROM photos kept WHERE kept.tag_id = tags.id AND kept.status <> 'deleted')
-    FOR UPDATE)`)
+  deletePhotos(
+    Prisma.sql`status <> 'deleted' AND tag_id IN (
+      SELECT id FROM tags
+      WHERE expires_at <= now()
+        AND EXISTS (SELECT 1 FROM photos kept WHERE kept.tag_id = tags.id AND kept.status <> 'deleted')
+      FOR UPDATE)`,
+    'expired',
+  )
 
 /**
  * Hourly step 2 (§5.4): files no photo has. A deleted photo's go at once: a failed deletion left them (assumption 16).
