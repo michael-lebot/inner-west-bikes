@@ -154,6 +154,25 @@ test('Skip leaves the tag added without its photo', async ({ page }) => {
   expect(await photoCount()).toBe(0)
 })
 
+test('a card shows its photo, and passes axe', async ({ page }) => {
+  const { id } = await tagWithPhoto(page)
+  await page.goto('/')
+  await expect(page.locator('[data-map-ready]')).toBeAttached()
+  await page.locator(`[data-tag="${id}"] button`).focus()
+  await page.keyboard.press('Enter')
+  const thumbnail = page.getByRole('img', { name: ALT })
+  await expect.poll(() => thumbnail.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(320)
+  await expectNoAxeViolations(page)
+})
+
+test('while uploads are paused, the form says so in place of the photo input, and passes axe', async ({ page }) => {
+  await sql('UPDATE site_state SET uploads_paused_at = now()')
+  await openForm(page)
+  await expect(dialog(page).getByText('Photos are switched off for now.')).toBeVisible()
+  await expect(photoInput(page)).toHaveCount(0)
+  await expectNoAxeViolations(page)
+})
+
 test('a card opened after its photo was hidden says so in its place, never showing a broken image', async ({
   page,
 }) => {
