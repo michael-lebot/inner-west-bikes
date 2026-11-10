@@ -54,6 +54,11 @@ pnpm exec playwright install chromium webkit            # once, for the end-to-e
 The hourly job (retention) runs on Vercel Cron in production. Locally, run it with
 `curl -H "Authorization: Bearer dev-cron-secret" localhost:3000/api/cron/hourly`.
 
+Photos go to a private Vercel Blob store in production. Without `BLOB_READ_WRITE_TOKEN`, as in development, they are
+files in `.data/blob/` (git-ignored), or wherever `LOCAL_BLOB_DIR` says (relative to each app's folder); the tests
+use `.data/blob-test/` and the end-to-end servers `.data/blob-e2e/`. The hourly job also deletes any file there that
+is an hour old and that no photo in the dev database has.
+
 ## Map data
 
 - **Tiles:** `pnpm tiles` runs [`apps/web/scripts/fetch-tiles.sh`](apps/web/scripts/fetch-tiles.sh), which needs the
