@@ -1558,6 +1558,14 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
 - **Does:** a low-key "Report this photo" link on the card and tag page (only when a photo shows) opens
   `ReportDialog` (modal `Dialog`): the four reasons as radios, **Cancel** and **Report**. Success: the photo is
   replaced by text ("Photo hidden while we check it"), "Photo reported and hidden" announced.
+  As built: the link is a button, `ReportLink`, after the card's and the page's actions as in the mockup, so the
+  match dialog's tags have none; it loads `ReportDialog` with `lazy()` when used (2,118 B). `TagPhoto` keeps the
+  page's record of photos that stopped showing (`photoGone`, read with `useSyncExternalStore`), so a photo that fails
+  to load and one this visitor reported give way to text in a box the thumbnail's size, and the link goes with
+  them. A photo restored before stays up when reported, and the reporter is told so. The reasons are the form's
+  `Chips`, now a file of their own. `e2e/support.ts` gives a seeded tag a photo (`addPhoto`) with files in the
+  end-to-end servers' folder, which it now defines for `playwright.config.ts` too. Measured: 148,094 B of
+  JavaScript before the map on `/` (PR 5: 147,566 B), 142,990 B on `/list` and 141,986 B on a tag's page.
 - **Accept:** focus returns to the link's place (the card heading if the link is gone); axe clean.
 - **Files:** `components/{ReportDialog,TagDetails,TagCard}.tsx`, `app/tag/[id]/page.tsx`.
 - **Verify:** `pnpm e2e e2e/moderation.spec.ts`.

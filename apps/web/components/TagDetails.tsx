@@ -9,7 +9,7 @@ export function TagDetails({ tag, now }: { tag: PublicTag; now: Date }) {
     <div className="flex flex-col gap-3">
       {/* Beside the photo where both fit; at large text sizes, under it, so nothing scrolls sideways. */}
       <div className="flex flex-wrap items-start gap-3">
-        {tag.photoId && <TagPhoto key={tag.photoId} id={tag.photoId} alt={photoAlt(tag)} />}
+        {tag.photoId && <TagPhoto id={tag.photoId} alt={photoAlt(tag)} />}
         <div className="grow basis-40">
           <p>{PROBLEMS[tag.problem]}</p>
           <p className="text-sm text-muted">

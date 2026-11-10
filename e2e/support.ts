@@ -1,9 +1,14 @@
 import { readFileSync } from 'node:fs'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, type Page } from '@playwright/test'
 import pg from 'pg'
 
 export const E2E_DATABASE_URL = 'postgresql://iwb:iwb@localhost:54318/iwb_e2e'
+/** Where the end-to-end servers keep photos, apart from the dev server's. */
+export const E2E_BLOB_DIR = fileURLToPath(new URL('../.data/blob-e2e', import.meta.url))
 const SEED = readFileSync(new URL('../packages/server/prisma/seed.sql', import.meta.url), 'utf8')
 
 /** Runs SQL against the end-to-end database. */
@@ -15,6 +20,19 @@ export async function sql(text: string) {
   } finally {
     await client.end()
   }
+}
+
+/** A 32 × 24 WebP in the grass's green: the photo addPhoto gives a tag. */
+const WEBP = Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvH8AFAAfQ33JVqf+BiOh/AAA=', 'base64')
+
+/** Gives a tag a visible photo, as an attach would: its two files first, then its row. Returns the photo's id. */
+export async function addPhoto(tagId: string) {
+  const id = crypto.randomUUID()
+  await mkdir(E2E_BLOB_DIR, { recursive: true })
+  for (const size of ['full', 'thumb']) await writeFile(join(E2E_BLOB_DIR, `${id}-${size}.webp`), WEBP)
+  await sql(`INSERT INTO photos (id, tag_id, blob_path, thumb_path, width, height, bytes)
+             VALUES ('${id}', '${tagId}', '${id}-full.webp', '${id}-thumb.webp', 32, 24, ${WEBP.length})`)
+  return id
 }
 
 /** Empties every table, puts back the unpaused site_state row, and loads the seed: 14 live tags. */

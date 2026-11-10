@@ -1,12 +1,12 @@
 import { defineConfig, devices } from '@playwright/test'
-import { E2E_DATABASE_URL } from './e2e/support'
+import { E2E_BLOB_DIR, E2E_DATABASE_URL } from './e2e/support'
 
 // Both apps share the iwb_e2e database and a folder for the photos the tests add, each apart from the dev server's,
 // and never reach a Blob store or send an email, whatever token or key the shell has.
 const SERVER_ENV = {
   DATABASE_URL: E2E_DATABASE_URL,
   BLOB_READ_WRITE_TOKEN: '',
-  LOCAL_BLOB_DIR: '../../.data/blob-e2e',
+  LOCAL_BLOB_DIR: E2E_BLOB_DIR,
   RESEND_API_KEY: '',
 }
 

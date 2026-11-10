@@ -3,6 +3,7 @@ import { bikeName, PROBLEMS, type PublicTag, type TagJson } from '@iwb/shared'
 import { useEffect, useRef, useState } from 'react'
 import { SMALL } from './buttons'
 import { PinIcon } from './PinIcon'
+import { ReportLink } from './ReportLink'
 import { TagActions } from './TagActions'
 import { TagDetails } from './TagDetails'
 
@@ -83,6 +84,7 @@ export function TagCard({
       <div className={`flex flex-col gap-4 ${shrunk ? 'hidden wide:flex' : ''}`}>
         <TagDetails tag={tag} now={now} />
         <TagActions id={tag.id} onDone={onDone} />
+        {tag.photoId && <ReportLink key={tag.photoId} photoId={tag.photoId} heading="card-heading" />}
       </div>
     </section>
   )

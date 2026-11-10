@@ -67,7 +67,7 @@ acceptance criteria pass and `pnpm verify` is green.
 - [x] 6.1 Reports: rule, route, restore and delete; photo-and-tag-together tests
 - [x] 6.2 Email seam, first 10 a day, hourly digest (step 5), claim and release; Resend-failure test
 - [x] 6.3 Circuit breaker and pause / resume
-- [ ] 6.4 Report dialog
+- [x] 6.4 Report dialog
 - [ ] 6.5 Admin Reported photos screen and uploads switch on both screens
 - [ ] 6.6 Moderation E2E and admin axe
 - [ ] 6.7 `docs/launch.md` (deploy runbook + launch checklist), accessibility checklist, eSafety procedure, `.env.example` review, remove the text pages' "still being built" notice
