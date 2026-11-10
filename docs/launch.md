@@ -181,7 +181,7 @@ Tick each when it is done. This is `tasks/plan.md` §6.
       1 to 3)
 - [ ] `HASH_SECRET`, `CRON_SECRET`, `ADMIN_URL` and the tiles URL (runbook 4)
 - [ ] BotID at its Basic level, the firewall rule, Vercel Authentication on `admin` (runbook 5); BotID Deep Analysis
-      when wanted (`SPEC.md` §6 has it on)
+      when wanted (`SPEC.md` §5 has it on)
 - [ ] Resend, and later its domain (runbook 7)
 - [ ] The spend alert and the Speed Insights check (runbook 7)
 - [ ] Empty apps deploy, and the Prisma migration runs on Neon (`SPEC.md` §15, M0)
