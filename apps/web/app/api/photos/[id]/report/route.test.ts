@@ -7,6 +7,8 @@ import { GET as thumb } from '@/app/photo/[id]/thumb/route'
 import { POST as report } from './route'
 
 vi.mock('@/lib/bot', () => ({ isBot: vi.fn(async () => false) }))
+// Off Vercel, with no key, each report's email goes to the console: keep it out of the test output.
+vi.spyOn(console, 'info').mockImplementation(() => {})
 
 // Each test is a visitor of its own on an IP of its own, so their rate limits never meet and no table needs emptying.
 let headers: Record<string, string>

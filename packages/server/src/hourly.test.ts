@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { deleteFiles, listFiles, putFile } from './blob'
 import { db } from './client'
+import { sendEmail } from './email'
 import { env } from './env'
 import { runHourly } from './hourly'
 import { clearOldHashes } from './visitors'
@@ -16,6 +17,7 @@ vi.mock('./blob', async (importOriginal) => {
   const blob = await importOriginal<typeof import('./blob')>()
   return { ...blob, deleteFiles: vi.fn(blob.deleteFiles) }
 })
+vi.mock('./email', () => ({ sendEmail: vi.fn(async () => {}) }))
 
 const TAG = '5eed0000-0000-4000-8000-000000000001'
 const PHOTO = '5eed0000-0000-4000-8000-0000000000f1'
@@ -51,10 +53,13 @@ async function seed() {
     await putFile(path, Buffer.from(path))
     if (path !== 'new.webp') await utimes(join(env.LOCAL_BLOB_DIR, path), old, old)
   }
+  // The old report was emailed when it came; the recent one's email failed, so it waits for the digest.
   await db.$executeRaw`
-    INSERT INTO photo_reports (photo_id, reason, request_id, visitor_hash, ip_hash, created_at)
-    VALUES (${PHOTO}::uuid, 'other', ${OLD}::uuid, 'visitor', 'ip', now() - interval '30 days 1 minute'),
-           (${PHOTO}::uuid, 'other', ${RECENT}::uuid, 'visitor', 'ip', now() - interval '29 days 23 hours')`
+    INSERT INTO photo_reports (photo_id, reason, request_id, visitor_hash, ip_hash, created_at, notified_at)
+    VALUES (${PHOTO}::uuid, 'other', ${OLD}::uuid, 'visitor', 'ip', now() - interval '30 days 1 minute',
+            now() - interval '30 days'),
+           (${PHOTO}::uuid, 'other', ${RECENT}::uuid, 'visitor', 'ip', now() - interval '29 days 23 hours', NULL)`
+  vi.mocked(sendEmail).mockClear()
   await db.$executeRaw`
     INSERT INTO rate_counters (key, count, window_start)
     VALUES ('old', 1, now() - interval '48 hours 1 minute'), ('recent', 1, now() - interval '47 hours 59 minutes')`
@@ -69,7 +74,9 @@ const rows = async () => ({
   photos: await db.$queryRaw`SELECT id::text, status::text FROM photos ORDER BY id`,
   files: (await listFiles()).map((file) => file.path).toSorted(),
   events: await db.$queryRaw`SELECT request_id::text, visitor_hash, ip_hash FROM tag_events ORDER BY request_id`,
-  reports: await db.$queryRaw`SELECT request_id::text, visitor_hash, ip_hash FROM photo_reports ORDER BY request_id`,
+  reports: await db.$queryRaw`
+    SELECT request_id::text, visitor_hash, ip_hash, notified_at IS NOT NULL AS notified FROM photo_reports
+    ORDER BY request_id`,
   counters: await db.$queryRaw`SELECT key FROM rate_counters ORDER BY key`,
   salts: await db.$queryRaw`SELECT (now() AT TIME ZONE 'utc')::date - day AS back FROM daily_salts ORDER BY back`,
 })
@@ -77,11 +84,19 @@ const rows = async () => ({
 beforeEach(seed)
 
 describe('runHourly', () => {
-  it('deletes expired photos and orphan files, clears hashes past 30 days, and deletes counters and salts past 48 hours, keeping the rest (§5.4 steps 1 to 4)', async () => {
+  it('deletes expired photos and orphan files, clears hashes past 30 days, deletes counters and salts past 48 hours, and emails a digest of the reports not yet emailed, keeping the rest (§5.4)', async () => {
     expect(await runHourly()).toEqual({
-      done: { deleteExpiredPhotos: 1, sweepOrphanFiles: 1, clearOldHashes: 2, deleteOldCounters: 1, deleteOldSalts: 2 },
+      done: {
+        deleteExpiredPhotos: 1,
+        sweepOrphanFiles: 1,
+        clearOldHashes: 2,
+        deleteOldCounters: 1,
+        deleteOldSalts: 2,
+        sendDigest: 1,
+      },
       failed: [],
     })
+    expect(sendEmail).toHaveBeenCalledExactlyOnceWith('1 report to review', expect.any(String))
     expect(await rows()).toEqual({
       photos: [
         { id: PHOTO, status: 'visible' },
@@ -94,8 +109,8 @@ describe('runHourly', () => {
         { request_id: RECENT, visitor_hash: 'visitor', ip_hash: 'ip' },
       ],
       reports: [
-        { request_id: OLD, visitor_hash: null, ip_hash: null },
-        { request_id: RECENT, visitor_hash: 'visitor', ip_hash: 'ip' },
+        { request_id: OLD, visitor_hash: null, ip_hash: null, notified: true },
+        { request_id: RECENT, visitor_hash: 'visitor', ip_hash: 'ip', notified: true },
       ],
       counters: [{ key: 'recent' }],
       salts: [{ back: 0 }, { back: 1 }],
@@ -106,7 +121,7 @@ describe('runHourly', () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.mocked(clearOldHashes).mockRejectedValueOnce(new Error('connection lost'))
     expect(await runHourly()).toEqual({
-      done: { deleteExpiredPhotos: 1, sweepOrphanFiles: 1, deleteOldCounters: 1, deleteOldSalts: 2 },
+      done: { deleteExpiredPhotos: 1, sweepOrphanFiles: 1, deleteOldCounters: 1, deleteOldSalts: 2, sendDigest: 1 },
       failed: ['clearOldHashes'],
     })
     expect(await rows()).toMatchObject({ counters: [{ key: 'recent' }], salts: [{ back: 0 }, { back: 1 }] })
@@ -114,21 +129,30 @@ describe('runHourly', () => {
     logged.mockRestore()
   })
 
-  it('§5.5 hourly job twice: two runs in a row and two runs at once leave the same rows as one run', async () => {
+  it('§5.5 hourly job twice: two runs in a row and two runs at once leave the same rows as one run, and send one digest', async () => {
     await runHourly()
     const once = await rows()
 
     await seed()
     await runHourly()
     expect(await runHourly()).toEqual({
-      done: { deleteExpiredPhotos: 0, sweepOrphanFiles: 0, clearOldHashes: 0, deleteOldCounters: 0, deleteOldSalts: 0 },
+      done: {
+        deleteExpiredPhotos: 0,
+        sweepOrphanFiles: 0,
+        clearOldHashes: 0,
+        deleteOldCounters: 0,
+        deleteOldSalts: 0,
+        sendDigest: 0,
+      },
       failed: [],
     })
     expect(await rows()).toEqual(once)
+    expect(sendEmail).toHaveBeenCalledOnce()
 
     await seed()
     await Promise.all([runHourly(), runHourly()])
     expect(await rows()).toEqual(once)
+    expect(sendEmail).toHaveBeenCalledOnce()
   })
 
   it('§5.5 outside failures: a photo whose files the store fails to delete is gone from view, and its files go next run', async () => {

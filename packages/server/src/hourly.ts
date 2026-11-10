@@ -2,9 +2,10 @@
 // Each step acts only on rows still in their "before" state, so two runs, in a row or at once, leave what one leaves.
 import { deleteOldCounters } from './limits'
 import { deleteExpiredPhotos, sweepOrphanFiles } from './photos'
+import { sendDigest } from './reports'
 import { clearOldHashes, deleteOldSalts } from './visitors'
 
-const STEPS = { deleteExpiredPhotos, sweepOrphanFiles, clearOldHashes, deleteOldCounters, deleteOldSalts }
+const STEPS = { deleteExpiredPhotos, sweepOrphanFiles, clearOldHashes, deleteOldCounters, deleteOldSalts, sendDigest }
 
 /** Runs every step, even after one fails, and returns how many rows each changed and which failed. */
 export async function runHourly() {

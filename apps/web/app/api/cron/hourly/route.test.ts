@@ -9,6 +9,8 @@ vi.mock('@iwb/server', async (importOriginal) => {
 })
 
 beforeEach(() => vi.mocked(runHourly).mockClear())
+// Off Vercel, with no key, the digest of other tests' reports goes to the console: keep it out of the test output.
+vi.spyOn(console, 'info').mockImplementation(() => {})
 
 const call = (authorization?: string) =>
   GET(new Request('http://localhost:3000/api/cron/hourly', { headers: authorization ? { authorization } : {} }))
@@ -34,6 +36,7 @@ describe('GET /api/cron/hourly', () => {
         clearOldHashes: expect.any(Number),
         deleteOldCounters: expect.any(Number),
         deleteOldSalts: expect.any(Number),
+        sendDigest: expect.any(Number),
       },
       failed: [],
     })

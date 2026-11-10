@@ -1,12 +1,15 @@
 import { rm } from 'node:fs/promises'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { listFiles } from './blob'
 import { db } from './client'
+import { sendEmail } from './email'
 import { env } from './env'
 import { attachPhoto, deleteExpiredPhotos, deletePhoto, openPhoto, restorePhoto } from './photos'
-import { reportPhoto } from './reports'
+import { reportPhoto, sendDigest } from './reports'
 import { markRemoved, takeDown, undoRemoval } from './tags'
 import type { Visitor } from './visitors'
+
+vi.mock('./email', () => ({ sendEmail: vi.fn(async () => {}) }))
 
 const TAG = '5eed0000-0000-4000-8000-000000000001'
 const alice: Visitor = { visitorHash: 'a'.repeat(64), ipHash: '1'.repeat(64) }
@@ -27,6 +30,13 @@ const counts = async () =>
     (counter) => counter.count,
   )
 const shown = async () => !!(await openPhoto(photoId, 'thumb'))
+/** How many reports are marked as emailed. */
+const notified = async () =>
+  (await db.$queryRaw<{ n: number }[]>`SELECT count(notified_at)::int AS n FROM photo_reports`)[0]!.n
+/** `n` reports from visitors of their own, so no rate limit meets. */
+const reportMany = async (n: number) => {
+  for (let i = 0; i < n; i++) await report({ visitorHash: `visitor-${i}`, ipHash: `ip-${i}` })
+}
 
 beforeEach(async () => {
   await db.$executeRaw`TRUNCATE tags, rate_counters CASCADE`
@@ -40,6 +50,7 @@ beforeEach(async () => {
     VALUES (${TAG}::uuid, 'created', ${TAG}::uuid, ${alice.visitorHash}, ${alice.ipHash})`
   const photo = { full: Buffer.from('full'), thumb: Buffer.from('thumb'), width: 1600, height: 1200 }
   photoId = (await attachPhoto({ tagId: TAG, visitor: alice, makePhoto: async () => photo })).tag!.photoId!
+  vi.mocked(sendEmail).mockClear()
 })
 
 describe('reportPhoto', () => {
@@ -151,5 +162,74 @@ describe('closing reports when a photo is deleted', () => {
     await db.$executeRaw`UPDATE tags SET expires_at = now() WHERE id = ${TAG}::uuid`
     expect(await deleteExpiredPhotos()).toBe(1)
     expect((await reports()).map((row) => row.resolution)).toEqual(['restored', 'expired'])
+  })
+})
+
+describe('emails to Michael (§4.6)', () => {
+  it('sends one for each of the first 10 reports of the day, with no visitor data, and leaves the rest for the digest', async () => {
+    await report()
+    expect(sendEmail).toHaveBeenCalledWith(
+      'A photo was reported',
+      'Reason: Shows a person, face or number plate.\nThe photo is hidden until you restore or delete it.',
+    )
+    await reportMany(10)
+    expect(sendEmail).toHaveBeenCalledTimes(10)
+    expect(await notified()).toBe(10)
+    expect(JSON.stringify(vi.mocked(sendEmail).mock.calls)).not.toMatch(/visitor-|b{64}/)
+  })
+
+  it('says when a restored photo stays up', async () => {
+    await report()
+    await restorePhoto(photoId)
+    await report(alice)
+    expect(sendEmail).toHaveBeenLastCalledWith(
+      'A photo was reported',
+      'Reason: Shows a person, face or number plate.\nYou restored it before, so it stays up.',
+    )
+  })
+
+  it('§5.5 repeats: a report sent again with the same id sends no second email', async () => {
+    const requestId = crypto.randomUUID()
+    await report(bob, requestId)
+    await report(bob, requestId)
+    expect(sendEmail).toHaveBeenCalledOnce()
+  })
+
+  it('§5.5 outside failures: a Resend failure leaves the report saved and unsent, and the next digest sends it', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.mocked(sendEmail).mockRejectedValueOnce(new Error('Resend is down'))
+    expect(await report()).toEqual({ hidden: true })
+    expect(await reports()).toHaveLength(1)
+    expect(await notified()).toBe(0)
+    expect(logged).toHaveBeenCalledWith('A report email failed; the hourly digest sends it', expect.any(Error))
+
+    expect(await sendDigest()).toBe(1)
+    expect(sendEmail).toHaveBeenLastCalledWith(
+      '1 report to review',
+      '1 report arrived since the last email.\nShows a person, face or number plate: 1',
+    )
+    expect(await notified()).toBe(1)
+    logged.mockRestore()
+  })
+
+  it('the digest sends one email for every report not yet emailed, then nothing until there are more', async () => {
+    await reportMany(13)
+    vi.mocked(sendEmail).mockClear()
+    expect(await sendDigest()).toBe(3)
+    expect(sendEmail).toHaveBeenCalledExactlyOnceWith(
+      '3 reports to review',
+      '3 reports arrived since the last email.\nShows a person, face or number plate: 3',
+    )
+    expect(await sendDigest()).toBe(0)
+    expect(sendEmail).toHaveBeenCalledOnce()
+  })
+
+  it('a digest that fails releases its reports for the next one, and throws so the hourly job says so', async () => {
+    await reportMany(11)
+    vi.mocked(sendEmail).mockRejectedValueOnce(new Error('Resend is down'))
+    await expect(sendDigest()).rejects.toThrow('Resend is down')
+    expect(await notified()).toBe(10)
+    expect(await sendDigest()).toBe(1)
+    expect(await notified()).toBe(11)
   })
 })

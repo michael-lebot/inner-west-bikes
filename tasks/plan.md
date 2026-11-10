@@ -1520,6 +1520,13 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   (`notified_at = now() WHERE notified_at IS NULL RETURNING`), send, and release on failure. Step 5 of `runHourly`:
   claim every unsent report, send one digest, release on failure. Emails link to the admin queue and contain no
   visitor data.
+  As built: a report is claimed for its email inside `reportPhoto`'s transaction, the moment it is counted among
+  the day's first 10, so the digest can never take it in between; the send follows the commit, and a failed one is
+  logged, released and left to the digest without failing the report. The digest claims in one statement and
+  throws when its send fails, so the hourly summary names the step. Every alert ends with a link to the queue, which
+  needs one more variable, `ADMIN_URL` (default `http://localhost:3001`); `email.ts` adds it, and gives Resend 10 s.
+  The email variables are optional when `env.ts` loads and checked by `email.ts` when it sends, because on Vercel
+  `next build` loads `env.ts` with only the variables `turbo.json` passes through; `env.test.ts` loads it that way.
 - **Accept:** §5.5 repeats: a repeated report sends no second email; §5.5 outside failures for Resend: a throwing
   send leaves the report saved with `notified_at` null and the next hourly run sends it in the digest; two
   overlapping hourly runs send one digest.

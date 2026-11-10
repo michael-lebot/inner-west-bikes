@@ -6,8 +6,14 @@ const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'postgresql://iwb:iwb
 export default defineConfig({
   resolve: { alias: { '@': import.meta.dirname } },
   test: {
-    // Photo files go to the folder packages/server's tests use, never to a Blob store, whatever token the shell has.
-    env: { DATABASE_URL: TEST_DATABASE_URL, BLOB_READ_WRITE_TOKEN: '', LOCAL_BLOB_DIR: '../../.data/blob-test' },
+    // Photo files go to the folder packages/server's tests use, never to a Blob store, and no email is sent, whatever
+    // token or key the shell has.
+    env: {
+      DATABASE_URL: TEST_DATABASE_URL,
+      BLOB_READ_WRITE_TOKEN: '',
+      LOCAL_BLOB_DIR: '../../.data/blob-test',
+      RESEND_API_KEY: '',
+    },
     globalSetup: '../../packages/server/test/global-setup.ts',
     fileParallelism: false,
   },
