@@ -6,6 +6,7 @@ import {
   AppError,
   CIRCUIT_BREAKER_REPORTS_PER_HOUR,
   REPORT_EMAILS_PER_DAY,
+  type PhotoStatus,
   REPORT_REASONS,
   type ReportReason,
 } from '@iwb/shared'
@@ -126,4 +127,28 @@ export async function sendDigest() {
   if (await uploadsPaused()) lines.push('Photo uploads are paused until you resume them.')
   await emailReports(ids, `${reports(ids.length)} to review`, lines.join('\n'))
   return ids.length
+}
+
+/**
+ * For the admin queue (§4.6): every photo with an open report, the latest reported first, with how many open reports
+ * it has for each reason. Restoring or deleting the photo closes them, which takes it off the queue.
+ */
+export function listReportedPhotos() {
+  return db.$queryRaw<
+    {
+      id: string
+      tagId: string
+      status: PhotoStatus
+      reports: number
+      reasons: Partial<Record<ReportReason, number>>
+      reportedAt: Date
+    }[]
+  >`
+    SELECT photos.id::text, photos.tag_id::text AS "tagId", photos.status, sum(open.count)::int AS reports,
+           json_object_agg(open.reason, open.count) AS reasons, max(open.latest) AS "reportedAt"
+    FROM (SELECT photo_id, reason, count(*)::int AS count, max(created_at) AS latest FROM photo_reports
+          WHERE resolved_at IS NULL GROUP BY photo_id, reason) open
+    -- A report made while its photo was being deleted can stay open, with nothing left to review.
+    JOIN photos ON photos.id = open.photo_id AND photos.status <> 'deleted'
+    GROUP BY photos.id ORDER BY "reportedAt" DESC`
 }

@@ -24,5 +24,5 @@ export {
   uploadsPaused,
   uploadsSwitch,
 } from './photos'
-export { reportPhoto } from './reports'
+export { listReportedPhotos, reportPhoto } from './reports'
 export { type Visitor, visitorFrom } from './visitors'

@@ -1576,6 +1576,15 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   total report count, and the tag with its recent events; **Restore** and **Delete** (confirm step) form posts. The
   uploads switch (status line plus **Pause uploads** / **Resume uploads**, with the pause reason and time) at the top
   of both `/reports` and `/tags`.
+  As built: `listReportedPhotos` in `reports.ts` gives the queue, and the page reads each photo's tag and events
+  with `getTag` and `listTagEvents`. Restore is offered for a photo still shown too, one restored before and
+  reported again, as Restore or Delete is what takes a photo off the queue. Delete asks first through `Confirm`,
+  which Take down now shares, and the events table (`EventTable`) and the notices (`Notice`) moved out of the tag
+  page for the same reason; events have a shared type, `AdminTagEvent`. No admin form posts a body: a hand pause's
+  reason is always `by_hand`, and the switch's form names its screen in `?back=`, which `switchPage` in
+  `lib/action.ts` reads as `/tags` or else `/reports`, so there is no body to refuse and no open redirect. The
+  admin server's readiness check in `playwright.config.ts` waits for its port, as every admin page now reads the
+  database, which global setup creates after the servers start.
 - **Accept:** restore makes the photo load publicly again; delete removes the files and resolves its reports; the
   switch reflects `site_state` on both screens; admin passes axe.
 - **Files:** `apps/admin/app/reports/page.tsx`, `app/api/photos/[id]/{restore,delete}/route.ts`,

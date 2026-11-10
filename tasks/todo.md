@@ -68,7 +68,7 @@ acceptance criteria pass and `pnpm verify` is green.
 - [x] 6.2 Email seam, first 10 a day, hourly digest (step 5), claim and release; Resend-failure test
 - [x] 6.3 Circuit breaker and pause / resume
 - [x] 6.4 Report dialog
-- [ ] 6.5 Admin Reported photos screen and uploads switch on both screens
+- [x] 6.5 Admin Reported photos screen and uploads switch on both screens
 - [ ] 6.6 Moderation E2E and admin axe
 - [ ] 6.7 `docs/launch.md` (deploy runbook + launch checklist), accessibility checklist, eSafety procedure, `.env.example` review, remove the text pages' "still being built" notice
 - [ ] Checkpoint: CI green, browser verification at both sizes, PR opened against `build/05-photos`

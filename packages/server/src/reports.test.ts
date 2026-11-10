@@ -15,7 +15,7 @@ import {
   uploadsPaused,
   uploadsSwitch,
 } from './photos'
-import { reportPhoto, sendDigest } from './reports'
+import { listReportedPhotos, reportPhoto, sendDigest } from './reports'
 import { createTag, markRemoved, takeDown, undoRemoval } from './tags'
 import type { Visitor } from './visitors'
 
@@ -304,5 +304,47 @@ describe('pausing photo uploads (§4.6)', () => {
         'Photo uploads are paused until you resume them.',
     )
     logged.mockRestore()
+  })
+})
+
+describe('listReportedPhotos', () => {
+  it('lists each photo with open reports, the latest reported first, with its reasons, until it is dealt with', async () => {
+    const first = photoId
+    await report()
+    await reportPhoto({ photoId, requestId: crypto.randomUUID(), reason: 'other', visitor: alice })
+    const other = '5eed0000-0000-4000-8000-000000000002'
+    await db.$executeRaw`
+      INSERT INTO tags (id, lat, lng, suburb, street, operator, problem, expires_at)
+      SELECT ${other}::uuid, lat, lng, suburb, street, operator, problem, expires_at FROM tags WHERE id = ${TAG}::uuid`
+    await db.$executeRaw`
+      INSERT INTO photos (id, tag_id, blob_path, thumb_path, width, height, bytes)
+      VALUES (gen_random_uuid(), ${other}::uuid, 'other.webp', 'other-thumb.webp', 1600, 1200, 4)`
+    photoId = (await db.$queryRaw<{ id: string }[]>`SELECT id::text FROM photos WHERE tag_id = ${other}::uuid`)[0]!.id
+    await report()
+    expect(await listReportedPhotos()).toEqual([
+      {
+        id: photoId,
+        tagId: other,
+        status: 'hidden',
+        reports: 1,
+        reasons: { privacy: 1 },
+        reportedAt: expect.any(Date),
+      },
+      {
+        id: first,
+        tagId: TAG,
+        status: 'hidden',
+        reports: 2,
+        reasons: { privacy: 1, other: 1 },
+        reportedAt: expect.any(Date),
+      },
+    ])
+
+    await deletePhoto(photoId)
+    await restorePhoto(first)
+    expect(await listReportedPhotos()).toEqual([])
+    photoId = first
+    await report()
+    expect(await listReportedPhotos()).toMatchObject([{ id: first, status: 'visible', reports: 1 }])
   })
 })

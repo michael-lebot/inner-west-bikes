@@ -32,8 +32,8 @@ export default defineConfig({
     { command: 'pnpm --filter @iwb/web start', url: 'http://localhost:3000', env: SERVER_ENV },
     {
       command: 'pnpm --filter @iwb/admin start',
-      // Playwright starts the servers before global setup creates the database: check a page that doesn't read it.
-      url: 'http://localhost:3001/reports',
+      // Playwright starts the servers before global setup creates the database, and every admin page reads it.
+      port: 3001,
       env: SERVER_ENV,
     },
   ],

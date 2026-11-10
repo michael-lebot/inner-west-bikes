@@ -63,6 +63,22 @@ export type PhotoStatus = 'visible' | 'hidden' | 'deleted'
 /** Why photo uploads are paused (§4.6): more than 15 reports in an hour, or Michael, by hand. */
 export type PauseReason = 'circuit_breaker' | 'by_hand'
 
+/** What happened to a tag (§5.1): its visitors' actions, and the admin's. */
+export type TagEventType = 'created' | 'still_there' | 'removed' | 'restored' | 'taken_down'
+
+/**
+ * One of a tag's events, as the admin app sees it, with how many actions its hashed visitor and its hashed IP made on
+ * any tag that UTC day (§4.6). A hash is cleared after 30 days.
+ */
+export type AdminTagEvent = {
+  type: TagEventType
+  at: Date
+  visitorHash: string | null
+  ipHash: string | null
+  visitorActions: number
+  ipActions: number
+}
+
 /** A tag in any state, as the admin app sees it. It never carries visitor data either. */
 export type AdminTag = Omit<PublicTag, 'photoId'> & {
   status: TagStatus

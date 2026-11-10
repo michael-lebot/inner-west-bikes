@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test'
-import { expectNoAxeViolations, resetDb, sql } from './support'
+import { readdir } from 'node:fs/promises'
+import { addPhoto, E2E_BLOB_DIR, expectNoAxeViolations, resetDb, sql } from './support'
 
 test.use({ baseURL: 'http://localhost:3001' })
 
@@ -17,6 +18,21 @@ const remove = (id: string, expiresAt = 'expires_at') =>
   sql(`UPDATE tags SET status = 'removed', removed_at = now(), expires_at = ${expiresAt} WHERE id = '${id}'`)
 
 const region = (page: Page, name: string) => page.getByRole('region', { name })
+
+/** Gives the Llewellyn St tag a photo that three reports have hidden, and returns the photo's id. */
+async function reportedPhoto() {
+  const photoId = await addPhoto(LLEWELLYN)
+  await sql(`UPDATE photos SET status = 'hidden', hidden_at = now() WHERE id = '${photoId}'`)
+  await sql(`INSERT INTO photo_reports (photo_id, reason, request_id)
+             SELECT '${photoId}', reason::report_reason, gen_random_uuid()
+             FROM unnest(ARRAY['privacy', 'privacy', 'other']) AS reason`)
+  return photoId
+}
+
+const resolutions = async () =>
+  (await sql('SELECT resolution::text FROM photo_reports')).map((report) => report.resolution as string | null)
+const publicStatus = async (page: Page, photoId: string) =>
+  (await page.request.get(`http://localhost:3000/photo/${photoId}/thumb`)).status()
 
 test('lists the recent tags and passes axe on both screens', async ({ page }) => {
   await page.goto('/')
@@ -46,7 +62,8 @@ test('has 44 px nav links with room for the whole focus ring', async ({ page }) 
 test('scrolls the tables, not the page, on a 320 px screen, and passes axe there', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 })
   await remove(LLEWELLYN)
-  for (const path of ['/tags', `/tags/${LLEWELLYN}`]) {
+  await reportedPhoto()
+  for (const path of ['/tags', `/tags/${LLEWELLYN}`, '/reports']) {
     await page.goto(path)
     expect(await page.evaluate(() => document.documentElement.scrollWidth), path).toBeLessThanOrEqual(320)
     await expectNoAxeViolations(page)
@@ -100,18 +117,27 @@ test('takes a tag down only after asking, and passes axe on the question', async
 
 test('refuses a post from another site, or with no origin, and changes nothing', async ({ request }) => {
   await remove(LLEWELLYN)
+  const photoId = await reportedPhoto()
   const origins: Record<string, string>[] = [
     { origin: 'https://evil.example' },
     { origin: 'http://localhost:3000' },
     {},
   ]
   for (const headers of origins) {
-    for (const action of ['undo', 'take-down']) {
-      const response = await request.post(`/api/tags/${LLEWELLYN}/${action}`, { headers, maxRedirects: 0 })
-      expect(response.status(), `${action} from ${headers.origin}`).toBe(403)
+    for (const path of [
+      `/api/tags/${LLEWELLYN}/undo`,
+      `/api/tags/${LLEWELLYN}/take-down`,
+      `/api/photos/${photoId}/restore`,
+      `/api/photos/${photoId}/delete`,
+      '/api/uploads/pause',
+    ]) {
+      const response = await request.post(path, { headers, maxRedirects: 0 })
+      expect(response.status(), `${path} from ${headers.origin}`).toBe(403)
     }
   }
   expect((await stored(LLEWELLYN)).status).toBe('removed')
+  expect(await resolutions()).toEqual([null, null, null])
+  expect(await sql('SELECT uploads_paused_at FROM site_state')).toEqual([{ uploads_paused_at: null }])
 
   const response = await request.post(`/api/tags/${LLEWELLYN}/undo`, {
     headers: { origin: 'http://localhost:3001' },
@@ -121,14 +147,88 @@ test('refuses a post from another site, or with no origin, and changes nothing',
   expect(response.headers().location).toBe(`/tags/${LLEWELLYN}?notice=undone`)
 })
 
-test('answers 404 to a post for an id that is not a tag id', async ({ request }) => {
-  for (const action of ['undo', 'take-down']) {
-    const response = await request.post(`/api/tags/not-a-uuid/${action}`, {
-      headers: { origin: 'http://localhost:3001' },
-      maxRedirects: 0,
-    })
-    expect(response.status(), action).toBe(404)
+test('answers 404 to a post for an id that is not a tag or photo id', async ({ request }) => {
+  for (const path of [
+    '/api/tags/not-a-uuid/undo',
+    '/api/tags/not-a-uuid/take-down',
+    '/api/photos/not-a-uuid/restore',
+    '/api/photos/not-a-uuid/delete',
+  ]) {
+    const response = await request.post(path, { headers: { origin: 'http://localhost:3001' }, maxRedirects: 0 })
+    expect(response.status(), path).toBe(404)
   }
+})
+
+test('the queue shows a reported photo with its reasons and its tag; Restore shows it again and empties the queue', async ({
+  page,
+}) => {
+  const photoId = await reportedPhoto()
+  await page.goto('/reports')
+  const queued = page.getByRole('region', { name: 'Llewellyn St, Marrickville' })
+  await expect(queued.getByRole('img', { name: 'Photo of a Lime e-bike reported as blocking footpath' })).toBeVisible()
+  for (const text of ['Hidden since it was reported', 'Shows a person, face or number plate: 2', 'Other: 1'])
+    await expect(queued.getByText(text)).toBeVisible()
+  await expect(queued.getByRole('definition').nth(1)).toHaveText('3')
+  await expect(region(page, 'Events of the tag on Llewellyn St').getByRole('row')).toHaveCount(1 + 1)
+  await expectNoAxeViolations(page)
+  expect(await publicStatus(page, photoId)).toBe(404)
+
+  await queued.getByRole('button', { name: 'Restore' }).click()
+  await expect(page).toHaveURL('/reports?notice=restored')
+  await expect(
+    page.getByText("Restored: the photo shows again while its tag is live, and later reports won't hide it."),
+  ).toBeVisible()
+  await expect(page.getByText('No reported photos.')).toBeVisible()
+  expect(await publicStatus(page, photoId)).toBe(200)
+  expect(await resolutions()).toEqual(['restored', 'restored', 'restored'])
+})
+
+test('Delete asks first, then deletes the photo and its files and closes its reports', async ({ page }) => {
+  const photoId = await reportedPhoto()
+  await page.goto('/reports')
+  await page.getByRole('link', { name: 'Delete…' }).click()
+  await expect(
+    page.getByText('Delete this photo? It and its files go for good, and nobody can bring them back.'),
+  ).toBeVisible()
+  await expectNoAxeViolations(page)
+  await page.getByRole('link', { name: 'Cancel' }).click()
+  await expect(page).toHaveURL('/reports')
+  expect(await resolutions()).toEqual([null, null, null])
+
+  await page.getByRole('link', { name: 'Delete…' }).click()
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect(page).toHaveURL('/reports?notice=deleted')
+  await expect(page.getByText('Deleted: the photo and its files are gone for good.')).toBeVisible()
+  await expect(page.getByText('No reported photos.')).toBeVisible()
+  expect(await resolutions()).toEqual(['deleted', 'deleted', 'deleted'])
+  expect((await page.request.get(`/photo/${photoId}`)).status()).toBe(404)
+  expect((await readdir(E2E_BLOB_DIR)).filter((file) => file.startsWith(photoId))).toEqual([])
+})
+
+test('the uploads switch pauses and resumes photo uploads from either screen, and passes axe', async ({ page }) => {
+  const paused = async () => (await (await page.request.get('http://localhost:3000/api/tags')).json()).uploadsPaused
+  const uploads = page.getByRole('region', { name: 'Photo uploads' })
+  await page.goto('/tags')
+  await expect(uploads).toContainText('On: visitors can add a photo to a tag.')
+  await uploads.getByRole('button', { name: 'Pause uploads' }).click()
+  await expect(page).toHaveURL('/tags')
+  await expect(uploads).toContainText(
+    /^Photo uploadsPaused by hand, on .+\. Tags without photos can still be added\.Resume uploads$/,
+  )
+  expect(await paused()).toBe(true)
+  await expectNoAxeViolations(page)
+
+  await page.goto('/reports')
+  await expect(uploads).toContainText('Paused by hand')
+  await uploads.getByRole('button', { name: 'Resume uploads' }).click()
+  await expect(page).toHaveURL('/reports')
+  await expect(uploads).toContainText('On: visitors can add a photo to a tag.')
+  expect(await paused()).toBe(false)
+
+  await sql(`UPDATE site_state SET uploads_paused_at = now(), uploads_paused_reason = 'circuit_breaker'`)
+  await page.reload()
+  await expect(uploads).toContainText('Paused by the circuit breaker, after more than 15 reports in an hour')
+  await expectNoAxeViolations(page)
 })
 
 test('opens a tag from its id or its public link, and says when there is no id', async ({ page }) => {
