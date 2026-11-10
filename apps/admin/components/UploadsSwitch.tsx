@@ -22,7 +22,7 @@ export function UploadsSwitch({
   return (
     <section
       aria-labelledby="uploads-heading"
-      className="mt-4 flex flex-col gap-2 rounded-[10px] border border-line p-3"
+      className="mt-4 flex max-w-xl flex-col gap-2 rounded-[10px] border border-line p-3"
     >
       <h2 id="uploads-heading" className="font-bold">
         Photo uploads
