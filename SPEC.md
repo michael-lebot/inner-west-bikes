@@ -43,7 +43,7 @@ operators, and has no reporting channel of its own.
 | Visual direction | The **Overworld** palette and pixel-art textures appear in the **map artwork only**. The interface is plain, and **no pixel or dot-matrix fonts are used anywhere**, including map labels (§9) |
 | Accessibility target | **WCAG 2.2 AA**, plus a list view and a street picker, so neither reading nor tagging needs the map (§10) |
 | Bike type | Share-scheme bikes and e-bikes only (Lime, Hello, Ario, plus "Not sure") |
-| Who acts on tags | **Public visibility only** in v1. No operator or council integrations |
+| Who acts on tags | **Public visibility**, plus **Notify the service provider?** on each tag: the visitor's own email app writes to the operator (§4.2). No operator or council integrations, and the site sends nothing |
 | Map realism | **Real streets and real street names, with a retro game skin**. Must be accurate enough to walk to |
 | Placing a tag | Three ways: **tap the map**; **Use my location**, which proposes a pin to confirm; or pick a street and then a house number or the nearest corner, which needs no map (§4.1, §10.3). Tags up to **20 m outside the council boundary** are accepted |
 | Tag fields | Operator picker + problem pick-list + optional photo. **No free text** is stored or published |
@@ -93,6 +93,7 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
    - the photo, operator, problem and street;
    - "Last seen Xh ago · Disappears in Yh", with a timer bar;
    - "Is it still there?" with **Still there** and **Removed** buttons;
+   - **Notify the service provider?**, which opens to an email link and a message to copy (§4.2);
    - a low-key **Report this photo** link;
    - a handle at the top, which shrinks the card to one line to show more of the map, and brings it back (§12).
 4. **Report a photo.** Choose a reason. The photo stops loading for everyone from their next request, and Michael gets
@@ -192,7 +193,8 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
 - **Fields:** location (lat/lng, computed suburb, nearest street), operator, problem, optional photo, timestamps.
 - **Operators:** Lime, Hello (HelloBike), Ario, Not sure. All three operate in the Inner West per the council page
   updated 2 October 2026.
-  - The list is a small static config file. Each operator has a short text key and an active or retired flag.
+  - The list is a small static config file. Each operator has a short text key, an active or retired flag and the
+    support address it gives for reports (Appendix B).
   - Adding or retiring an operator is a config change and a deploy. A retired operator stays in the file, so old
     records still display.
 - **Problems (pick-list):** Blocking footpath · Knocked over · Blocking ramp / driveway · In waterway ·
@@ -203,6 +205,29 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
   - **Yes, this bike** marks that tag Still there. **No, it's another bike** carries on to the form.
   - The check runs in the browser against the tags already loaded. The server never refuses a tag for being near
     another.
+
+**Notify the service provider?** The council asks residents to report bikes to the operators, so each tag's card
+and page offer to help. It is a disclosure, closed at first, under "Is it still there?". Opened, it shows:
+- **Email Lime** (Hello, Ario), a `mailto:` link to the operator's support address (Appendix B), with a subject and the
+  message filled in. A line under it names the address and says the visitor's own email app sends it.
+- **Message**, a read-only field holding the same text, with a **Copy message** button. "Copied" is announced
+  (§10.4). The text can be selected without JavaScript, which the disclosure doesn't need either.
+- The message is built from the tag's fields, never typed by the visitor:
+
+  > I am reporting that there is a Lime e-bike blocking the footpath near Llewellyn St, Marrickville.
+  >
+  > Coordinates: -33.904497, 151.171932
+  > Tagged on The Inner West E-bike Graveyard: https://…/tag/…
+
+  - Each problem has its own phrase: blocking the footpath, knocked over, blocking a ramp or driveway, in a waterway,
+    left in a park or reserve, that is damaged.
+  - The street is where()'s nearest named street, hence "near". No house number is given: a tag doesn't store one
+    (§10.3), and the nearest address point would only be a guess.
+  - The link uses the address the visitor reached the site at, so it is right on a preview, on `*.vercel.app` and on
+    the custom domain.
+- A **Not sure** tag shows nothing: there is no operator to write to.
+- **Nothing is sent or stored.** The visitor's own email app sends the email, or they paste the message wherever they
+  like. The site makes no request for it, and no server code is involved.
 
 **What each action may do.** A tag is **live** when `status = 'active'` and `expires_at > now()`. Expiry is never
 stored as a status. A tag simply stops being live when its time passes, so nothing depends on when a scheduled job
@@ -941,8 +966,8 @@ keyboard. The layout is the fourth screen in `docs/mockups/graveyard-v3.html`.
 ## 14. Open questions
 
 1. **"Why this page exists" copy:** to be supplied by Michael; launch is blocked until then.
-2. **Operator report links:** should the tag card show a small "Report to Lime" contact link? It's still
-   public-visibility only, but it helps the bike actually get moved. The contact details are in Appendix B.
+2. **Operator report links:** decided on 2026-11-11. Each tag offers "Notify the service provider?" (§4.2), using
+   the addresses in Appendix B.
 3. **Domain:** which one to buy, for example a `.com.au` or `.au` built on "ebikegraveyard". Availability hasn't been
    checked.
 4. **Address data licence:** the NSW record says "Creative Commons" without a version. Confirm CC BY 4.0 with Spatial
@@ -961,10 +986,11 @@ keyboard. The layout is the fourth screen in `docs/mockups/graveyard-v3.html`.
 ## 16. Out of scope for v1
 
 Hosting-cost tracker and contributions (deferred, §4.5); accounts; free-text notes; automated image moderation;
-placing a tag from a photo's stored location; live location tracking; operator or council integrations and
-notifications; multiple photos per tag; a stats or heat-map page (the data is kept for later); dark mode; an offline
-queue and installable-app (PWA) support; other councils; an abuse dashboard and visitor blocking; a sheet that
-follows the finger; a CDN cache for tag data.
+placing a tag from a photo's stored location; live location tracking; operator or council integrations, and any
+email or notification sent by the site (a visitor's own email app sends the operator email, §4.2); multiple photos
+per tag; a stats or heat-map page (the data is kept for later); dark mode; an offline queue and installable-app (PWA)
+support; other councils; an abuse dashboard and visitor blocking; a sheet that follows the finger; a CDN cache for
+tag data.
 
 ## Appendix A — Cost tracking and contributions research (parked)
 
@@ -988,11 +1014,21 @@ Kept so the feature can be revived quickly if costs grow.
 
 ## Appendix B — Operators (as at Nov 2026)
 
-| Operator | Reporting channel |
-|---|---|
-| Lime | 1800 861 305 · help-sydney@li.me · in-app |
-| Hello (HelloBike) | serviceos@hellobike.com · in-app (unverified) |
-| Ario | 1800 882 764 · support@ario.com · in-app (unverified) |
+The email is the one each operator gives on its own website, checked on 2026-11-11. It is the address in the operators
+config and the one "Notify the service provider?" writes to (§4.2).
+
+| Operator | Email for reports | Other channels | Source |
+|---|---|---|---|
+| Lime | support-au@li.me | 1800 861 305 · in-app · web form | [Lime: Complaints Handling Process - Australia](https://help.li.me/hc/en-au/articles/360052589873-Complaints-Handling-Process-Australia) |
+| Hello (HelloRide) | support.au@hellobike.com | 02 9423 0886 · in-app | [HelloRide: Support, Australia](https://www.helloride-global.com/) |
+| Ario | feedback@ario.com | 1800 882 746 · in-app | [Ario: How do I report a poorly parked Ario?](https://www.ario.com/support) |
+
+- **Lime** can also be hired through the Uber app, but Lime runs the bikes, so reports go to Lime.
+- Lime's own parking article points to the app or a web form, and gives no address. support-au@li.me is from its
+  Australian complaints page. Councils have listed help-sydney@li.me, which Lime's site doesn't.
+- Councils list serviceos@hellobike.com, HelloRide's global address. Its site gives support.au@hellobike.com for
+  Australia.
+- Ario asks for the four-digit Ario ID on the bike. A tag doesn't record it, so the visitor can add it.
 
 ## Sources
 
@@ -1001,6 +1037,13 @@ Kept so the feature can be revived quickly if costs grow.
   - [Transport for NSW sharing schemes](https://www.nsw.gov.au/driving-boating-and-transport/bikes-e-bikes-e-scooters/sharing-schemes)
   - [Inner West Council bike share page](https://www.innerwest.nsw.gov.au/walking-and-cycling/bike-share)
   - [Snap Send Solve e-bike complaints](https://snapsendsolve.com/media/smh-e-bike-complaints-surge)
+- **Operators (Appendix B):**
+  - [Lime: Complaints Handling Process - Australia](https://help.li.me/hc/en-au/articles/360052589873-Complaints-Handling-Process-Australia)
+  - [Lime: How to report illegally parked vehicles](https://help.li.me/hc/en-au/articles/115004916388-How-to-report-illegally-parked-vehicles)
+  - [Lime in Australia and New Zealand (the Lime or Uber app)](https://www.li.me/en-us/au-nz)
+  - [HelloRide: Support](https://www.helloride-global.com/)
+  - [Ario: Support](https://www.ario.com/support)
+  - [Transport for NSW: contact a shared e-bike operator](https://www.nsw.gov.au/driving-boating-and-transport/bikes-e-bikes-e-scooters/sharing-schemes/contact-a-shared-e-bike-or-e-scooter-operator)
 - **Map:**
   - [Google Maps pricing](https://developers.google.com/maps/billing-and-pricing/pricing)
   - [Google Maps Platform terms](https://cloud.google.com/maps-platform/terms)
