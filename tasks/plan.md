@@ -211,9 +211,11 @@ How the spec's rules land:
 - **Responses.** Every tag write returns `{ tag: PublicTag | null }` with status 200, first time or repeat.
   `null` means "not live". Errors are always `{ error: { code, message } }`.
 - **Side effects after commit.** Emails and Blob deletions happen after the transaction commits, using the
-  "claim, act, release on failure" pattern (`UPDATE … SET notified_at = now() WHERE notified_at IS NULL RETURNING`,
-  send, reset to `NULL` if the send throws). Blob writes for a photo happen before its row insert, with a compensating
-  delete if the insert fails (§4.3).
+  "claim, act, release on failure" pattern. For an email: claim the reports (`claimed_at = now()`, in the
+  transaction or in one `UPDATE … RETURNING`), send under an idempotency key, set `notified_at` once Resend accepts,
+  and reset `claimed_at` to `NULL` if the send throws. The digest also takes claims 10 minutes old with no
+  `notified_at`, which only a sender that stopped mid-send leaves. Blob writes for a photo happen before its row
+  insert, with a compensating delete if the insert fails (§4.3).
 
 Admin writes use the same domain functions through `apps/admin/lib/action.ts`: same-origin check (`Origin` header
 must equal the request host), run, then `303` redirect back with a `?notice=` code. Admin pages use plain HTML
@@ -1532,13 +1534,19 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   the day's first 10, so the digest can never take it in between; the send follows the commit, and a failed one is
   logged, released and left to the digest without failing the report. The digest claims in one statement and
   throws when its send fails, so the hourly summary names the step. Every alert ends with a link to the queue, which
-  needs one more variable, `ADMIN_URL` (default `http://localhost:3001`); `email.ts` adds it, and gives Resend 10 s.
+  needs one more variable, `ADMIN_URL` (default `http://localhost:3001`); `email.ts` adds it. Review (Sol, PR 6):
+  setting `notified_at` at the claim meant a server stopping mid-send lost the email, and a reply lost after Resend
+  accepted made the digest send it again. A second column, `claimed_at` (migration `report_email_claims`), now holds
+  the claim, and `notified_at` is set only once Resend accepts; a failed send releases the claim, and the digest
+  also takes claims 10 minutes old. Every email carries an `Idempotency-Key`, `report-<id>` for an alert and a hash
+  of its reports and words for a digest, and `email.ts` tries once more under it when no reply comes, giving Resend
+  5 s each time.
   The email variables are optional when `env.ts` loads and checked by `email.ts` when it sends, because on Vercel
   `next build` loads `env.ts` with only the variables `turbo.json` passes through, `VERCEL` among them, so the build
   knows it is on Vercel; `env.test.ts` loads it with exactly that list.
 - **Accept:** §5.5 repeats: a repeated report sends no second email; §5.5 outside failures for Resend: a throwing
-  send leaves the report saved with `notified_at` null and the next hourly run sends it in the digest; two
-  overlapping hourly runs send one digest.
+  send leaves the report saved with `notified_at` null and the next hourly run sends it in the digest; a claim whose
+  send never ended is sent by the hourly run once 10 minutes old; two overlapping hourly runs send one digest.
 - **Files:** `packages/server/src/{email,reports,hourly,env}.ts`, `src/{reports,hourly}.test.ts`,
   `apps/web/.env.example`.
 - **Verify:** `pnpm --filter @iwb/server test`.
@@ -1551,7 +1559,7 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   `resumeUploads()` in `photos.ts` (the form already reacts to `uploadsPaused`, task 5.5). Nothing resumes
   automatically.
   As built: the pause's `UPDATE … WHERE uploads_paused_at IS NULL` is the claim, so of two reports at once one
-  alerts; the report that paused uploads is claimed for the alert (`notified_at`), which is sent after the commit
+  alerts; the report that paused uploads is claimed for the alert (`claimed_at`), which is sent after the commit
   in its place, and a failed alert releases it to the digest, which says while uploads are paused that they are.
   `uploads_paused_reason` holds `circuit_breaker` or `by_hand` (`PauseReason` in `@iwb/shared`), and
   `uploadsSwitch()` reads the time and the reason for the admin app. With a pause now possible while the form is

@@ -96,7 +96,7 @@ describe('runHourly', () => {
       },
       failed: [],
     })
-    expect(sendEmail).toHaveBeenCalledExactlyOnceWith('1 report to review', expect.any(String))
+    expect(sendEmail).toHaveBeenCalledExactlyOnceWith('1 report to review', expect.any(String), expect.any(String))
     expect(await rows()).toEqual({
       photos: [
         { id: PHOTO, status: 'visible' },

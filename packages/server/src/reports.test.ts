@@ -49,6 +49,9 @@ const counts = async () =>
     (counter) => counter.count,
   )
 const shown = async () => !!(await openPhoto(photoId, 'thumb'))
+/** The key Resend is given for a report's own alert, and for a digest: the same email always has the same key. */
+const ALERT_KEY = expect.stringMatching(/^report-[0-9a-f-]{36}$/)
+const DIGEST_KEY = expect.stringMatching(/^digest-[0-9a-f]{64}$/)
 /** How many reports are marked as emailed. */
 const notified = async () =>
   (await db.$queryRaw<{ n: number }[]>`SELECT count(notified_at)::int AS n FROM photo_reports`)[0]!.n
@@ -223,6 +226,7 @@ describe('emails to Michael (§4.6)', () => {
     expect(sendEmail).toHaveBeenCalledWith(
       'A photo was reported',
       'Reason: Shows a person, face or number plate.\nThe photo is hidden until you restore or delete it.',
+      ALERT_KEY,
     )
     await reportMany(10)
     expect(sendEmail).toHaveBeenCalledTimes(10)
@@ -237,6 +241,7 @@ describe('emails to Michael (§4.6)', () => {
     expect(sendEmail).toHaveBeenLastCalledWith(
       'A photo was reported',
       'Reason: Shows a person, face or number plate.\nYou restored it before, so it stays up.',
+      ALERT_KEY,
     )
   })
 
@@ -259,6 +264,7 @@ describe('emails to Michael (§4.6)', () => {
     expect(sendEmail).toHaveBeenLastCalledWith(
       '1 report to review',
       '1 report arrived since the last email.\nShows a person, face or number plate: 1',
+      DIGEST_KEY,
     )
     expect(await notified()).toBe(1)
     logged.mockRestore()
@@ -271,6 +277,7 @@ describe('emails to Michael (§4.6)', () => {
     expect(sendEmail).toHaveBeenCalledExactlyOnceWith(
       '3 reports to review',
       '3 reports arrived since the last email.\nShows a person, face or number plate: 3',
+      DIGEST_KEY,
     )
     expect(await sendDigest()).toBe(0)
     expect(sendEmail).toHaveBeenCalledOnce()
@@ -283,6 +290,21 @@ describe('emails to Michael (§4.6)', () => {
     expect(await notified()).toBe(10)
     expect(await sendDigest()).toBe(1)
     expect(await notified()).toBe(11)
+    // The same reports, so the same email under the same key: had Resend taken the first, it sends it only once.
+    const [failed, sent] = vi.mocked(sendEmail).mock.calls.slice(-2)
+    expect(sent).toEqual(failed)
+  })
+
+  it('an alert whose send never ended, as when the server stopped, goes in the digest once its claim is 10 minutes old', async () => {
+    vi.mocked(sendEmail).mockImplementationOnce(() => new Promise(() => {}))
+    void report()
+    await vi.waitFor(() => expect(sendEmail).toHaveBeenCalledOnce())
+    // Claimed a moment ago, so its sender may still be at it.
+    expect(await sendDigest()).toBe(0)
+    expect(await notified()).toBe(0)
+    await db.$executeRaw`UPDATE photo_reports SET claimed_at = claimed_at - interval '10 minutes'`
+    expect(await sendDigest()).toBe(1)
+    expect(await notified()).toBe(1)
   })
 })
 
@@ -299,6 +321,7 @@ describe('pausing photo uploads (§4.6)', () => {
       'Photo uploads paused',
       'More than 15 photos were reported in the last hour, so photo uploads are paused until you resume them. ' +
         'Tags without photos can still be added.\nThe latest reason: Shows a person, face or number plate.',
+      ALERT_KEY,
     )
   })
 
@@ -352,6 +375,7 @@ describe('pausing photo uploads (§4.6)', () => {
       '6 reports to review',
       '6 reports arrived since the last email.\nShows a person, face or number plate: 6\n' +
         'Photo uploads are paused until you resume them.',
+      DIGEST_KEY,
     )
     logged.mockRestore()
   })

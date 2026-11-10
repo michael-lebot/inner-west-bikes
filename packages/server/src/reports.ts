@@ -1,7 +1,9 @@
 // Reports (§4.3, §4.6): anyone may report a photo, which hides it until Michael restores or deletes it, and Michael
 // is emailed. Owns photo_reports. photos.ts changes the photo itself, and closes its reports when it is restored or
-// deleted. An email is a side effect after commit (plan §1.4): its reports are claimed by setting notified_at in a
-// transaction, it is sent once that commits, and the claim is released if the send fails, for the hourly digest.
+// deleted. An email is a side effect after commit (plan §1.4): its reports are claimed by setting claimed_at in a
+// transaction, it is sent once that commits, and notified_at is set once Resend accepts it. A failed send releases
+// the claim for the hourly digest, which also takes a claim 10 minutes old, as a server that stopped mid-send leaves.
+import { createHash } from 'node:crypto'
 import {
   AppError,
   CIRCUIT_BREAKER_REPORTS_PER_HOUR,
@@ -12,7 +14,7 @@ import {
 } from '@iwb/shared'
 import { db } from './client'
 import { sendEmail } from './email'
-import type { Prisma } from './generated/prisma/client'
+import { Prisma } from './generated/prisma/client'
 import { countAction } from './limits'
 import { hidePhoto, pauseUploads, uploadsPaused } from './photos'
 import type { Visitor } from './visitors'
@@ -42,14 +44,23 @@ async function claimReport(tx: Prisma.TransactionClient, { photoId, requestId, r
   return null
 }
 
-/** Sends an email for the reports claimed for it; if that fails, releases them for the next digest and throws. */
-async function emailReports(ids: string[], subject: string, text: string) {
+/** Not emailed yet, and not claimed by a sender in the last 10 minutes, far longer than a send can take. */
+const UNSENT = Prisma.sql`notified_at IS NULL AND (claimed_at IS NULL OR claimed_at < now() - interval '10 minutes')`
+
+/**
+ * Sends the email for the reports claimed for it, under `key`, and marks them emailed. If the send fails, releases
+ * them for the next digest and throws.
+ */
+async function emailReports(ids: string[], subject: string, text: string, key: string) {
   try {
-    await sendEmail(subject, text)
+    await sendEmail(subject, text, key)
   } catch (error) {
-    await db.$executeRaw`UPDATE photo_reports SET notified_at = NULL WHERE id = ANY (${ids}::uuid[])`
+    // shortcut: a send that Resend took but never answered, twice, comes again in the digest, under its own key; keep
+    // each email to send again under its key (an outbox table) if Michael ever sees one twice.
+    await db.$executeRaw`UPDATE photo_reports SET claimed_at = NULL WHERE id = ANY (${ids}::uuid[])`
     throw error
   }
+  await db.$executeRaw`UPDATE photo_reports SET notified_at = now() WHERE id = ANY (${ids}::uuid[])`
 }
 
 /**
@@ -80,7 +91,7 @@ async function claimEmail(tx: Prisma.TransactionClient, id: string, reason: Repo
         (hidden ? 'The photo is hidden until you restore or delete it.' : 'You restored it before, so it stays up.'),
     }
   if (!email) return
-  await tx.$executeRaw`UPDATE photo_reports SET notified_at = now() WHERE id = ${id}::uuid`
+  await tx.$executeRaw`UPDATE photo_reports SET claimed_at = now() WHERE id = ${id}::uuid`
   return { id, ...email }
 }
 
@@ -105,7 +116,7 @@ export async function reportPhoto(report: Report) {
     return { hidden: photo!.hidden, email: id ? await claimEmail(tx, id, report.reason, photo!.hidden) : undefined }
   })
   if (email)
-    await emailReports([email.id], email.subject, email.text).catch((error) =>
+    await emailReports([email.id], email.subject, email.text, `report-${email.id}`).catch((error) =>
       console.error('A report email failed; the hourly digest sends it', error),
     )
   return { hidden }
@@ -119,8 +130,7 @@ const reports = (n: number) => `${n} ${n === 1 ? 'report' : 'reports'}`
  */
 export async function sendDigest() {
   const claimed = await db.$queryRaw<{ reason: ReportReason; ids: string[] }[]>`
-    WITH claimed AS (
-      UPDATE photo_reports SET notified_at = now() WHERE notified_at IS NULL RETURNING id, reason)
+    WITH claimed AS (UPDATE photo_reports SET claimed_at = now() WHERE ${UNSENT} RETURNING id, reason)
     SELECT reason, array_agg(id::text) AS ids FROM claimed GROUP BY reason ORDER BY reason`
   const ids = claimed.flatMap((group) => group.ids)
   if (!ids.length) return 0
@@ -130,7 +140,10 @@ export async function sendDigest() {
   ]
   // Said again here, in case the alert that paused them failed.
   if (await uploadsPaused()) lines.push('Photo uploads are paused until you resume them.')
-  await emailReports(ids, `${reports(ids.length)} to review`, lines.join('\n'))
+  const text = lines.join('\n')
+  // The same reports and words make the same key, so a digest sent again after a lost reply goes out once.
+  const key = createHash('sha256').update(`${ids.toSorted().join()}\n${text}`).digest('hex')
+  await emailReports(ids, `${reports(ids.length)} to review`, text, `digest-${key}`)
   return ids.length
 }
 

@@ -138,6 +138,9 @@ model PhotoReport {
   visitorHash String?           @map("visitor_hash")
   /// Cleared after 30 days (§6).
   ipHash      String?           @map("ip_hash")
+  /// When a sender took it for an email. The digest takes it again once this is 10 minutes old with no email sent.
+  claimedAt   DateTime?         @map("claimed_at") @db.Timestamptz
+  /// When Resend accepted its email.
   notifiedAt  DateTime?         @map("notified_at") @db.Timestamptz
   resolvedAt  DateTime?         @map("resolved_at") @db.Timestamptz
   resolution  ReportResolution?
