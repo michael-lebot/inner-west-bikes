@@ -13,7 +13,7 @@ export default function TermsPage() {
         <li>Photos must show a share bike. People and number plates must not be the subject.</li>
         <li>
           That is a request to you, not consent from anyone who appears in a photo. A photo reported as showing a
-          person, face or number plate is hidden straight away.
+          person, face or number plate is hidden straight away, until it has been checked.
         </li>
         <li>You give us permission to show the photos you add on this site.</li>
       </ul>

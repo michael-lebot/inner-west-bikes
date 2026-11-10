@@ -79,6 +79,12 @@ test.describe('the map screen shell', () => {
     await expect(why).toHaveCSS('outline-style', 'solid')
   })
 
+  test('has a skip link that takes the focus past the map to the list', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Skip to the list' }).press('Enter')
+    await expect(page.locator('#sheet')).toBeFocused()
+  })
+
   test('fits "Why this page exists" on one line on a desktop', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'Phones wrap it onto two lines, as the mockup does')
     await page.goto('/')
@@ -195,12 +201,9 @@ test.describe('the tag page', () => {
   })
 })
 
-test('the text pages each say the site is being built, have one h1 and headings in order, and pass axe', async ({
-  page,
-}) => {
+test('the text pages each have one h1 and headings in order, and pass axe', async ({ page }) => {
   for (const path of ['/why', '/accessibility', '/privacy', '/terms']) {
     await page.goto(path)
-    await expect(page.getByRole('main'), path).toContainText('This site is still being built.')
     const levels = await page.locator('h1, h2, h3, h4').evaluateAll((headings) => headings.map((h) => +h.tagName[1]!))
     expect(levels[0], path).toBe(1)
     expect(
