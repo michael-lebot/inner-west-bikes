@@ -248,8 +248,14 @@ test('/api/tags sends 100 live tags in 15 KB or less, gzipped', async ({ request
            seen, seen + interval '48 hours'
     FROM (SELECT *, now() - random() * interval '47 hours' AS seen FROM tags, generate_series(1, 7)) AS copies
     LIMIT 86`)
+  // Each with a photo, whose id is the most a tag sends.
+  await sql(`
+    INSERT INTO photos (tag_id, blob_path, thumb_path, width, height, bytes)
+    SELECT id, gen_random_uuid() || '.webp', gen_random_uuid() || '.webp', 1600, 1200, 200000 FROM tags`)
   const response = await request.get('/api/tags')
-  expect((await response.json()).tags).toHaveLength(100)
+  const { tags } = await response.json()
+  expect(tags).toHaveLength(100)
+  expect(tags.every((tag: { photoId: string | null }) => tag.photoId)).toBe(true)
   // next start doesn't compress route handlers (Vercel does), so the test gzips the body itself.
   expect(gzipSync(await response.body()).length, 'gzipped bytes').toBeLessThanOrEqual(TAGS_100_BYTES)
 })
