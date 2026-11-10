@@ -35,7 +35,8 @@ export default defineConfig([
 
   {
     files: ['packages/shared/**'],
-    ignores: ['**/*.test.ts'],
+    // Tests and the data build scripts run in Node only.
+    ignores: ['**/*.test.ts', 'packages/shared/scripts/**'],
     rules: {
       'no-restricted-imports': [
         'error',

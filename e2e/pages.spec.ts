@@ -22,15 +22,19 @@ const CSP = [
 test.beforeEach(() => resetDb())
 
 test.describe('the map screen shell', () => {
-  test('has the header, the reserved map and the Map | List toggle, with no CSP errors', async ({ page }) => {
+  test('has the header, the map and, on phones, the Map | List toggle, with no CSP errors', async ({
+    page,
+    isMobile,
+  }) => {
     const errors: string[] = []
     page.on('console', (message) => message.type() === 'error' && errors.push(message.text()))
     await page.goto('/')
     await expect(page.getByRole('banner').getByRole('link', { name: 'Why this page exists' })).toBeVisible()
-    await expect(page.getByRole('navigation', { name: 'View' }).getByRole('link', { name: 'Map' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    await expect(page.getByRole('region', { name: 'Map', exact: true })).toBeVisible()
+    const view = page.getByRole('navigation', { name: 'View' })
+    // The side panel lists the tags itself, so it has no toggle (§13).
+    if (isMobile) await expect(view.getByRole('link', { name: 'Map' })).toHaveAttribute('aria-current', 'page')
+    else await expect(view).toBeHidden()
     await expectNoAxeViolations(page)
     expect(errors).toEqual([])
   })

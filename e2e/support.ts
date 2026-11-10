@@ -21,10 +21,20 @@ export async function sql(text: string) {
 export const resetDb = () =>
   sql(`TRUNCATE tags, rate_counters, daily_salts, site_state CASCADE; INSERT INTO site_state (id) VALUES (1); ${SEED}`)
 
-/** Fails on any WCAG 2.2 A or AA violation axe finds, whatever impact it gives it (§10.6). */
+/**
+ * Fails on any WCAG 2.2 A or AA violation axe finds, whatever impact it gives it (§10.6). The map's pins alone are
+ * spared the target-size rule: they sit where the bikes are, so they may overlap, and overlapping pins open a
+ * chooser (§10.5), which is 2.5.8's "equivalent" exception.
+ */
 export async function expectNoAxeViolations(page: Page) {
   const { violations } = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+    .disableRules(['target-size'])
     .analyze()
-  expect(violations.map((v) => `${v.id}: ${v.nodes.map((node) => node.target.join(' ')).join(', ')}`)).toEqual([])
+  const targets = await new AxeBuilder({ page }).withRules(['target-size']).exclude('[data-tag]').analyze()
+  expect(
+    [...violations, ...targets.violations].map(
+      (v) => `${v.id}: ${v.nodes.map((node) => node.target.join(' ')).join(', ')}`,
+    ),
+  ).toEqual([])
 }

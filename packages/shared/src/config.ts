@@ -60,6 +60,20 @@ export const LIMITS = {
   ],
 } as const satisfies Record<string, readonly Limit[]>
 
+/** Street types written short, as the card and the map labels write them: "Llewellyn St" (§9). */
+export const STREET_TYPES: Record<string, string> = {
+  Road: 'Rd',
+  Street: 'St',
+  Avenue: 'Ave',
+  Lane: 'La',
+  Parade: 'Pde',
+  Place: 'Pl',
+  Crescent: 'Cres',
+  Highway: 'Hwy',
+  Terrace: 'Tce',
+  Close: 'Cl',
+}
+
 /** A tag disappears this long after it was last confirmed (§1). */
 export const TAG_LIFETIME_HOURS = 48
 /** Live tags this close to a new spot are offered as "Is it one of these?" (§4.2). */

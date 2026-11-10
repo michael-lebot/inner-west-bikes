@@ -30,6 +30,7 @@ pnpm install
 pnpm db:up                                              # Postgres 18 on localhost:54318
 cp packages/server/.env.example packages/server/.env    # the Prisma CLI reads DATABASE_URL from here
 pnpm db:reset                                           # migrate the dev database and load 14 seeded tags
+pnpm tiles                                              # the map tiles (needs the pmtiles CLI, see below)
 pnpm dev                                                # the site on localhost:3000, admin on localhost:3001
 pnpm exec playwright install chromium webkit            # once, for the end-to-end tests
 ```
@@ -39,6 +40,7 @@ pnpm exec playwright install chromium webkit            # once, for the end-to-e
 | `pnpm db:up`     | Start Postgres in Docker and wait until it is healthy                             |
 | `pnpm db:down`   | Stop it (the data volume is kept)                                                 |
 | `pnpm db:reset`  | Empty the dev database, apply every migration and load the seed                   |
+| `pnpm tiles`     | Cut the Inner West map tiles out of the pinned Protomaps build (git-ignored)      |
 | `pnpm dev`       | Both apps in development mode                                                     |
 | `pnpm start`     | Both apps from their production builds                                            |
 | `pnpm lint`      | ESLint, including the import rules, and Prettier                                  |
@@ -49,7 +51,31 @@ pnpm exec playwright install chromium webkit            # once, for the end-to-e
 | `pnpm lhci`      | Lighthouse CI on `/` and `/list`, after `pnpm e2e`                                |
 | `pnpm verify`    | All of the above from `lint` on, in that order                                    |
 
+## Map data
+
+- **Tiles:** `pnpm tiles` runs [`apps/web/scripts/fetch-tiles.sh`](apps/web/scripts/fetch-tiles.sh), which needs the
+  [`pmtiles` CLI](https://github.com/protomaps/go-pmtiles/releases) (`brew install pmtiles`). It writes
+  `apps/web/public/tiles/inner-west.pmtiles` (about 13 MB), which `next start` serves with range requests.
+- **Label glyphs:** the map draws its labels in Atkinson Hyperlegible from signed-distance-field PBFs, range 0–255
+  only, committed in `apps/web/public/glyphs/` (the font's licence is `apps/web/public/fonts/OFL.txt`). To make them
+  again, put `AtkinsonHyperlegible-Regular.ttf` and `-Bold.ttf` from
+  [google/fonts](https://github.com/google/fonts/tree/main/ofl/atkinsonhyperlegible) in a folder `fonts/`, then:
+
+  ```sh
+  cargo install build_pbf_glyphs@1.5.1
+  build_pbf_glyphs fonts glyphs
+  for style in Regular Bold; do
+    cp glyphs/AtkinsonHyperlegible-$style/0-255.pbf apps/web/public/glyphs/AtkinsonHyperlegible-$style/
+  done
+  ```
+
+- **Council, suburbs and streets:** the committed files in `packages/shared/data/` come from NSW Spatial Services.
+  `pnpm --filter @iwb/shared data:fetch` downloads them again and `data:build` rebuilds the files.
+- **Preview image:** `pnpm dev` and `pnpm build` first draw `apps/web/public/preview.webp` (git-ignored) from that
+  data with [`apps/web/scripts/build-preview.ts`](apps/web/scripts/build-preview.ts). The map screen shows it until
+  the map is ready, and keeps it if the map can't load.
+
 ## Data attribution
 
 - Map data © OpenStreetMap contributors.
-- Council and suburb boundaries © State of New South Wales (Spatial Services, DCS NSW), CC BY 4.0.
+- Council and suburb boundaries and street names © State of New South Wales (Spatial Services, DCS NSW), CC BY 4.0.

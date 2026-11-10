@@ -1,5 +1,6 @@
-// What crosses a boundary: request schemas, and the shapes the public site is given.
-import { z } from 'zod'
+// What crosses a boundary: request schemas, and the shapes the public site is given. Zod Mini, the smaller build,
+// which is all these need. The browser never loads Zod: `parseTag` reads the live tags.
+import * as z from 'zod/mini'
 import type { Operator, Problem } from './config'
 
 /** The [id] of a tag URL. */

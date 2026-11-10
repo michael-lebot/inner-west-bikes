@@ -1,5 +1,6 @@
 // Names, counts and times as the site writes them. Times are always Sydney's, whatever the device's time zone.
-import { OPERATORS, type Operator } from './config'
+import { OPERATORS, type Operator, PROBLEMS } from './config'
+import type { PublicTag } from './schemas'
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
@@ -25,10 +26,12 @@ export const bikes = (n: number) => `${n} ${n === 1 ? 'bike' : 'bikes'}`
 /** "14 bikes in the graveyard". */
 export const bikeCount = (n: number) => `${bikes(n)} in the graveyard`
 
-/** The time from one moment to another, rounded down: "31 h", or "40 min" under an hour. */
-export function duration(from: Date, to: Date) {
+/** The time from one moment to another, rounded down: "31 h", or "40 min" under an hour; in `words`, "31 hours". */
+export function duration(from: Date, to: Date, words = false) {
   const ms = to.getTime() - from.getTime()
-  return ms < HOUR ? `${Math.max(1, Math.floor(ms / MINUTE))} min` : `${Math.floor(ms / HOUR)} h`
+  const [n, short, long] =
+    ms < HOUR ? [Math.max(1, Math.floor(ms / MINUTE)), 'min', 'minute'] : [Math.floor(ms / HOUR), 'h', 'hour']
+  return words ? `${n} ${long}${n === 1 ? '' : 's'}` : `${n} ${short}`
 }
 
 /** "3:40 pm Tuesday", in Sydney. */
@@ -39,3 +42,21 @@ export const dateTime = (date: Date) => full.format(date)
 
 /** The API returns live tags only, so the browser just drops tags whose time has passed since. */
 export const isExpired = (tag: { expiresAt: Date }, now = new Date()) => tag.expiresAt <= now
+
+/** A tag as `GET /api/tags` sends it: JSON makes its two times strings, and this makes them dates again. */
+export const parseTag = (
+  json: Omit<PublicTag, 'lastConfirmedAt' | 'expiresAt'> & Record<'lastConfirmedAt' | 'expiresAt', string>,
+): PublicTag => ({
+  ...json,
+  lastConfirmedAt: new Date(json.lastConfirmedAt),
+  expiresAt: new Date(json.expiresAt),
+})
+
+/** The order of the list, and of the pins for Tab: by suburb, then street. */
+export const byPlace = (a: Pick<PublicTag, 'suburb' | 'street'>, b: Pick<PublicTag, 'suburb' | 'street'>) =>
+  a.suburb.localeCompare(b.suburb) || a.street.localeCompare(b.street)
+
+/** A pin's accessible name: "Lime e-bike, blocking footpath, Denison St, Newtown, disappears in 31 hours, at …". */
+export const pinLabel = (tag: PublicTag, now: Date) =>
+  `${bikeName(tag.operator)}, ${PROBLEMS[tag.problem].toLowerCase()}, ${tag.street}, ${tag.suburb}, ` +
+  `disappears in ${duration(now, tag.expiresAt, true)}, at ${clockTime(tag.expiresAt)}`

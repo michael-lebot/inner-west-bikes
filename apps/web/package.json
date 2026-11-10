@@ -3,15 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build",
+    "dev": "node scripts/build-preview.ts && next dev --port 3000",
+    "build": "node scripts/build-preview.ts && next build",
     "start": "next start --port 3000",
     "typecheck": "next typegen && tsc"
   },
   "dependencies": {
     "@iwb/server": "workspace:*",
     "@iwb/shared": "workspace:*",
+    "maplibre-gl": "5.24.0",
     "next": "catalog:",
+    "pmtiles": "4.5.0",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
@@ -19,6 +21,7 @@
     "@tailwindcss/postcss": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "sharp": "0.35.5",
     "tailwindcss": "catalog:"
   }
 }

@@ -10,6 +10,7 @@
     "db:up": "docker compose up --detach --wait",
     "db:down": "docker compose down",
     "db:reset": "pnpm --filter @iwb/server exec prisma migrate reset --force --skip-generate --skip-seed && pnpm --filter @iwb/server seed",
+    "tiles": "apps/web/scripts/fetch-tiles.sh",
     "dev": "turbo run dev",
     "lint": "eslint . && prettier --check .",
     "typecheck": "turbo run typecheck && tsc",

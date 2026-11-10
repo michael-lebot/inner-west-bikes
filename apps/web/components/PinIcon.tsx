@@ -31,13 +31,13 @@ const SHAPE = pixels('XCW')
 const FILL = pixels('C')
 const SHINE = pixels('W')
 
-/** A pixel pin, drawn 2 CSS px per pixel. Decorative: the operator is always named in text beside it. */
-export function PinIcon({ operator }: { operator: Operator }) {
+/** A pixel pin, `scale` CSS px per pixel. Decorative: the operator is always named in text beside it. */
+export function PinIcon({ operator, scale = 2 }: { operator: Operator; scale?: number }) {
   const colors = PINS[operator]
   return (
     <svg
-      width={30}
-      height={34}
+      width={15 * scale}
+      height={17 * scale}
       viewBox="-1 -1 15 17"
       shapeRendering="crispEdges"
       aria-hidden="true"
