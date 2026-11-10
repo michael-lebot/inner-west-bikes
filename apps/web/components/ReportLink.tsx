@@ -37,7 +37,8 @@ export function ReportLink({ photoId, heading }: { photoId: string; heading: str
   if (gone) return null
   return (
     <>
-      {/* Reporting needs JavaScript: without it, no button that would do nothing. */}
+      {/* Reporting needs JavaScript; without it the button would do nothing, so it makes way for a line saying so. */}
+      <p className="hidden text-sm text-muted noscript:block">Turn on JavaScript to report this photo.</p>
       <button
         ref={link}
         type="button"

@@ -174,3 +174,15 @@ test('Michael pauses photo uploads, and the form says photos are off until he re
   await openFormOnList(page)
   await expect(dialog(page).getByLabel('Add a photo (optional)')).toBeAttached()
 })
+
+test.describe('without JavaScript', () => {
+  test.use({ javaScriptEnabled: false })
+
+  test('says reporting a photo needs it, in place of a link that would do nothing', async ({ page }) => {
+    await addPhoto(LLEWELLYN_ST)
+    await page.goto(`/tag/${LLEWELLYN_ST}`)
+    await expect(thumbnail(page)).toBeVisible()
+    await expect(reportLink(page)).toHaveCount(0)
+    await expect(page.getByText('Turn on JavaScript to report this photo.')).toBeVisible()
+  })
+})
