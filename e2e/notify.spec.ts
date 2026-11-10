@@ -53,7 +53,19 @@ test.describe('Notify the service provider?', () => {
     await page.goto(`/tag/${LLEWELLYN_ST}`)
     await cta(page).click()
     await copy(page).click()
-    await expect(page.locator('#announcer')).toHaveText("Couldn't copy. Select the message and copy it.")
+    const refused = "Couldn't copy. Select the message and copy it."
+    await expect(page.locator('#announcer')).toHaveText(refused)
+    await expect(page.getByRole('main').getByText(refused)).toBeVisible()
+  })
+
+  test('links to the tag page at the address the visitor reached the site at', async ({ request }) => {
+    // As Vercel forwards a request for a preview or the custom domain.
+    const html = await (
+      await request.get(`/tag/${LLEWELLYN_ST}`, { headers: { host: 'preview.example', 'x-forwarded-proto': 'https' } })
+    ).text()
+    expect(html).toContain(`Graveyard: https://preview.example/tag/${LLEWELLYN_ST}</textarea>`)
+    expect(html).toContain(encodeURIComponent(`Graveyard: https://preview.example/tag/${LLEWELLYN_ST}`))
+    expect(html).not.toContain('localhost')
   })
 
   test("is on a pin's card too, by keyboard, writing to that tag's operator", async ({ page, isMobile }) => {
@@ -83,6 +95,31 @@ test.describe('Notify the service provider?', () => {
       await expect(copy(page)).toBeFocused()
     }
     await expectNoAxeViolations(page)
+  })
+
+  test('opens in the phone sheet at 320 px and twice the text size, each control in reach and 44 px or more', async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(browserName !== 'webkit', 'the iPhone project')
+    await page.setViewportSize({ width: 320, height: 568 })
+    await page.goto('/')
+    await expect(page.locator('[data-map-ready]')).toBeAttached()
+    await page.addStyleTag({ content: 'html { font-size: 200% }' })
+    await page.locator(`[data-tag="${LLEWELLYN_ST}"] button`).focus()
+    await page.keyboard.press('Enter')
+    await cta(page).scrollIntoViewIfNeeded()
+    await cta(page).click()
+    for (const control of [cta(page), emailLink(page), message(page), copy(page)]) {
+      // The sheet is a small window at this size, so a control taller than it is only partly in view at a time.
+      await control.scrollIntoViewIfNeeded()
+      await expect(control).toBeInViewport()
+      expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
+    // The address never breaks at its hyphen, which would leave half of it on each line.
+    const address = page.getByText('support-au@li.me', { exact: true })
+    expect(await address.evaluate((span) => span.getClientRects().length)).toBe(1)
   })
 
   test('is left out when the visitor was not sure whose bike it is', async ({ page }) => {

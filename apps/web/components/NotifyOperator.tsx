@@ -33,7 +33,9 @@ export function NotifyOperator({ tag, origin }: { tag: PublicTag; origin: string
           Email {OPERATORS[tag.operator].label}
         </a>
         <p className="text-sm text-muted">
-          Opens your own email app, addressed to {email.to}. This site sends nothing.
+          {/* The address never breaks at its hyphen, which would leave half of it on each line. */}
+          Opens your own email app, addressed to <span className="whitespace-nowrap">{email.to}</span>. This site sends
+          nothing.
         </p>
         <label htmlFor={`message-${tag.id}`} className="mt-2 font-bold">
           Message
