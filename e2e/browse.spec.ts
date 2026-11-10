@@ -106,11 +106,32 @@ test('keeps the preview framed in the outside grey, with the loading bike over i
   })
   expect(corner).toEqual(['IMG', 'rgb(110, 110, 122)'])
   await expectNoAxeViolations(page)
-  // The bike turns, and stands still for reduced motion.
+  // The bike turns on its rear hub: paused halfway through each of its 12 steps, the hub's pixel, part of the
+  // outline, is still in the middle of the square. The dots are drawn in turn.
   const bike = loading.locator('svg > g')
+  const dots = loading.locator('p [aria-hidden]')
   await expect(bike).toHaveCSS('animation-name', 'wheelie')
+  await expect(dots).toHaveCSS('animation-name', 'ellipsis')
+  const hubs = await bike.evaluate((group: SVGGElement) => {
+    const square = group.ownerSVGElement!.getBoundingClientRect()
+    group.style.animationPlayState = 'paused'
+    return Array.from({ length: 12 }, (_, step) => {
+      group.style.animationDelay = `${-(step + 0.5) * 150}ms`
+      const middle = document.elementFromPoint(square.x + square.width / 2, square.y + square.height / 2)
+      return middle === group.querySelector('path')
+    })
+  })
+  expect(hubs).toEqual(Array(12).fill(true))
+  // Both stand still for reduced motion, the bike in the middle of its square.
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await expect(bike).toHaveCSS('animation-name', 'none')
+  await expect(dots).toHaveCSS('animation-name', 'none')
+  const [x, y] = await bike.evaluate((group: SVGGElement) => {
+    const [art, square] = [group.getBoundingClientRect(), group.ownerSVGElement!.getBoundingClientRect()]
+    return [art.x + art.width / 2 - square.x - square.width / 2, art.y + art.height / 2 - square.y - square.height / 2]
+  })
+  expect(x).toBeCloseTo(0, 0)
+  expect(y).toBeCloseTo(0, 0)
   release()
   await expect(page.locator('[data-map-ready]')).toBeAttached()
   await expect(loading).toHaveCount(0)

@@ -50,7 +50,7 @@ pass props to components. No package builds anything: both apps compile the pack
 │   │   │   ├── api/cron/hourly/route.ts             GET, CRON_SECRET only
 │   │   │   ├── photo/[id]/route.ts, photo/[id]/thumb/route.ts   Private photo streaming
 │   │   │   ├── layout.tsx, not-found.tsx, globals.css
-│   │   ├── components/              React components. Receive data as props; never import @iwb/server.
+│   │   ├── components/              React components and their view-only helpers. Receive data as props; never import @iwb/server.
 │   │   ├── map/                     The ONLY folder that imports maplibre-gl or pmtiles. Loaded by import() only.
 │   │   ├── lib/                     App helpers that are not components: write wrapper, BotID seam, env,
 │   │   │                            image pipeline, browser send-with-retry, live-tags hook.

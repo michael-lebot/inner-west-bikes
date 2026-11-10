@@ -28,7 +28,8 @@
     }
   }
 
-  /* The map's loading bike (MapLoading.tsx): a turn on its rear hub, 30° a step, front wheel up first. */
+  /* The map's loading bike (MapLoading.tsx): a turn on its rear hub, 30° a step, front wheel up first. It and the dots
+     repeat until the map is ready, the one exception to §10.5's no looping. */
   --animate-wheelie: wheelie 1.8s steps(12) infinite;
 
   @keyframes wheelie {
