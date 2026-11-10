@@ -231,17 +231,24 @@ test('the uploads switch pauses and resumes photo uploads from either screen, an
   await expectNoAxeViolations(page)
 })
 
-test('opens a tag from its id or its public link, and says when there is no id', async ({ page }) => {
+test("opens a tag from its id or public link, or its photo's, and says when there is no id", async ({ page }) => {
   await page.goto('/tags')
-  const lookup = page.getByRole('textbox', { name: 'Tag id or link' })
+  const lookup = page.getByRole('textbox', { name: 'Tag or photo id, or link' })
   await lookup.fill(`https://graveyard.example/tag/${LLEWELLYN.toUpperCase()}`)
   await lookup.press('Enter')
   await expect(page).toHaveURL(`/tags/${LLEWELLYN}`)
 
+  // A photo's link, as a complaint might give it, opens the photo's tag.
+  const photoId = await addPhoto(LLEWELLYN)
   await page.goto('/tags')
-  await lookup.fill('Llewellyn St')
+  await lookup.fill(`https://graveyard.example/photo/${photoId}/thumb`)
+  await lookup.press('Enter')
+  await expect(page).toHaveURL(`/tags/${LLEWELLYN}`)
+
+  await page.goto('/tags')
+  await lookup.fill("Llewellyn St'; DROP TABLE photos; --")
   await page.getByRole('button', { name: 'Find' }).click()
-  await expect(lookup).toHaveAccessibleDescription(/That has no tag id in it/)
+  await expect(lookup).toHaveAccessibleDescription(/That has no tag or photo id in it/)
   await expect(lookup).toHaveAttribute('aria-invalid', 'true')
   await expectNoAxeViolations(page)
 

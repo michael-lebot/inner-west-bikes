@@ -1,4 +1,4 @@
-import { listRecentRemovals, listRecentTags, uploadsSwitch } from '@iwb/server'
+import { listRecentRemovals, listRecentTags, tagOfPhoto, uploadsSwitch } from '@iwb/server'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { SECONDARY } from '@/components/buttons'
@@ -10,14 +10,15 @@ export const metadata: Metadata = { title: 'Tags' }
 const ID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
 
 /**
- * Recent removals, to undo a malicious one, and recent tags; a tag id or a pasted /tag/ link opens that tag. The uploads
- * switch is at the top.
+ * Recent removals, to undo a malicious one, and recent tags. A tag's id or pasted /tag/ link opens that tag, and a
+ * photo's id or /photo/ link opens the photo's tag; only an id is read from what is pasted. The uploads switch is at
+ * the top.
  */
 export default async function TagsPage({ searchParams }: PageProps<'/tags'>) {
   const { q } = await searchParams
   const lookup = typeof q === 'string' ? q.trim() : ''
-  const id = lookup.match(ID)?.[0]
-  if (id) redirect(`/tags/${id.toLowerCase()}`)
+  const id = lookup.match(ID)?.[0].toLowerCase()
+  if (id) redirect(`/tags/${(await tagOfPhoto(id)) ?? id}`)
   const [removals, tags, uploads] = await Promise.all([listRecentRemovals(), listRecentTags(), uploadsSwitch()])
 
   return (
@@ -26,7 +27,7 @@ export default async function TagsPage({ searchParams }: PageProps<'/tags'>) {
       <UploadsSwitch {...uploads} page="/tags" />
       <form action="/tags" role="search" className="mt-4 flex flex-col gap-2">
         <label htmlFor="lookup" className="font-bold">
-          Tag id or link
+          Tag or photo id, or link
         </label>
         <div className="flex max-w-xl gap-2">
           <input
@@ -44,7 +45,7 @@ export default async function TagsPage({ searchParams }: PageProps<'/tags'>) {
         </div>
         {lookup && (
           <p id="lookup-error" className="font-bold text-error">
-            That has no tag id in it. Paste the id, or the tag&apos;s link from the public site.
+            That has no tag or photo id in it. Paste the id, or the link from the public site.
           </p>
         )}
       </form>

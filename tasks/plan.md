@@ -1658,8 +1658,9 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   photos and their reasons among what is kept, and `/terms` says a reported photo is hidden until checked. The
   launch checklist points the device and assistive-technology checks at `docs/accessibility-checklist.md` rather
   than repeating them. The BotID `curl` check sends the project's Protection Bypass for Automation secret, as
-  Vercel Authentication guards previews by default and would answer first. The eSafety procedure finds a photo's
-  tag from its address in Neon's SQL editor, as the admin lookup takes only a tag's address or ID.
+  Vercel Authentication guards previews by default and would answer first. Review (Sol, PR 6): the eSafety
+  procedure had Michael paste a photo's id from a notice into SQL; the admin lookup now takes a photo's address or
+  id too (`tagOfPhoto`) and opens its tag, reading only a UUID from what is pasted, and the procedure uses it.
 - **Accept:** every environment variable read in code appears in exactly one `.env.example` and the runbook; no
   step in the runbook is needed for local dev or CI; the text pages no longer show the "still being built" notice.
 - **Files:** `docs/{launch,accessibility-checklist,esafety}.md`, `apps/*/.env.example`, `README.md`,

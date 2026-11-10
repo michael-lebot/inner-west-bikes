@@ -21,6 +21,7 @@ export {
   pauseUploads,
   restorePhoto,
   resumeUploads,
+  tagOfPhoto,
   uploadsPaused,
   uploadsSwitch,
 } from './photos'

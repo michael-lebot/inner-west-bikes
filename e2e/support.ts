@@ -109,7 +109,7 @@ export const tagEvents = (id: string) =>
 export async function undoInAdmin(page: Page, id: string) {
   const admin = await page.context().newPage()
   await admin.goto('http://localhost:3001/tags')
-  const lookup = admin.getByRole('textbox', { name: 'Tag id or link' })
+  const lookup = admin.getByRole('textbox', { name: 'Tag or photo id, or link' })
   await lookup.fill(`http://localhost:3000/tag/${id}`)
   await lookup.press('Enter')
   await admin.getByRole('button', { name: 'Undo removal' }).click()

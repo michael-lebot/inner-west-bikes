@@ -10,10 +10,10 @@ which is forwarded to Michael's phone. An eSafety removal notice must be met wit
 **How to remove something urgently,** in the admin app (`SPEC.md` §4.6):
 
 - **A reported photo:** Reported photos, then Delete. It and its files go for good.
-- **A tag, or a photo nobody has reported:** Tags, look the tag up by its address (`/tag/<id>`) or its ID, then Take
-  down. The tag leaves the map for good and its photo is deleted with it.
-- **Given only a photo's address** (`/photo/<id>`): find its tag in Neon's SQL editor with
-  `SELECT tag_id FROM photos WHERE id = '<id>'`, then take the tag down as above.
+- **A tag, or a photo nobody has reported:** on Tags, paste the address the notice gives, the tag's (`/tag/<id>`) or
+  the photo's (`/photo/<id>`), or just its id, into the lookup, which opens the tag; then Take down. The tag leaves the
+  map for good and its photo is deleted with it. The lookup reads only an id from what is pasted, so the notice's
+  text can't do anything else.
 - **Many photos at once:** Pause uploads, on either screen, then deal with each one. Tags without photos can still be
   added.
 
