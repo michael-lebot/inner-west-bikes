@@ -23,8 +23,11 @@ Dashboard, **Add New… → Project**, import the GitHub repository twice:
 - `admin`: **Root Directory** `apps/admin`, and the default build command.
 
 The first deployment of each fails, as there is no database or Blob token yet; step 6 deploys them again. Then in
-each project, **Settings → Build and Deployment**: **Node.js Version** 24.x, and leave **Include files outside the
-root directory in the Build Step** on, as the apps build `packages/`. Each `vercel.json` puts its functions in Sydney
+each project, **Settings → Build and Deployment**: **Node.js Version** 24.x, and under **Root Directory** leave
+**Include files outside the root directory in the Build Step** on, as the apps build `packages/`. And in each,
+**Settings → Environment Variables**, for every environment, add `ENABLE_EXPERIMENTAL_COREPACK` = `1`: Vercel then
+installs with pnpm 9.15.9, the `packageManager` in `package.json` that CI and the lockfile use, where a new project
+would otherwise get pnpm 10. Each `vercel.json` puts its functions in Sydney
 (`syd1`), and the web project's adds the hourly job.
 
 The web build migrates the database before it builds, over the unpooled connection, as Prisma's migrations need.
