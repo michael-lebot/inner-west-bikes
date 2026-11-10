@@ -1,7 +1,6 @@
 import { listLiveTags, uploadsPaused } from '@iwb/server'
 import { bikeCount, TAG_LIFETIME_HOURS } from '@iwb/shared'
 import type { Metadata } from 'next'
-import { Footer } from '@/components/Footer'
 import { ListTagButton } from '@/components/ListTagButton'
 import { TagList } from '@/components/TagList'
 import { ViewToggle } from '@/components/ViewToggle'
@@ -17,24 +16,21 @@ export default async function ListPage() {
   const now = new Date()
 
   return (
-    <>
-      <main className="mx-auto flex w-full max-w-[70ch] flex-1 flex-col gap-3 p-4">
-        <div>
-          <h1 className="text-lg font-bold">
-            {tags.length ? bikeCount(tags.length) : 'No bikes in the graveyard right now.'}
-          </h1>
-          <p className="text-sm text-muted">Tags disappear {TAG_LIFETIME_HOURS} hours after the last sighting.</p>
+    <main className="mx-auto flex w-full max-w-[70ch] flex-1 flex-col gap-3 p-4">
+      <div>
+        <h1 className="text-lg font-bold">
+          {tags.length ? bikeCount(tags.length) : 'No bikes in the graveyard right now.'}
+        </h1>
+        <p className="text-sm text-muted">Tags disappear {TAG_LIFETIME_HOURS} hours after the last sighting.</p>
+      </div>
+      {/* One row where both fit, as on the map screen; tagging takes the whole row. */}
+      <div className="flex flex-wrap gap-2">
+        <ListTagButton tags={tags} now={now} uploadsPaused={paused} />
+        <div className="grow basis-36">
+          <ViewToggle current="/list" />
         </div>
-        {/* One row where both fit, as on the map screen; tagging takes the whole row. */}
-        <div className="flex flex-wrap gap-2">
-          <ListTagButton tags={tags} now={now} uploadsPaused={paused} />
-          <div className="grow basis-36">
-            <ViewToggle current="/list" />
-          </div>
-        </div>
-        <TagList tags={tags} now={now} />
-      </main>
-      <Footer />
-    </>
+      </div>
+      <TagList tags={tags} now={now} />
+    </main>
   )
 }

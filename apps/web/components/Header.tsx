@@ -14,12 +14,6 @@ export function Header() {
           The Inner West <span className="whitespace-nowrap">E-bike</span> Graveyard
         </span>
       </Link>
-      <Link
-        href="/why"
-        className="flex min-h-11 w-24 items-center text-right text-sm leading-tight underline underline-offset-2 md:w-auto"
-      >
-        Why this page exists
-      </Link>
     </header>
   )
 }

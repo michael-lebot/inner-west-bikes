@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import { connection } from 'next/server'
 import { Announcer } from '@/components/Announcer'
+import { Footer } from '@/components/Footer'
 import { Header } from '@/components/Header'
 import { RESTORE_CHOICE } from '@/lib/motion'
 import './globals.css'
@@ -18,8 +19,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const nonce = (await headers()).get('x-nonce') ?? undefined
 
   return (
-    // The script below puts the visitor's Reduce motion choice on <html> before React hydrates it.
-    <html lang="en-AU" suppressHydrationWarning>
+    // The script below puts the visitor's Reduce motion choice on <html> before React hydrates it. The scroll padding
+    // keeps whatever has the focus clear of the pinned footer, which is never taller than 20dvh (Footer.tsx).
+    <html lang="en-AU" suppressHydrationWarning className="scroll-pb-[20dvh]">
       <head>
         <link
           rel="preload"
@@ -33,6 +35,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="flex min-h-dvh flex-col bg-white font-sans text-ink">
         <Header />
         {children}
+        <Footer />
         <Announcer />
       </body>
     </html>
