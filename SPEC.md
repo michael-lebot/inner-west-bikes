@@ -689,6 +689,8 @@ are WCAG success criteria. Where our own rule is stricter than the criterion, th
 - **Motion:**
   - Transitions are 200 ms or less, and nothing loops by default.
   - The pin bob plays only under `prefers-reduced-motion: no-preference` and stops after two cycles.
+  - The map's loading bike and its "Map loading" dots are the one exception. They show the map is still coming, so
+    they repeat until it is ready or fails (at most 15 s, §11.2), and stand still under `prefers-reduced-motion: reduce`.
   - Nothing flashes (2.3.1).
 - **Touch targets:** at least 44 × 44 CSS px, well above the 24 px minimum in 2.5.8. Interface controls sit at least
   8 px apart. Pins can't promise that spacing, because they sit where the bikes are; overlapping pins open a chooser

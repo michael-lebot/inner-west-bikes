@@ -27,6 +27,28 @@
       transform: translateY(-4px);
     }
   }
+
+  /* The map's loading bike (MapLoading.tsx): a turn on its rear hub, 30° a step, front wheel up first. It and the dots
+     repeat until the map is ready, the one exception to §10.5's no looping. */
+  --animate-wheelie: wheelie 1.8s steps(12) infinite;
+
+  @keyframes wheelie {
+    to {
+      transform: rotate(-360deg);
+    }
+  }
+
+  /* Its "Map loading" dots, uncovered one at a time: none, one, two, three, then again. */
+  --animate-ellipsis: ellipsis 1.6s steps(4, jump-none) infinite;
+
+  @keyframes ellipsis {
+    from {
+      clip-path: inset(0 100% 0 0);
+    }
+    to {
+      clip-path: inset(0);
+    }
+  }
 }
 
 /* The map screen's side-panel layout: 768 px and wider, and phones held sideways (§12, §13). */
