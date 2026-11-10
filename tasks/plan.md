@@ -128,6 +128,12 @@ What does **not** go where:
    with it). `botid` only in `lib/bot.ts`,
    `instrumentation-client.ts` and `next.config.ts`.
 6. Apps never import each other. Packages never import apps.
+7. Inside `packages/server`, the domain files depend one way: `reports.ts` on `photos.ts`, and `photos.ts` on
+   `tags.ts`. A report hides its photo and may pause uploads through `photos.ts`; restoring or deleting a photo
+   closes its open reports with SQL on `photo_reports` in the same statement (`withReportsClosed`), so `photos.ts`
+   imports nothing from `reports.ts`. Take down, the one change that acts on a tag and its photo together, lives in
+   `moderation.ts`, which calls `markTakenDown` in `tags.ts` and `deleteTagPhoto` in `photos.ts`, so `tags.ts`
+   imports nothing from either. No server module imports another with `import()`.
 
 Enforced by ESLint `no-restricted-imports` overrides in `eslint.config.mjs` (task 1.1), and for rule 3 by
 `no-restricted-syntax`, which also refuses an `import('@iwb/server')` type in `components/` and `map/`; shapes those
@@ -196,15 +202,24 @@ How the spec's rules land:
   simultaneous requests, so they can't pass a limit together.
 - **Two simultaneous Removed** both reach the `UPDATE`; the second waits for the first's row lock, re-checks
   `status = 'active'`, matches nothing, throws `tag_gone` and rolls back its event: one removal.
+- **Moderation locks rows in one order: the `site_state` row, then the photo's, then the tag's.** A report locks
+  `site_state` first (`SELECT … FOR UPDATE`), so reports take turns and each counts every report committed before
+  it: a flood at once can't pass the day's first 10 emails or the hour's 16th report together (§4.6). Its insert then
+  locks the photo's row until it commits. Restore, Delete, Take down's photo deletion and expiry lock the photo rows
+  first and change them in a later statement, so the change sees every report made before it and closes it; expiry
+  then locks the photos' tags, so a Still there in progress is waited for. Attach locks only its tag.
 - **Responses.** Every tag write returns `{ tag: PublicTag | null }` with status 200, first time or repeat.
   `null` means "not live". Errors are always `{ error: { code, message } }`.
 - **Side effects after commit.** Emails and Blob deletions happen after the transaction commits, using the
-  "claim, act, release on failure" pattern (`UPDATE … SET notified_at = now() WHERE notified_at IS NULL RETURNING`,
-  send, reset to `NULL` if the send throws). Blob writes for a photo happen before its row insert, with a compensating
-  delete if the insert fails (§4.3).
+  "claim, act, release on failure" pattern. For an email: claim the reports (`claimed_at = now()`, in the
+  transaction or in one `UPDATE … RETURNING`), send under an idempotency key, set `notified_at` once Resend accepts,
+  and reset `claimed_at` to `NULL` if the send throws. The digest also takes claims 10 minutes old with no
+  `notified_at`, which only a sender that stopped mid-send leaves. Blob writes for a photo happen before its row
+  insert, with a compensating delete if the insert fails (§4.3).
 
-Admin writes use the same domain functions through `apps/admin/lib/action.ts`: same-origin check (`Origin` header
-must equal the request host), run, then `303` redirect back with a `?notice=` code. Admin pages use plain HTML
+Admin writes use the same domain functions through `apps/admin/lib/action.ts`: same-origin check (the `Origin`
+header must be exactly `https://` and the request's `Host`, or `http://` and it only on `localhost`, so it doesn't
+depend on the scheme the app sees behind Vercel's proxy), run, then `303` redirect back with a `?notice=` code. Admin pages use plain HTML
 `<form method="post">`, so they need no client JavaScript.
 
 ### 1.5 Where each rule lives (one place each)
@@ -274,7 +289,8 @@ a flick threshold, stay beside the behaviour they control.
 - Each is Zod-parsed once. Off Vercel every variable has a safe local default (Docker URL, fixed dev secrets, Blob and
   email switched to local), so a fresh clone runs with no app env files. On Vercel (`VERCEL=1`) a missing secret
   throws the first time the code that needs it runs (so the admin app, which never hashes or emails, doesn't need
-  `HASH_SECRET` or `RESEND_API_KEY`).
+  `HASH_SECRET` or `RESEND_API_KEY`). Email is the exception: without `RESEND_API_KEY` alerts go to the console there
+  too (task 6.2).
 - `packages/server/.env` (from `.env.example`) exists only for the Prisma CLI. Each deployable has an `.env.example`
   listing its production variables; a PR that adds a variable updates it.
 
@@ -319,7 +335,7 @@ a flick threshold, stay beside the behaviour they control.
 | Postgres | `docker compose up` → `postgres:18-alpine` on `localhost:54318` (volume at `/var/lib/postgresql`, the PG 18 layout). CI runs the same `pnpm db:up` | Neon via Vercel Marketplace, `DATABASE_URL` / `DATABASE_URL_UNPOOLED` |
 | Map tiles | `pnpm tiles` runs `apps/web/scripts/fetch-tiles.sh`: `pmtiles extract` of a **pinned** Protomaps daily build into `apps/web/public/tiles/inner-west.pmtiles` (git-ignored). `next start` serves it with range requests. CI caches the file keyed on the script's hash | Uploaded to the public Blob store under a versioned name; `NEXT_PUBLIC_TILES_URL` points at it |
 | Photos (Blob) | `blob.ts`: no `BLOB_READ_WRITE_TOKEN` → files under `<repo>/.data/blob/` (git-ignored) | Private Vercel Blob store |
-| Email (Resend) | `email.ts`: no `RESEND_API_KEY` → `console.info('[email]', subject)` | Resend API over `fetch` |
+| Email (Resend) | `email.ts`: no `RESEND_API_KEY` → `console.info` of the subject and text | Resend API over `fetch` |
 | BotID | `bot.ts`: not on Vercel → every request is human | `checkBotId()` |
 | Cron | `curl -H "Authorization: Bearer dev-cron-secret" localhost:3000/api/cron/hourly` | Vercel Cron hourly with `CRON_SECRET` |
 
@@ -424,6 +440,7 @@ One line each; the spec section is in brackets.
 26. CI uses the real Inner West extract (about 13 MB) from a pinned Protomaps build, cached by GitHub Actions, rather than a fixture, so the tile-count and byte gates stay honest (§11.1).
 27. Address points come from `NSW_Geocoded_Addressing_Theme_multiCRS` as §4.1 says; the research download used the older service and is only a cross-check (§4.1).
 28. Speed Insights is not added in code; Michael checks plan inclusion and enables it (§11.4).
+29. A photo can be reported while it is not deleted, even when its tag is no longer live (removed or expired), as the API allows though the public pages no longer show it. The report hides it, so a later Undo removal can't put a harmful photo back on the map; the spec doesn't decide reports that begin after the tag stopped being live, so Michael confirms this (§4.3, Left for Michael).
 
 ---
 
@@ -1426,7 +1443,8 @@ hourly job deletes photos whose tag has expired and sweeps orphan files; Take do
   As built: one `deletePhotos(which)` in `photos.ts` marks the rows and then deletes the files, for both
   `deleteExpiredPhotos` and `deleteTagPhoto`. `takeDown` calls it after its update every time, so a repeat finishes a
   take down whose file deletion failed; until then the sweep would (assumption 16). `takeDown` imports `photos.ts`
-  inside the function, so the static dependency runs one way, from photos to tags, with no cycle. Attach's insert
+  inside the function, so the static dependency runs one way, from photos to tags (PR 6 moved Take down to
+  `moderation.ts` instead: §1.3 rule 7). Attach's insert
   locks its tag's row (`FOR UPDATE`) until the photo is committed, so a Take down waits and then deletes it; expiry
   deletion locks the expired tags that still have a photo before marking it, so a Still there in progress is waited
   for and a tag it brought back keeps its photo. A repeated Take down deletes the files of a photo already marked
@@ -1495,6 +1513,11 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   14). `restorePhoto` (`hidden` → `visible`, open reports resolved `restored`) and `deletePhoto` (mark `deleted`,
   delete files, open reports resolved `deleted`) in `photos.ts`. `deleteExpiredPhotos` now also closes open reports as
   `expired`. `POST /api/photos/[id]/report` via `write()` with `ReportBody` (`requestId`, `reason`).
+  As built: the hiding statement is `hidePhoto` in `photos.ts`, which owns the photo's status, and `reportPhoto` calls
+  it inside its transaction (rule 7 of §1.3). A report answers `{ hidden }`, whether the public can no longer see the
+  photo, first time or repeat; a restored photo answers `false`. Restore, delete, expiry and Take down close the open
+  reports in the statement that changes the photo (`withReportsClosed`, as `withEvent` does for tags), and a photo's
+  restore reopens nothing: its later reports stay open for Michael.
 - **Accept:** §5.5 photo and tag together: report → remove → undo leaves the photo hidden; a restored photo isn't
   hidden by a later report (but the report is recorded); §5.5 repeats for reports (one row, one count); the photo URL
   is 404 on the very next request after a report.
@@ -1510,9 +1533,25 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   (`notified_at = now() WHERE notified_at IS NULL RETURNING`), send, and release on failure. Step 5 of `runHourly`:
   claim every unsent report, send one digest, release on failure. Emails link to the admin queue and contain no
   visitor data.
+  As built: a report is claimed for its email inside `reportPhoto`'s transaction, the moment it is counted among
+  the day's first 10, so the digest can never take it in between; the send follows the commit, and a failed one is
+  logged, released and left to the digest without failing the report. The digest claims in one statement and
+  throws when its send fails, so the hourly summary names the step. Every alert ends with a link to the queue, which
+  needs one more variable, `ADMIN_URL` (default `http://localhost:3001`); `email.ts` adds it. Review (Sol, PR 6):
+  setting `notified_at` at the claim meant a server stopping mid-send lost the email, and a reply lost after Resend
+  accepted made the digest send it again. A second column, `claimed_at` (migration `report_email_claims`), now holds
+  the claim, and `notified_at` is set only once Resend accepts; a failed send releases the claim, and the digest
+  also takes claims 10 minutes old. Every email carries an `Idempotency-Key`, `report-<id>` for an alert and a hash
+  of its reports and words for a digest, and `email.ts` tries once more under it when no reply comes, giving Resend
+  5 s each time.
+  The email variables are optional when `env.ts` loads and checked by `email.ts` when it sends, because on Vercel
+  `next build` loads `env.ts` with only the variables `turbo.json` passes through, `VERCEL` among them, so the build
+  knows it is on Vercel; `env.test.ts` loads it with exactly that list. Ship (PR 6): without `RESEND_API_KEY` the
+  alerts go to the console on Vercel too, the function log there, as the site launches before Resend is set up; with a
+  key, `ALERT_EMAIL_TO` and `ADMIN_URL` are still required.
 - **Accept:** §5.5 repeats: a repeated report sends no second email; §5.5 outside failures for Resend: a throwing
-  send leaves the report saved with `notified_at` null and the next hourly run sends it in the digest; two
-  overlapping hourly runs send one digest.
+  send leaves the report saved with `notified_at` null and the next hourly run sends it in the digest; a claim whose
+  send never ended is sent by the hourly run once 10 minutes old; two overlapping hourly runs send one digest.
 - **Files:** `packages/server/src/{email,reports,hourly,env}.ts`, `src/{reports,hourly}.test.ts`,
   `apps/web/.env.example`.
 - **Verify:** `pnpm --filter @iwb/server test`.
@@ -1524,6 +1563,13 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   uploads_paused_at IS NULL RETURNING` → after commit, email Michael once. `pauseUploads(reason)` and
   `resumeUploads()` in `photos.ts` (the form already reacts to `uploadsPaused`, task 5.5). Nothing resumes
   automatically.
+  As built: the pause's `UPDATE … WHERE uploads_paused_at IS NULL` is the claim, so of two reports at once one
+  alerts; the report that paused uploads is claimed for the alert (`claimed_at`), which is sent after the commit
+  in its place, and a failed alert releases it to the digest, which says while uploads are paused that they are.
+  `uploads_paused_reason` holds `circuit_breaker` or `by_hand` (`PauseReason` in `@iwb/shared`), and
+  `uploadsSwitch()` reads the time and the reason for the admin app. With a pause now possible while the form is
+  open, the photo's failure offers Try again only for what could succeed later (`canRetry` in `send.ts`: a failed
+  send or a limit); a refusal such as `uploads_paused` gets Skip alone.
 - **Accept:** the 16th report in an hour pauses uploads and sends one email; a 17th sends no second email; attach is
   refused while paused; tagging without a photo still works.
 - **Files:** `packages/server/src/{reports,photos,index}.ts`, `src/reports.test.ts`.
@@ -1534,6 +1580,15 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
 - **Does:** a low-key "Report this photo" link on the card and tag page (only when a photo shows) opens
   `ReportDialog` (modal `Dialog`): the four reasons as radios, **Cancel** and **Report**. Success: the photo is
   replaced by text ("Photo hidden while we check it"), "Photo reported and hidden" announced.
+  As built: the link is a button, `ReportLink`, after the card's and the page's actions as in the mockup, so the
+  match dialog's tags have none; it loads `ReportDialog` with `lazy()` when used (2,118 B). A `PhotoState` around
+  the card's and the page's photo and link holds whether the photo stopped showing, so a photo that fails to load
+  and one this visitor reported give way to text in a box the thumbnail's size, and the link goes with them; it
+  lasts as long as the card or the page (review, Sol, PR 6: it was a module-level map that outlived the page, so a
+  photo restored since stayed hidden after a client-side Back). A photo restored before stays up when reported, and the reporter is told so. The reasons are the form's
+  `Chips`, now a file of their own. `e2e/support.ts` gives a seeded tag a photo (`addPhoto`) with files in the
+  end-to-end servers' folder, which it now defines for `playwright.config.ts` too. Measured: 148,094 B of
+  JavaScript before the map on `/` (PR 5: 147,566 B), 142,990 B on `/list` and 141,986 B on a tag's page.
 - **Accept:** focus returns to the link's place (the card heading if the link is gone); axe clean.
 - **Files:** `components/{ReportDialog,TagDetails,TagCard}.tsx`, `app/tag/[id]/page.tsx`.
 - **Verify:** `pnpm e2e e2e/moderation.spec.ts`.
@@ -1544,6 +1599,15 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   total report count, and the tag with its recent events; **Restore** and **Delete** (confirm step) form posts. The
   uploads switch (status line plus **Pause uploads** / **Resume uploads**, with the pause reason and time) at the top
   of both `/reports` and `/tags`.
+  As built: `listReportedPhotos` in `reports.ts` gives the queue, and the page reads each photo's tag and events
+  with `getTag` and `listTagEvents`. Restore is offered for a photo still shown too, one restored before and
+  reported again, as Restore or Delete is what takes a photo off the queue. Delete asks first through `Confirm`,
+  which Take down now shares, and the events table (`EventTable`) and the notices (`Notice`) moved out of the tag
+  page for the same reason; events have a shared type, `AdminTagEvent`. No admin form posts a body: a hand pause's
+  reason is always `by_hand`, and the switch's form names its screen in `?back=`, which `switchPage` in
+  `lib/action.ts` reads as `/tags` or else `/reports`, so there is no body to refuse and no open redirect. The
+  admin server's readiness check in `playwright.config.ts` waits for its port, as every admin page now reads the
+  database, which global setup creates after the servers start.
 - **Accept:** restore makes the photo load publicly again; delete removes the files and resolves its reports; the
   switch reflects `site_state` on both screens; admin passes axe.
 - **Files:** `apps/admin/app/reports/page.tsx`, `app/api/photos/[id]/{restore,delete}/route.ts`,
@@ -1555,6 +1619,16 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
 - **Does:** `e2e/moderation.spec.ts`: report on phone and desktop → photo replaced by text and its URL 404 →
   admin restores → visible again → report again → still visible; admin pause → form says photos are off → resume.
   axe on the report dialog, the hidden-photo state and every admin screen.
+  As built: a seeded tag gets its photo from `addPhoto`, as `photos.spec.ts` covers adding one in the form; the
+  admin screens' cases are in `admin.spec.ts` (task 6.5), and `openFormOnList` moved to `e2e/support.ts` for the
+  pause test. §10.6's axe states, each with a test that runs axe on it: the map (`pages.spec.ts`, the map screen
+  shell; `browse.spec.ts`, fitting the viewport), the list, its empty state and the tag page (`pages.spec.ts`), an
+  open card (`browse.spec.ts`, by keyboard; `photos.spec.ts`, with its photo and with it hidden), the chooser and
+  the map-failed state (`browse.spec.ts`), each dialog: "Is it one of these?" and the form with its errors
+  (`tag-map.spec.ts`), the street picker (`tag-no-map.spec.ts`), the form with a photo, its failure and paused uploads
+  (`photos.spec.ts`), and the report form with its error and the hidden photo on the card and the tag page
+  (`moderation.spec.ts`); and every admin screen (`admin.spec.ts`): Tags, a tag, Take down's question, the lookup's
+  error, Reported photos empty and with a photo, Delete's question, the paused switch, and each at 320 px.
 - **Accept:** green; every axe state listed in §10.6 is now covered somewhere in the suite.
 - **Files:** `e2e/{moderation,admin}.spec.ts`.
 - **Verify:** `pnpm verify`.
@@ -1581,6 +1655,18 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   procedure, with an empty "Classification" section for Michael. Review every `.env.example` against `env.ts`
   files; update the README's Status section; re-read `/accessibility`, `/privacy` and `/terms` against what was
   built, then remove the "still being built" notice from `app/(text)/layout.tsx`.
+  As built: each variable is in the `.env.example` of every deployable that reads it, so `DATABASE_URL` and
+  `BLOB_READ_WRITE_TOKEN` are in both apps' (the projects share the database and the photo store) and `DATABASE_URL`
+  also in `packages/server`'s, for the Prisma CLI: Accept's "exactly one" is read as one per project.
+  `LOCAL_BLOB_DIR`, `TEST_DATABASE_URL` and `ADMIN_PREVIEW_URL` are local and test settings, so none has one, and
+  `VERCEL`, `NEXT_PUBLIC_VERCEL_ENV`, `NODE_ENV` and `CI` are set by the platform; `env.test.ts` checks the
+  examples against every variable the code reads, with that list as its exceptions. `/privacy` now lists reported
+  photos and their reasons among what is kept, and `/terms` says a reported photo is hidden until checked. The
+  launch checklist points the device and assistive-technology checks at `docs/accessibility-checklist.md` rather
+  than repeating them. The BotID `curl` check sends the project's Protection Bypass for Automation secret, as
+  Vercel Authentication guards previews by default and would answer first. Review (Sol, PR 6): the eSafety
+  procedure had Michael paste a photo's id from a notice into SQL; the admin lookup now takes a photo's address or
+  id too (`tagOfPhoto`) and opens its tag, reading only a UUID from what is pasted, and the procedure uses it.
 - **Accept:** every environment variable read in code appears in exactly one `.env.example` and the runbook; no
   step in the runbook is needed for local dev or CI; the text pages no longer show the "still being built" notice.
 - **Files:** `docs/{launch,accessibility-checklist,esafety}.md`, `apps/*/.env.example`, `README.md`,
@@ -1689,5 +1775,6 @@ each one; `docs/launch.md` repeats the list as a checklist.
   keyboard-only passes in Chrome, Safari and Firefox; touch without dragging; 200% zoom and 320 px.
 - **Content and legal (M4):** the `/why` copy (§14.1); privacy and terms review; the eSafety classification in
   `docs/esafety.md`; the address-data licence confirmation (§14.4); the contact address.
-- **Decisions:** operator report links (§14.2, not built); the domain (§14.3).
+- **Decisions:** operator report links (§14.2, not built); the domain (§14.3); whether a photo whose tag is no
+  longer live can still be reported, as built (assumption 29).
 - **Launch sign-off (M4).**

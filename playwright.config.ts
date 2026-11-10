@@ -1,9 +1,14 @@
 import { defineConfig, devices } from '@playwright/test'
-import { E2E_DATABASE_URL } from './e2e/support'
+import { E2E_BLOB_DIR, E2E_DATABASE_URL } from './e2e/support'
 
 // Both apps share the iwb_e2e database and a folder for the photos the tests add, each apart from the dev server's,
-// and never reach a Blob store, whatever token the shell has.
-const SERVER_ENV = { DATABASE_URL: E2E_DATABASE_URL, BLOB_READ_WRITE_TOKEN: '', LOCAL_BLOB_DIR: '../../.data/blob-e2e' }
+// and never reach a Blob store or send an email, whatever token or key the shell has.
+const SERVER_ENV = {
+  DATABASE_URL: E2E_DATABASE_URL,
+  BLOB_READ_WRITE_TOKEN: '',
+  LOCAL_BLOB_DIR: E2E_BLOB_DIR,
+  RESEND_API_KEY: '',
+}
 
 // End-to-end tests run against production builds (`pnpm build` first) of both apps.
 export default defineConfig({
@@ -27,8 +32,8 @@ export default defineConfig({
     { command: 'pnpm --filter @iwb/web start', url: 'http://localhost:3000', env: SERVER_ENV },
     {
       command: 'pnpm --filter @iwb/admin start',
-      // Playwright starts the servers before global setup creates the database: check a page that doesn't read it.
-      url: 'http://localhost:3001/reports',
+      // Playwright starts the servers before global setup creates the database, and every admin page reads it.
+      port: 3001,
       env: SERVER_ENV,
     },
   ],

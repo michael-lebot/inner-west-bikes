@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import { chip, expectNoAxeViolations, newTagId, resetDb, sql, startTagging } from './support'
+import { chip, expectNoAxeViolations, newTagId, openFormOnList, resetDb, sql } from './support'
 
 test.beforeEach(() => resetDb())
 test.use({ reducedMotion: 'reduce' })
@@ -23,22 +23,11 @@ async function cameraPhoto(page: Page) {
   return { name: 'bike.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(url.split(',')[1]!, 'base64') }
 }
 
-/** On /list, the form for 12 Llewellyn St, Marrickville, 110 m from the live tag on that street. */
-async function openForm(page: Page) {
-  await startTagging(page, '/list')
-  await page.getByRole('button', { name: 'Choose by street' }).click()
-  await dialog(page).getByRole('searchbox', { name: 'Street' }).fill('llew')
-  await dialog(page).getByRole('button', { name: 'Llewellyn St, Marrickville', exact: true }).click()
-  await dialog(page).getByRole('textbox', { name: 'House number' }).fill('12')
-  await dialog(page).getByRole('button', { name: 'Find' }).click()
-  await dialog(page).getByRole('button', { name: 'Use this spot' }).click()
-}
-
 const photoInput = (page: Page) => dialog(page).getByLabel('Add a photo (optional)')
 
 /** The form filled in for a Lime e-bike, damaged, with a photo chosen. */
 async function fillForm(page: Page) {
-  await openForm(page)
+  await openFormOnList(page)
   await chip(page, 'Lime').click()
   await chip(page, 'Damaged').click()
   await photoInput(page).setInputFiles(await cameraPhoto(page))
@@ -58,7 +47,7 @@ async function tagWithPhoto(page: Page) {
 const photoCount = async () => (await sql('SELECT count(*)::int AS count FROM photos'))[0].count
 
 test('adds a photo with a new tag, and its page shows the thumbnail, which opens the full size', async ({ page }) => {
-  await openForm(page)
+  await openFormOnList(page)
   await expect(dialog(page).getByText('Photos are public. Leave out people, faces and number plates.')).toBeVisible()
   // A file the browser can't read as a picture is turned away there, and said.
   await photoInput(page).setInputFiles({ name: 'notes.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('notes') })
@@ -111,7 +100,7 @@ test('at the largest text on an SE-sized phone, the chosen photo and Remove phot
 }) => {
   test.skip(!isMobile, 'the phone projects')
   await page.setViewportSize({ width: 375, height: 667 })
-  await openForm(page)
+  await openFormOnList(page)
   await page.addStyleTag({ content: ':root { font-size: 200% }' })
   await photoInput(page).setInputFiles(await cameraPhoto(page))
   await expect(dialog(page).getByRole('img', { name: 'Your photo' })).toBeVisible()
@@ -154,6 +143,20 @@ test('Skip leaves the tag added without its photo', async ({ page }) => {
   expect(await photoCount()).toBe(0)
 })
 
+test('a refusal that would come again, as from uploads paused after the form opened, offers Skip alone', async ({
+  page,
+}) => {
+  await fillForm(page)
+  await sql('UPDATE site_state SET uploads_paused_at = now()')
+  await dialog(page).getByRole('button', { name: 'Add to the map' }).click()
+  await expect(dialog(page).getByText(FAILED)).toBeFocused()
+  await expect(dialog(page).getByText('Photos are switched off for now. Your tag can still be added.')).toBeVisible()
+  await expect(dialog(page).getByRole('button', { name: 'Try again' })).toHaveCount(0)
+  await dialog(page).getByRole('button', { name: 'Skip' }).click()
+  await expect(dialog(page)).toBeHidden()
+  expect(await photoCount()).toBe(0)
+})
+
 test('a card shows its photo, and passes axe', async ({ page }) => {
   const { id } = await tagWithPhoto(page)
   await page.goto('/')
@@ -167,7 +170,7 @@ test('a card shows its photo, and passes axe', async ({ page }) => {
 
 test('while uploads are paused, the form says so in place of the photo input, and passes axe', async ({ page }) => {
   await sql('UPDATE site_state SET uploads_paused_at = now()')
-  await openForm(page)
+  await openFormOnList(page)
   await expect(dialog(page).getByText('Photos are switched off for now.')).toBeVisible()
   await expect(photoInput(page)).toHaveCount(0)
   await expectNoAxeViolations(page)

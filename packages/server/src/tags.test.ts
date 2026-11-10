@@ -3,6 +3,7 @@ import { where } from '@iwb/shared/geo'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db } from './client'
 import { Problem, ReportReason } from './generated/prisma/enums'
+import { takeDown } from './moderation'
 import {
   confirmStillThere,
   createTag,
@@ -13,7 +14,6 @@ import {
   listRecentTags,
   listTagEvents,
   markRemoved,
-  takeDown,
   undoRemoval,
 } from './tags'
 import type { Visitor } from './visitors'

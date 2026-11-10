@@ -13,6 +13,7 @@ export default function PrivacyPage() {
         <li>
           The tags you add: a spot, whose bike it is, what is wrong and, if you add one, a photo. There is no free text.
         </li>
+        <li>The photos you report, and the reason you choose.</li>
         <li>
           A random identifier in a cookie, so we can limit how often one visitor acts and undo abuse. We store only a
           keyed hash of it.
@@ -25,15 +26,18 @@ export default function PrivacyPage() {
       <h2>How long we keep it</h2>
       <ul>
         <li>
-          Visitor and IP hashes are cleared from tags and reports after 30 days. The anonymous record (place, operator,
-          problem and times) is kept.
+          Visitor and IP hashes are cleared from tags and reports after 30 days. The anonymous record is kept: a
+          tag&apos;s place, operator, problem and times, and a report&apos;s reason and times.
         </li>
         <li>Rate-limit counters are deleted 48 hours after they start.</li>
         <li>
           Each day&apos;s IP key is deleted after 48 hours. After that, that day&apos;s IP hashes can&apos;t be linked
           to an address.
         </li>
-        <li>Photos are deleted when their tag&apos;s 48 hours run out, or sooner if they are taken down.</li>
+        <li>
+          Photos are deleted when their tag&apos;s 48 hours run out, or sooner if they are taken down or deleted after a
+          report.
+        </li>
       </ul>
 
       <h2>Photos</h2>

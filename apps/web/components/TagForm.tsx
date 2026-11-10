@@ -1,9 +1,10 @@
 'use client'
 import { type Operator, OPERATORS, type Problem, PROBLEMS, type TagJson } from '@iwb/shared'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
-import { send } from '@/lib/send'
+import { canRetry, send, type SendError } from '@/lib/send'
 import { announce } from './Announcer'
-import { FOCUS_RING_WITHIN, PRIMARY, SECONDARY, SMALL } from './buttons'
+import { PRIMARY, SECONDARY, SMALL } from './buttons'
+import { Chips } from './Chips'
 import { Dialog } from './Dialog'
 import { ErrorText } from './ErrorText'
 import { PhotoInput } from './PhotoInput'
@@ -44,7 +45,7 @@ export function TagForm({
   const [checked, setChecked] = useState(false)
   const [failure, setFailure] = useState<string>()
   // Why the photo of a tag already added didn't upload.
-  const [photoFailure, setPhotoFailure] = useState<string>()
+  const [photoFailure, setPhotoFailure] = useState<SendError>()
   const [sending, setSending] = useState(false)
   const status = useRef<HTMLParagraphElement>(null)
   const missing = (['operator', 'problem'] as const).filter((field) => !draft[field])
@@ -69,7 +70,7 @@ export function TagForm({
       apply(draft.id, sent.data.tag)
       done(photoFailure ? 'Photo added' : 'Tag added')
     } else {
-      setPhotoFailure(sent.error.message)
+      setPhotoFailure(sent.error)
       announce(`${PHOTO_FAILED} ${sent.error.message}`)
     }
   }
@@ -112,14 +113,17 @@ export function TagForm({
         <p ref={status} tabIndex={-1} className="font-bold">
           {PHOTO_FAILED}
         </p>
-        <ErrorText>{photoFailure}</ErrorText>
+        <ErrorText>{photoFailure.message}</ErrorText>
         <div className="flex flex-wrap gap-2">
           <button type="button" className={`${SECONDARY} grow`} onClick={onClose}>
             Skip
           </button>
-          <button type="button" className={`${PRIMARY} grow`} onClick={attach}>
-            {sending ? 'Sending…' : 'Try again'}
-          </button>
+          {/* A refusal, such as a paused upload or a file that isn't a photo, would only be refused again. */}
+          {canRetry(photoFailure) && (
+            <button type="button" className={`${PRIMARY} grow`} onClick={attach}>
+              {sending ? 'Sending…' : 'Try again'}
+            </button>
+          )}
         </div>
       </Dialog>
     )
@@ -165,50 +169,5 @@ export function TagForm({
         </div>
       </form>
     </Dialog>
-  )
-}
-
-/** One question as native radios in a fieldset, drawn as 44 px chips with a tick and a tint when chosen (§10.4). */
-function Chips<K extends string>({
-  legend,
-  name,
-  choices,
-  value,
-  error,
-  onChange,
-}: {
-  legend: string
-  name: string
-  choices: readonly (readonly [K, string])[]
-  value?: K
-  error?: string
-  onChange: (value: K) => void
-}) {
-  return (
-    <fieldset aria-describedby={error ? `${name}-error` : undefined} className="flex flex-col gap-2">
-      <legend className="mb-2 text-sm font-bold">{legend}</legend>
-      {error && <ErrorText id={`${name}-error`}>{error}</ErrorText>}
-      <div className="flex flex-wrap gap-2">
-        {choices.map(([key, label]) => (
-          <label
-            key={key}
-            className={`flex min-h-11 cursor-pointer items-center gap-1.5 rounded-[10px] border border-edge px-3 has-checked:border-2 has-checked:border-brand has-checked:bg-tint has-checked:font-bold ${FOCUS_RING_WITHIN}`}
-          >
-            <input
-              type="radio"
-              name={name}
-              value={key}
-              checked={value === key}
-              onChange={() => onChange(key)}
-              className="peer sr-only"
-            />
-            <span aria-hidden="true" className="hidden text-brand peer-checked:inline">
-              ✓
-            </span>
-            {label}
-          </label>
-        ))}
-      </div>
-    </fieldset>
   )
 }

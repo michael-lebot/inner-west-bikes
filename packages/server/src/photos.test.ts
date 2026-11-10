@@ -4,7 +4,8 @@ import { deleteFiles, listFiles, putFile } from './blob'
 import { db } from './client'
 import { env } from './env'
 import { attachPhoto, deleteExpiredPhotos, type NewPhoto, openAnyPhoto, openPhoto, uploadsPaused } from './photos'
-import { getLiveTag, getTag, listLiveTags, markRemoved, takeDown, undoRemoval } from './tags'
+import { takeDown } from './moderation'
+import { getLiveTag, getTag, listLiveTags, markRemoved, undoRemoval } from './tags'
 import type { Visitor } from './visitors'
 
 // The real seam on the tests' own folder, watched, so a test can make it fail once.

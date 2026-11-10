@@ -1,6 +1,6 @@
 import { ERRORS, SEND_FAILED } from '@iwb/shared'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { send } from './send'
+import { canRetry, send } from './send'
 
 const fetch = vi.fn<typeof globalThis.fetch>()
 const BODY = { requestId: '0a9e0000-0000-4000-8000-000000000001' }
@@ -102,4 +102,10 @@ it('sends a form as it is, for the browser to mark as multipart, and the same fo
     { method: 'POST', body: form },
     { method: 'POST', body: form },
   ])
+})
+
+it('offers another try later only for what could still succeed: a failed send or a limit', () => {
+  for (const code of ['failed', 'rate_limited'] as const) expect(canRetry({ code, message: '' }), code).toBe(true)
+  for (const code of ['uploads_paused', 'bad_image', 'too_large', 'not_allowed', 'tag_gone'] as const)
+    expect(canRetry({ code, message: '' }), code).toBe(false)
 })

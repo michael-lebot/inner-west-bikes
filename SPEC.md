@@ -310,8 +310,11 @@ runs.
 - **Email alerts (Resend):**
   - One email per report for the first 10 each day. After that, reports go into an hourly digest, so a flood can't
     use up the free tier (3,000/month, 100/day).
-  - Each report records when its email went out. The hourly job sends a digest of every report not yet emailed, so a
-    failed send is retried within the hour (§5.4).
+  - Each report records when a sender claimed it for an email, and when Resend accepted that email. The hourly job
+    sends a digest of every report not yet emailed, so a failed send is retried within the hour (§5.4). A claim 10
+    minutes old with no email sent, as a server that stopped mid-send leaves, is taken again by the digest.
+  - Every email goes to Resend with an idempotency key, so a request tried again after its reply was lost doesn't
+    send it twice.
   - Until the domain is verified, send from `onboarding@resend.dev`, which can only email the account owner. That's
     fine, because Michael is the only recipient.
 - **Pausing photo uploads:**
@@ -349,7 +352,7 @@ photos          id uuid · tag_id (unique) · blob_path · thumb_path · width �
                 status enum(visible, hidden, deleted) · created_at · hidden_at · deleted_at
 photo_reports   id · photo_id · reason enum · request_id uuid unique · created_at
                 visitor_hash · ip_hash                                ← hashes cleared after 30 days
-                notified_at · resolved_at · resolution enum(restored, deleted, expired)
+                claimed_at · notified_at · resolved_at · resolution enum(restored, deleted, expired)
 rate_counters   key (action:subject:window) PK · count · window_start ← row deleted 48h after window_start
 daily_salts     day date PK · salt                                    ← row deleted after 48h
 site_state      one row: uploads_paused_at · uploads_paused_reason

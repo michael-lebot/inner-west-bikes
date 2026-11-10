@@ -1,7 +1,14 @@
 // Tags (§4.2): the one definition of "live", every read of the tags table, and every transition. Owns tags and
 // tag_events. A visitor's write is one transaction: the repeat check, the rate count and one conditional statement,
 // with Postgres's now() as the only clock (plan §1.4).
-import { type AdminTag, AppError, type NewTag, type PublicTag, TAG_LIFETIME_HOURS } from '@iwb/shared'
+import {
+  type AdminTag,
+  type AdminTagEvent,
+  AppError,
+  type NewTag,
+  type PublicTag,
+  TAG_LIFETIME_HOURS,
+} from '@iwb/shared'
 import { isStreetNear, where } from '@iwb/shared/geo'
 import { db } from './client'
 import { Prisma, type TagEventType, type TagStatus } from './generated/prisma/client'
@@ -59,16 +66,7 @@ export async function getTag(id: string) {
  * that UTC day, the day the IP's salt covers (§4.6). A hash cleared after 30 days counts nothing.
  */
 export function listTagEvents(tagId: string) {
-  return db.$queryRaw<
-    {
-      type: TagEventType
-      at: Date
-      visitorHash: string | null
-      ipHash: string | null
-      visitorActions: number
-      ipActions: number
-    }[]
-  >`
+  return db.$queryRaw<AdminTagEvent[]>`
     WITH events AS (SELECT *, date_trunc('day', at, 'UTC') AS day FROM tag_events WHERE tag_id = ${tagId}::uuid)
     SELECT type, at, visitor_hash AS "visitorHash", ip_hash AS "ipHash",
       (SELECT count(*) FROM tag_events same WHERE same.visitor_hash = events.visitor_hash
@@ -169,19 +167,13 @@ export async function undoRemoval(tagId: string) {
   return tag?.status === 'removed' ? 'expired' : 'not_removed'
 }
 
-/**
- * Take down (admin, §4.2): final, whatever the tag's state, and its photo is deleted at once. False when it was
- * already down. A repeat deletes the photo too, in case the first time failed after the tag went down.
- */
-export async function takeDown(tagId: string) {
+/** The tag's part of Take down (moderation.ts): final, whatever its state. False when it was already down. */
+export async function markTakenDown(tagId: string) {
   const taken = await db.$executeRaw(
     withEvent(
       'taken_down',
       Prisma.sql`UPDATE tags SET status = 'taken_down' WHERE id = ${tagId}::uuid AND status <> 'taken_down'`,
     ),
   )
-  // Imported here, so the modules depend one way: photos.ts on this one, for LIVE and getLiveTag.
-  const { deleteTagPhoto } = await import('./photos')
-  await deleteTagPhoto(tagId)
   return taken === 1
 }

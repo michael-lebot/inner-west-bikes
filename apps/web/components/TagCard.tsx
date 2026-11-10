@@ -3,8 +3,10 @@ import { bikeName, PROBLEMS, type PublicTag, type TagJson } from '@iwb/shared'
 import { useEffect, useRef, useState } from 'react'
 import { SMALL } from './buttons'
 import { PinIcon } from './PinIcon'
+import { ReportLink } from './ReportLink'
 import { TagActions } from './TagActions'
 import { TagDetails } from './TagDetails'
+import { PhotoState } from './TagPhoto'
 
 /** A vertical swipe at least this long on the handle shrinks or expands the card (§12). */
 const FLICK_PX = 30
@@ -81,8 +83,11 @@ export function TagCard({
       </div>
       {/* Shrunk, the rest is out of reach of pointer and keyboard; the panel never shrinks it. */}
       <div className={`flex flex-col gap-4 ${shrunk ? 'hidden wide:flex' : ''}`}>
-        <TagDetails tag={tag} now={now} />
-        <TagActions id={tag.id} onDone={onDone} />
+        <PhotoState>
+          <TagDetails tag={tag} now={now} />
+          <TagActions id={tag.id} onDone={onDone} />
+          {tag.photoId && <ReportLink photoId={tag.photoId} heading="card-heading" />}
+        </PhotoState>
       </div>
     </section>
   )

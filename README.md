@@ -5,18 +5,22 @@ A no-login, 90s-video-game-style map of Sydney's Inner West Council area. Anyone
 
 - Tags expire after 48 hours unless someone marks them **Still there**.
 - Anyone can mark a tag **Removed**, which hides it straight away.
-- Photos can be reported. A reported photo is hidden immediately and queued for review.
+- Photos can be reported. The first report hides a photo straight away and queues it for review. Once a photo has
+  been reviewed and restored, later reports are queued but no longer hide it.
 
 ## Status
 
-Being built in six pull requests: the plan is [`tasks/plan.md`](tasks/plan.md) and the checklist is
-[`tasks/todo.md`](tasks/todo.md). The product spec is in [`SPEC.md`](SPEC.md).
+Built in six pull requests: the plan is [`tasks/plan.md`](tasks/plan.md) and the checklist is
+[`tasks/todo.md`](tasks/todo.md). The product spec is in [`SPEC.md`](SPEC.md). What is left before launch is in
+[`docs/launch.md`](docs/launch.md): the deploy runbook, then the launch checklist, with the manual
+[`docs/accessibility-checklist.md`](docs/accessibility-checklist.md) and the eSafety procedure in
+[`docs/esafety.md`](docs/esafety.md).
 
 The chosen visual direction is [`docs/mockups/graveyard-v3.html`](docs/mockups/graveyard-v3.html),
 built with real NSW boundary and street data; open it in any browser. Earlier explorations are in
 [`docs/mockups/explorations/`](docs/mockups/explorations/).
 
-## Planned stack
+## Stack
 
 Next.js 16 · Neon Postgres (Prisma, via the Vercel Marketplace) · Vercel (Sydney region) · Vercel Blob ·
 MapLibre GL JS with self-hosted Protomaps tiles · Vercel BotID · Resend.
@@ -51,8 +55,13 @@ pnpm exec playwright install chromium webkit            # once, for the end-to-e
 | `pnpm lhci`      | Lighthouse CI on `/` and `/list`, after `pnpm e2e`                                |
 | `pnpm verify`    | All of the above from `lint` on, in that order                                    |
 
-The hourly job (retention) runs on Vercel Cron in production. Locally, run it with
-`curl -H "Authorization: Bearer dev-cron-secret" localhost:3000/api/cron/hourly`.
+The hourly job deletes expired photos and stray photo files, removes visitor hashes, counters and salts once their
+retention runs out, and emails Michael a digest of any reports not yet emailed. It runs on Vercel Cron in production.
+Locally, run it with `curl -H "Authorization: Bearer dev-cron-secret" localhost:3000/api/cron/hourly`.
+
+Michael's emails about reported photos go through Resend in production. Without `RESEND_API_KEY`, as in development
+or on Vercel before Resend is set up, the web app prints each one to its console instead (on Vercel, the function
+log).
 
 Photos go to a private Vercel Blob store in production. Without `BLOB_READ_WRITE_TOKEN`, as in development, they are
 files in `.data/blob/` (git-ignored), or wherever `LOCAL_BLOB_DIR` says (relative to each app's folder); the tests

@@ -5,8 +5,10 @@ import { notFound } from 'next/navigation'
 import { cache } from 'react'
 import { Footer } from '@/components/Footer'
 import { PinIcon } from '@/components/PinIcon'
+import { ReportLink } from '@/components/ReportLink'
 import { TagActions } from '@/components/TagActions'
 import { TagDetails } from '@/components/TagDetails'
+import { PhotoState } from '@/components/TagPhoto'
 
 /** The live tag the URL names, or null. Cached for the request, so the title and the page read the database once. */
 const findTag = cache(async (id: string) => {
@@ -27,12 +29,15 @@ export default async function TagPage({ params }: PageProps<'/tag/[id]'>) {
   return (
     <>
       <main className="mx-auto flex w-full max-w-[70ch] flex-1 flex-col gap-3 p-4">
-        <h1 className="flex items-center gap-2 text-lg font-bold">
+        <h1 id="tag-heading" tabIndex={-1} className="flex items-center gap-2 text-lg font-bold">
           <PinIcon operator={tag.operator} />
           {bikeName(tag.operator)}
         </h1>
-        <TagDetails tag={tag} now={new Date()} />
-        <TagActions id={tag.id} />
+        <PhotoState>
+          <TagDetails tag={tag} now={new Date()} />
+          <TagActions id={tag.id} />
+          {tag.photoId && <ReportLink photoId={tag.photoId} heading="tag-heading" />}
+        </PhotoState>
       </main>
       <Footer />
     </>

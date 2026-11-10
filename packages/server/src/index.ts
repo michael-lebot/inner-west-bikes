@@ -9,9 +9,21 @@ export {
   listRecentTags,
   listTagEvents,
   markRemoved,
-  takeDown,
   undoRemoval,
 } from './tags'
+export { takeDown } from './moderation'
 export { runHourly } from './hourly'
-export { attachPhoto, openAnyPhoto, openPhoto, uploadsPaused } from './photos'
+export {
+  attachPhoto,
+  deletePhoto,
+  openAnyPhoto,
+  openPhoto,
+  pauseUploads,
+  restorePhoto,
+  resumeUploads,
+  tagOfPhoto,
+  uploadsPaused,
+  uploadsSwitch,
+} from './photos'
+export { listReportedPhotos, reportPhoto } from './reports'
 export { type Visitor, visitorFrom } from './visitors'
