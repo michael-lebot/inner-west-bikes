@@ -13,10 +13,12 @@ const scaled = (factor: number) => sharp(icon).resize(16 * factor, 16 * factor, 
 
 // iOS fills a transparent home-screen icon with black, so this one sits on the header's night slate.
 const NIGHT = '#1f2a36'
-await scaled(10)
+const home = await scaled(10)
   .flatten({ background: NIGHT })
   .extend({ top: 10, bottom: 10, left: 10, right: 10, background: NIGHT })
-  .toFile(new URL('apple-icon.png', app).pathname)
+  .png()
+  .toBuffer()
+await writeFile(new URL('apple-icon.png', app), home)
 
 // An .ico holding one 32 × 32 PNG, which every browser reads: a 6-byte header, one 16-byte entry, then the PNG.
 const png = await scaled(2).png().toBuffer()
