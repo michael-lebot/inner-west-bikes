@@ -1596,6 +1596,16 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
 - **Does:** `e2e/moderation.spec.ts`: report on phone and desktop → photo replaced by text and its URL 404 →
   admin restores → visible again → report again → still visible; admin pause → form says photos are off → resume.
   axe on the report dialog, the hidden-photo state and every admin screen.
+  As built: a seeded tag gets its photo from `addPhoto`, as `photos.spec.ts` covers adding one in the form; the
+  admin screens' cases are in `admin.spec.ts` (task 6.5), and `openFormOnList` moved to `e2e/support.ts` for the
+  pause test. §10.6's axe states, each with a test that runs axe on it: the map (`pages.spec.ts`, the map screen
+  shell; `browse.spec.ts`, fitting the viewport), the list, its empty state and the tag page (`pages.spec.ts`), an
+  open card (`browse.spec.ts`, by keyboard; `photos.spec.ts`, with its photo and with it hidden), the chooser and
+  the map-failed state (`browse.spec.ts`), each dialog: "Is it one of these?" and the form with its errors
+  (`tag-map.spec.ts`), the street picker (`tag-no-map.spec.ts`), the form with a photo, its failure and paused uploads
+  (`photos.spec.ts`), and the report form with its error and the hidden photo on the card and the tag page
+  (`moderation.spec.ts`); and every admin screen (`admin.spec.ts`): Tags, a tag, Take down's question, the lookup's
+  error, Reported photos empty and with a photo, Delete's question, the paused switch, and each at 320 px.
 - **Accept:** green; every axe state listed in §10.6 is now covered somewhere in the suite.
 - **Files:** `e2e/{moderation,admin}.spec.ts`.
 - **Verify:** `pnpm verify`.

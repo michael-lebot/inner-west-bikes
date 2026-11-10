@@ -65,6 +65,18 @@ export async function startTagging(page: Page, path: '/' | '/list' = '/') {
   await expect(page.getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
 }
 
+/** On /list, the tag form for 12 Llewellyn St, Marrickville, 110 m from the live tag on that street. */
+export async function openFormOnList(page: Page) {
+  const dialog = page.getByRole('dialog')
+  await startTagging(page, '/list')
+  await page.getByRole('button', { name: 'Choose by street' }).click()
+  await dialog.getByRole('searchbox', { name: 'Street' }).fill('llew')
+  await dialog.getByRole('button', { name: 'Llewellyn St, Marrickville', exact: true }).click()
+  await dialog.getByRole('textbox', { name: 'House number' }).fill('12')
+  await dialog.getByRole('button', { name: 'Find' }).click()
+  await dialog.getByRole('button', { name: 'Use this spot' }).click()
+}
+
 /** The placement bar's line: where the pin is, or why there is none. */
 export const bar = (page: Page) => page.locator('#placement-heading + p')
 

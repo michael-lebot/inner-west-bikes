@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import { addPhoto, chip, expectNoAxeViolations, resetDb, sql } from './support'
+import { addPhoto, chip, expectNoAxeViolations, openFormOnList, resetDb, sql, undoInAdmin } from './support'
 
 test.beforeEach(() => resetDb())
 test.use({ reducedMotion: 'reduce' })
@@ -22,6 +22,13 @@ async function openCard(page: Page, id: string) {
   await page.locator(`[data-tag="${id}"] button`).focus()
   await page.keyboard.press('Enter')
   await expect.poll(() => thumbnail(page).evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(32)
+}
+
+/** The admin app beside the public site, as Michael has it (§4.6). */
+async function openAdmin(page: Page, path: string) {
+  const admin = await page.context().newPage()
+  await admin.goto(`http://localhost:3001${path}`)
+  return admin
 }
 
 /** Reports the photo the page shows, for `reason`. */
@@ -92,4 +99,55 @@ test("reports a photo from its tag's page, which then gives the focus to its hea
   await expect(thumbnail(page)).toHaveCount(0)
   await expect(reportLink(page)).toHaveCount(0)
   await expectNoAxeViolations(page)
+})
+
+test('a photo Michael restores shows again, and a later report reaches him but leaves it up', async ({ page }) => {
+  const photoId = await addPhoto(LLEWELLYN_ST)
+  await page.goto(`/tag/${LLEWELLYN_ST}`)
+  await report(page, 'Offensive or inappropriate')
+  await expect(page.getByText(HIDDEN)).toBeVisible()
+  expect((await page.request.get(`/photo/${photoId}`)).status()).toBe(404)
+
+  const admin = await openAdmin(page, '/reports')
+  await admin.getByRole('button', { name: 'Restore' }).click()
+  await expect(admin.getByText('No reported photos.')).toBeVisible()
+  await page.reload()
+  await expect.poll(() => thumbnail(page).evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(32)
+
+  await report(page, 'Other')
+  await expect(announced(page)).toHaveText('Photo reported. It was checked before, so it stays up.')
+  await expect(reportLink(page)).toBeFocused()
+  await expect(thumbnail(page)).toBeVisible()
+  expect((await page.request.get(`/photo/${photoId}`)).status()).toBe(200)
+  await admin.reload()
+  await expect(admin.getByText('Shown: you restored it before, so reports no longer hide it')).toBeVisible()
+  await admin.close()
+})
+
+test('§5.5 photo and tag together: report → remove → admin undo leaves the photo hidden', async ({ page }) => {
+  const photoId = await addPhoto(LLEWELLYN_ST)
+  await page.goto(`/tag/${LLEWELLYN_ST}`)
+  await report(page, 'Not a share bike')
+  await page.getByRole('button', { name: 'Removed' }).click()
+  await expect(page.getByText('Removed.')).toBeVisible()
+  await undoInAdmin(page, LLEWELLYN_ST)
+  await page.goto(`/tag/${LLEWELLYN_ST}`)
+  // Live again, with no photo to show.
+  await expect(page.getByRole('heading', { level: 1, name: 'Lime e-bike', exact: true })).toBeVisible()
+  await expect(thumbnail(page)).toHaveCount(0)
+  expect((await page.request.get(`/photo/${photoId}`)).status()).toBe(404)
+})
+
+test('Michael pauses photo uploads, and the form says photos are off until he resumes them', async ({ page }) => {
+  const admin = await openAdmin(page, '/tags')
+  await admin.getByRole('button', { name: 'Pause uploads' }).click()
+  await openFormOnList(page)
+  await expect(dialog(page).getByText('Photos are switched off for now.')).toBeVisible()
+  await expect(dialog(page).getByLabel('Add a photo (optional)')).toHaveCount(0)
+
+  await admin.getByRole('button', { name: 'Resume uploads' }).click()
+  await expect(admin.getByRole('button', { name: 'Pause uploads' })).toBeVisible()
+  await admin.close()
+  await openFormOnList(page)
+  await expect(dialog(page).getByLabel('Add a photo (optional)')).toBeAttached()
 })
