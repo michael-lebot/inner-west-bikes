@@ -70,6 +70,8 @@ async function claimEmail(tx: Prisma.TransactionClient, id: string, reason: Repo
         `paused until you resume them. Tags without photos can still be added.\n` +
         `The latest reason: ${REPORT_REASONS[reason]}.`,
     }
+  // shortcut: two reports at once can both count themselves among the first 10, so a day can send one or two more;
+  // lock the count if the emails ever near Resend's 100 a day.
   else if (today <= REPORT_EMAILS_PER_DAY)
     email = {
       subject: 'A photo was reported',
