@@ -186,7 +186,7 @@ test('the queue shows a reported photo with its reasons and its tag; Restore sho
   await queued.getByRole('button', { name: 'Restore' }).click()
   await expect(page).toHaveURL('/reports?notice=restored')
   await expect(
-    page.getByText("Restored: the photo shows again while its tag is live, and later reports won't hide it."),
+    page.getByText("Restored: the photo shows while its tag is live, and later reports won't hide it."),
   ).toBeVisible()
   await expect(page.getByText('No reported photos.')).toBeVisible()
   expect(await publicStatus(page, photoId)).toBe(200)
