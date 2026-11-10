@@ -202,6 +202,9 @@ How the spec's rules land:
   simultaneous requests, so they can't pass a limit together.
 - **Two simultaneous Removed** both reach the `UPDATE`; the second waits for the first's row lock, re-checks
   `status = 'active'`, matches nothing, throws `tag_gone` and rolls back its event: one removal.
+- **Reports take turns.** A report locks the one `site_state` row first (`SELECT … FOR UPDATE`), so each counts
+  every report committed before it: a flood at once can't pass the day's first 10 emails or the hour's 16th report
+  together (§4.6).
 - **Responses.** Every tag write returns `{ tag: PublicTag | null }` with status 200, first time or repeat.
   `null` means "not live". Errors are always `{ error: { code, message } }`.
 - **Side effects after commit.** Emails and Blob deletions happen after the transaction commits, using the

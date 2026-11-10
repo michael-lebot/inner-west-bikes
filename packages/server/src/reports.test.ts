@@ -262,6 +262,15 @@ describe('pausing photo uploads (§4.6)', () => {
     )
   })
 
+  it('reports at once take turns: exactly 10 single alerts a day, and one pause and one alert at the 16th', async () => {
+    await reportMany(8)
+    const visitors = Array.from({ length: 8 }, (_, i) => ({ visitorHash: `at-once-${i}`, ipHash: `at-once-ip-${i}` }))
+    await Promise.all(visitors.map((visitor) => report(visitor)))
+    expect(subjects().filter((subject) => subject === 'A photo was reported')).toHaveLength(10)
+    expect(subjects().filter((subject) => subject === 'Photo uploads paused')).toHaveLength(1)
+    expect(await uploadsPaused()).toBe(true)
+  })
+
   it('refuses photos while paused, never resumes by itself, and still takes tags without photos', async () => {
     await reportMany(16)
     await db.$executeRaw`UPDATE photo_reports SET created_at = created_at - interval '1 day'`

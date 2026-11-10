@@ -61,7 +61,7 @@ async function claimEmail(tx: Prisma.TransactionClient, id: string, reason: Repo
            count(*) FILTER (WHERE created_at > now() - interval '1 hour')::int AS "lastHour"
     FROM photo_reports WHERE created_at >= least(date_trunc('day', now(), 'UTC'), now() - interval '1 hour')`
   let email: { subject: string; text: string } | undefined
-  // Of two at once, the second waits for the first's pause, then finds uploads paused already: one alert.
+  // False while uploads are paused already, by hand or by an earlier report: the breaker alerts once.
   if (lastHour > CIRCUIT_BREAKER_REPORTS_PER_HOUR && (await pauseUploads('circuit_breaker', tx)))
     email = {
       subject: 'Photo uploads paused',
@@ -70,8 +70,6 @@ async function claimEmail(tx: Prisma.TransactionClient, id: string, reason: Repo
         `paused until you resume them. Tags without photos can still be added.\n` +
         `The latest reason: ${REPORT_REASONS[reason]}.`,
     }
-  // shortcut: two reports at once can both count themselves among the first 10, so a day can send one or two more;
-  // lock the count if the emails ever near Resend's 100 a day.
   else if (today <= REPORT_EMAILS_PER_DAY)
     email = {
       subject: 'A photo was reported',
@@ -91,6 +89,9 @@ async function claimEmail(tx: Prisma.TransactionClient, id: string, reason: Repo
  */
 export async function reportPhoto(report: Report) {
   const { hidden, email } = await db.$transaction(async (tx) => {
+    // Reports take turns on the one site_state row, so each counts every report before it, and a flood at once can't
+    // pass the first 10 or the 16th together (plan §1.4).
+    await tx.$queryRaw`SELECT 1 FROM site_state FOR UPDATE`
     const id = await claimReport(tx, report)
     if (id) {
       // Rolling back takes the report back too.
