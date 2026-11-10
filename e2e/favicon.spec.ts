@@ -52,9 +52,8 @@ test('names the headstone SVG for tabs, favicon.ico for older browsers, and the 
   ])
   for (const { type, href } of links) {
     const response = await request.get(href)
-    expect(response.headers()['content-type']).toBe(type)
-    // Like the fonts, they skip proxy.ts, so no visitor cookie stops a cache keeping them.
-    expect(response.headers()['set-cookie']).toBeUndefined()
+    // They come through proxy.ts, so they carry its security headers too.
+    expect(response.headers()).toMatchObject({ 'content-type': type, 'x-content-type-options': 'nosniff' })
   }
 })
 
