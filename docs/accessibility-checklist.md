@@ -13,6 +13,7 @@ Tick a box when the check passes at that milestone, and note what was used (devi
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | --- | --- | --- |
 | VoiceOver on iOS Safari: every pin can be reached; tag a bike from start to finish with Choose by street, and again with Use my location                   | [ ] | [ ] | [ ] | [ ] |
 | TalkBack on Android Chrome: the same                                                                                                                       | [ ] | [ ] | [ ] | [ ] |
+| VoiceOver and TalkBack: add a photo to a tag, its failure state and the card's thumbnail; report a photo, and hear it replaced                             |     |     | [ ] | [ ] |
 | Keyboard only on desktop, in Chrome, Safari and Firefox (§13): every flow, the report form and the admin app included, with the focus always visible       | [ ] | [ ] | [ ] | [ ] |
 | Touch without dragging: reach a spot that starts off screen and tag it with taps alone; shrink and restore a tag card by tap, and by a flick on its handle | [ ] | [ ] | [ ] | [ ] |
 | 200% browser zoom, and a 320 px wide window: nothing scrolls sideways, and each form's submit and Cancel can be reached                                    | [ ] | [ ] | [ ] | [ ] |
