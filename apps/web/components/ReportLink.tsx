@@ -2,7 +2,7 @@
 import { lazy, Suspense, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { announce } from './Announcer'
-import { photoGone, usePhotoGone } from './TagPhoto'
+import { usePhotoGone } from './TagPhoto'
 
 // The form and its code load when the link is used, never with the page (§11.1).
 const ReportDialog = lazy(() => import('./ReportDialog').then((module) => ({ default: module.ReportDialog })))
@@ -14,7 +14,7 @@ const ReportDialog = lazy(() => import('./ReportDialog').then((module) => ({ def
 export function ReportLink({ photoId, heading }: { photoId: string; heading: string }) {
   const [open, setOpen] = useState(false)
   const link = useRef<HTMLButtonElement>(null)
-  const gone = usePhotoGone(photoId)
+  const [gone, photoGone] = usePhotoGone()
 
   const close = () => {
     flushSync(() => setOpen(false))
@@ -28,7 +28,7 @@ export function ReportLink({ photoId, heading }: { photoId: string; heading: str
     }
     flushSync(() => {
       setOpen(false)
-      photoGone(photoId, 'Photo hidden while we check it')
+      photoGone('Photo hidden while we check it')
     })
     document.getElementById(heading)?.focus()
     announce('Photo reported and hidden')

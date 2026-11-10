@@ -124,6 +124,26 @@ test('a photo Michael restores shows again, and a later report reaches him but l
   await admin.close()
 })
 
+test('a photo restored after it was reported shows again on a page left and come back to, with no reload', async ({
+  page,
+}) => {
+  await addPhoto(LLEWELLYN_ST)
+  await page.goto(`/tag/${LLEWELLYN_ST}`)
+  await report(page, 'Not a share bike')
+  await expect(page.getByText(HIDDEN)).toBeVisible()
+  const admin = await openAdmin(page, '/reports')
+  await admin.getByRole('button', { name: 'Restore' }).click()
+  await expect(admin.getByText('No reported photos.')).toBeVisible()
+  await admin.close()
+
+  // Away and back inside the site, so the page's code stays loaded.
+  await page.getByRole('link', { name: 'Terms' }).click()
+  await expect(page).toHaveURL('/terms')
+  await page.goBack()
+  await expect.poll(() => thumbnail(page).evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(32)
+  await expect(reportLink(page)).toBeVisible()
+})
+
 test('§5.5 photo and tag together: report → remove → admin undo leaves the photo hidden', async ({ page }) => {
   const photoId = await addPhoto(LLEWELLYN_ST)
   await page.goto(`/tag/${LLEWELLYN_ST}`)

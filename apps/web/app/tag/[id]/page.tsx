@@ -8,6 +8,7 @@ import { PinIcon } from '@/components/PinIcon'
 import { ReportLink } from '@/components/ReportLink'
 import { TagActions } from '@/components/TagActions'
 import { TagDetails } from '@/components/TagDetails'
+import { PhotoState } from '@/components/TagPhoto'
 
 /** The live tag the URL names, or null. Cached for the request, so the title and the page read the database once. */
 const findTag = cache(async (id: string) => {
@@ -32,9 +33,11 @@ export default async function TagPage({ params }: PageProps<'/tag/[id]'>) {
           <PinIcon operator={tag.operator} />
           {bikeName(tag.operator)}
         </h1>
-        <TagDetails tag={tag} now={new Date()} />
-        <TagActions id={tag.id} />
-        {tag.photoId && <ReportLink photoId={tag.photoId} heading="tag-heading" />}
+        <PhotoState>
+          <TagDetails tag={tag} now={new Date()} />
+          <TagActions id={tag.id} />
+          {tag.photoId && <ReportLink photoId={tag.photoId} heading="tag-heading" />}
+        </PhotoState>
       </main>
       <Footer />
     </>
