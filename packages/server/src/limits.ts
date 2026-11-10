@@ -1,5 +1,6 @@
 // Rate limits (§6): a counter for each rule in LIMITS, counted inside the write's own transaction. Owns rate_counters.
-import { AppError, LIMITS } from '@iwb/shared'
+import { AppError, COUNTER_RETENTION_HOURS, LIMITS } from '@iwb/shared'
+import { db } from './client'
 import type { Prisma } from './generated/prisma/client'
 import type { Visitor } from './visitors'
 
@@ -27,4 +28,10 @@ export async function countAction(tx: Prisma.TransactionClient, action: Action, 
       RETURNING count, ceil(extract(epoch FROM window_start - now()) + ${seconds})::int AS "retryAfter"`
     if (counter!.count > max) throw new AppError('rate_limited', { retryAfter: counter!.retryAfter })
   }
+}
+
+/** Hourly step 4 (§5.4): deletes each counter 48 hours after its window starts, with the hash in its key. */
+export function deleteOldCounters() {
+  return db.$executeRaw`
+    DELETE FROM rate_counters WHERE window_start <= now() - ${COUNTER_RETENTION_HOURS} * interval '1 hour'`
 }

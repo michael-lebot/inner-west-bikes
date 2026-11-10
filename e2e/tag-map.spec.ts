@@ -1,5 +1,18 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
-import { expectNoAxeViolations, resetDb, sql } from './support'
+import {
+  bar,
+  chip,
+  expectNoAxeViolations,
+  mapBox,
+  newPin,
+  newTagId,
+  resetDb,
+  sql,
+  startTagging,
+  tagEvents,
+  tap,
+  undoInAdmin,
+} from './support'
 
 const OUTSIDE = 'That spot is outside the Inner West. Tap inside the gold line.'
 
@@ -7,21 +20,10 @@ test.beforeEach(() => resetDb())
 // Instant camera moves, so each tap lands on the map as it will stay.
 test.use({ reducedMotion: 'reduce' })
 
-const mapBox = async (page: Page) => (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
-/** The new tag's pin: the one marker that isn't a live tag's. */
-const newPin = (page: Page) => page.locator('.maplibregl-marker:not([data-tag])')
-const bar = (page: Page) => page.locator('#placement-heading + p')
-
 /** Where a pin's tip is: the middle of its bottom edge. */
 async function tip(pin: Locator) {
   const box = (await pin.boundingBox())!
   return { x: box.x + box.width / 2, y: box.y + box.height }
-}
-
-/** A tap on a phone, a click on the desktop. */
-async function tap(page: Page, isMobile: boolean, { x, y }: { x: number; y: number }) {
-  if (isMobile) await page.touchscreen.tap(x, y)
-  else await page.mouse.click(x, y)
 }
 
 /** Presses Tab, or Shift+Tab, until `target` has the focus. */
@@ -29,13 +31,6 @@ async function tabTo(page: Page, target: Locator, key = 'Tab') {
   for (let i = 0; i < 40 && !(await target.evaluate((element) => element === document.activeElement)); i++)
     await page.keyboard.press(key)
   await expect(target).toBeFocused()
-}
-
-async function startTagging(page: Page) {
-  await page.goto('/')
-  await expect(page.locator('[data-map-ready]')).toBeAttached()
-  await page.getByRole('button', { name: 'Tag a dumped bike' }).click()
-  await expect(page.getByRole('heading', { name: 'Tag a dumped bike' })).toBeFocused()
 }
 
 /** Places the pin a little way from the map's middle, where no tag is within 25 m. */
@@ -64,8 +59,6 @@ const greenButtons = (page: Page) =>
         (element) => element.checkVisibility() && getComputedStyle(element).backgroundColor === 'rgb(29, 107, 42)',
       ).length,
   )
-/** A chip's label, which is what a visitor taps; the radio inside it is visually hidden. */
-const chip = (page: Page, name: string) => page.getByRole('radio', { name }).locator('..')
 
 test.describe('placing the pin', () => {
   test("puts the pin's tip where the map is tapped, and moves it with the next tap", async ({ page, isMobile }) => {
@@ -383,8 +376,8 @@ test.describe('Still there and Removed', () => {
     await row(page, 'Llewellyn St').getByRole('button', { name: 'Still there' }).click()
     await expect(page.locator('#announcer')).toHaveText('Marked still there')
     await expect(row(page, 'Llewellyn St').getByRole('link')).toContainText(`${RESTARTED} left`)
-    // Every row has Still there, so none is the screen's one green button.
-    expect(await greenButtons(page)).toBe(0)
+    // Every row has Still there, so none of theirs is the screen's one green button: Tag a dumped bike is.
+    expect(await greenButtons(page)).toBe(1)
     await expectNoAxeViolations(page)
 
     for (const street of ['Llewellyn St', 'Norton St', 'Marion St']) {
@@ -423,11 +416,10 @@ test.describe('Still there and Removed', () => {
 })
 
 test.describe('a tag from start to end', () => {
-  const newTag = async () => (await sql(`SELECT id FROM tags WHERE id::text NOT LIKE '5eed%'`))[0].id as string
-  const events = (id: string) =>
-    sql(`SELECT type FROM tag_events WHERE tag_id = '${id}' ORDER BY at`).then((rows) => rows.map((row) => row.type))
-
-  test('by touch: add it, then mark it Still there and Removed', async ({ page, isMobile }) => {
+  test('by touch: add it, mark it Still there and Removed, and undo the removal in the admin', async ({
+    page,
+    isMobile,
+  }) => {
     test.skip(!isMobile, 'the phone projects')
     await startTagging(page)
     await placeAwayFromTags(page, true)
@@ -436,7 +428,7 @@ test.describe('a tag from start to end', () => {
     await chip(page, 'Damaged').tap()
     await page.getByRole('button', { name: 'Add to the map' }).tap()
     await expect(page.locator('#announcer')).toHaveText('Tag added')
-    const id = await newTag()
+    const id = await newTagId()
 
     await page.locator(`[data-tag="${id}"] button`).tap()
     const card = page.getByRole('region', { name: 'Ario e-bike' })
@@ -447,10 +439,17 @@ test.describe('a tag from start to end', () => {
     await expect(page.locator('#announcer')).toHaveText('Removed.')
     await expect(page.locator(`[data-tag="${id}"]`)).toHaveCount(0)
     await expect(page.getByRole('heading', { name: '14 bikes in the graveyard' })).toBeVisible()
-    expect(await events(id)).toEqual(['created', 'still_there', 'removed'])
+
+    await undoInAdmin(page, id)
+    await page.reload()
+    await expect(page.locator(`[data-tag="${id}"]`)).toHaveCount(1)
+    expect(await tagEvents(id)).toEqual(['created', 'still_there', 'removed', 'restored'])
   })
 
-  test('by keyboard: add it, then mark it Still there and Removed', async ({ page, isMobile }) => {
+  test('by keyboard: add it, mark it Still there and Removed, and undo the removal in the admin', async ({
+    page,
+    isMobile,
+  }) => {
     test.skip(isMobile, 'the desktop project')
     await page.goto('/')
     await expect(page.locator('[data-map-ready]')).toBeAttached()
@@ -472,7 +471,7 @@ test.describe('a tag from start to end', () => {
     await page.keyboard.press('Enter')
     await expect(page.locator('#announcer')).toHaveText('Tag added')
     await expect(page.getByRole('button', { name: 'Tag a dumped bike' })).toBeFocused()
-    const id = await newTag()
+    const id = await newTagId()
 
     // A pin is a button in the map's tab order; this one is reached directly, as the order depends on where it is.
     await page.locator(`[data-tag="${id}"] button`).focus()
@@ -485,7 +484,11 @@ test.describe('a tag from start to end', () => {
     await page.keyboard.press('Enter')
     await expect(page.locator('#announcer')).toHaveText('Removed.')
     await expect(page.getByRole('heading', { name: '14 bikes in the graveyard' })).toBeFocused()
-    expect(await events(id)).toEqual(['created', 'still_there', 'removed'])
+
+    await undoInAdmin(page, id)
+    await page.reload()
+    await expect(page.locator(`[data-tag="${id}"]`)).toHaveCount(1)
+    expect(await tagEvents(id)).toEqual(['created', 'still_there', 'removed', 'restored'])
   })
 
   test('when the tag is added but every answer is cut off, the form keeps its answers and sending again adds it once', async ({

@@ -76,10 +76,16 @@ export const STREET_TYPES: Record<string, string> = {
 
 /** A tag disappears this long after it was last confirmed (§1). */
 export const TAG_LIFETIME_HOURS = 48
+/** Visitor and IP hashes on events and reports are cleared this long after they were stored (§6). */
+export const HASH_RETENTION_DAYS = 30
+/** Rate counters and IP salts are deleted this long after their window or their day starts (§6). */
+export const COUNTER_RETENTION_HOURS = 48
 /** Live tags this close to a new spot are offered as "Is it one of these?" (§4.2). */
 export const NEARBY_METERS = 25
 /** Tags are accepted this far outside the council boundary (§4.1). */
 export const BOUNDARY_BUFFER_METERS = 20
+/** A street picked by name (§10.3) is kept for a tag only this close to its spot; past it, the nearest one is. */
+export const PICKED_STREET_METERS = 60
 /** Use my location proposes a pin only when the position is at least this accurate (§4.1). */
 export const LOCATION_ACCURACY_METERS = 50
 /** Tapping a pin this close to another opens the "N bikes here" chooser (§4.1). */

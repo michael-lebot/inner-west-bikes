@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./geo": "./src/geo.ts",
+    "./picker": "./src/picker.ts",
     "./palette": "./src/palette.ts",
     "./data/*": "./data/*",
     "./theme.css": "./theme.css"

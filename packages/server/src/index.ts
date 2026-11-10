@@ -3,11 +3,14 @@ export {
   confirmStillThere,
   createTag,
   getLiveTag,
+  getTag,
   listLiveTags,
+  listRecentRemovals,
   listRecentTags,
+  listTagEvents,
   markRemoved,
-  type RecentTag,
   takeDown,
   undoRemoval,
 } from './tags'
+export { runHourly } from './hourly'
 export { type Visitor, visitorFrom } from './visitors'

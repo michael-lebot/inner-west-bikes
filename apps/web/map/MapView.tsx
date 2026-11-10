@@ -7,7 +7,7 @@ import { Protocol } from 'pmtiles'
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { PinIcon } from '@/components/PinIcon'
-import { HOVER_RING } from '@/components/TagRow'
+import { FOCUS_RING_ON_HOVER } from '@/components/buttons'
 import { MapControls } from './MapControls'
 import { IMAGES } from './patterns'
 import { overworldStyle } from './style'
@@ -51,6 +51,8 @@ type Props = {
   onStatus: (status: 'ready' | 'failed') => void
   /** The new tag's pin, with its tip on this spot. */
   spot?: { lat: number; lng: number }
+  /** Use my location's position: the map centres there, at street level (§4.1). */
+  centre?: { lat: number; lng: number }
   /** Placing (§10.3): a tap, or the crosshair's arrow keys, put the pin here. */
   onPlace?: (lat: number, lng: number) => void
   /** Enter on the map while placing. */
@@ -58,7 +60,7 @@ type Props = {
 }
 
 /** The one map (§11.3). MapScreen loads this module with import() after first paint, so no other page carries it. */
-export function MapView({ tags, now, selected, onPick, onStatus, spot, onPlace, onUse }: Props) {
+export function MapView({ tags, now, selected, onPick, onStatus, spot, centre, onPlace, onUse }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const [map, setMap] = useState<maplibregl.Map>()
   const [drawn, setDrawn] = useState(false)
@@ -130,6 +132,10 @@ export function MapView({ tags, now, selected, onPick, onStatus, spot, onPlace, 
     map.on('resize', reveal)
     return () => void map.off('resize', reveal)
   }, [map, selected, lng, lat])
+
+  useEffect(() => {
+    if (map && centre) map.easeTo({ center: [centre.lng, centre.lat], zoom: Math.max(map.getZoom(), PLACEMENT_ZOOM) })
+  }, [map, centre])
 
   // Placing (§10.3, §12): taps and the crosshair place the pin, and MapLibre's own arrow keys stand aside.
   const placing = !!onPlace
@@ -324,7 +330,7 @@ function Pin({
       aria-label={label}
       aria-expanded={selected}
       tabIndex={placing ? -1 : undefined}
-      className={`flex size-11 cursor-pointer items-end justify-center ${HOVER_RING} ${selected ? SELECTED : ''}`}
+      className={`flex size-11 cursor-pointer items-end justify-center ${FOCUS_RING_ON_HOVER} ${selected ? SELECTED : ''}`}
       // A click from Enter or Space has no pointer position, so detail is 0.
       onClick={(event) => onPick(tag, event.currentTarget, event.detail === 0)}
       // Focusing a pin off the edge of the map, as Tab does, brings it into view (§4.1).

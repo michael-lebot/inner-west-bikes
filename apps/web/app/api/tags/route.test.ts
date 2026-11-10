@@ -18,10 +18,10 @@ beforeEach(() => {
   headers = { cookie: `iwb_v=${id}`, 'x-forwarded-for': `2001:db8:${id.slice(0, 4)}:${id.slice(4, 8)}::1` }
 })
 
-const request = (path: string, body: unknown) =>
+const request = (path: string, body: unknown, type = 'application/json') =>
   new NextRequest(`http://localhost:3000${path}`, {
     method: 'POST',
-    headers,
+    headers: { ...headers, 'content-type': type },
     body: typeof body === 'string' ? body : JSON.stringify(body),
   })
 const newTag = () => ({ id: crypto.randomUUID(), ...LLEWELLYN_ST })
@@ -67,6 +67,12 @@ describe('POST /api/tags', () => {
 
   it('refuses a body that is not JSON with 400', async () => {
     await expectError(await post('{"id":'), 'invalid')
+  })
+
+  it('refuses JSON not sent as application/json with 400, as a form on another site can send it', async () => {
+    const tag = newTag()
+    await expectError(await create(request('/api/tags', tag, 'text/plain'), { params: Promise.resolve({}) }), 'invalid')
+    expect(await getLiveTag(tag.id)).toBeNull()
   })
 
   it.each([

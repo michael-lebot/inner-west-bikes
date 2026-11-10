@@ -1,8 +1,8 @@
 // Tags (§4.2): the one definition of "live", every read of the tags table, and every transition. Owns tags and
 // tag_events. A visitor's write is one transaction: the repeat check, the rate count and one conditional statement,
 // with Postgres's now() as the only clock (plan §1.4).
-import { AppError, type NewTag, type PublicTag, TAG_LIFETIME_HOURS } from '@iwb/shared'
-import { where } from '@iwb/shared/geo'
+import { type AdminTag, AppError, type NewTag, type PublicTag, TAG_LIFETIME_HOURS } from '@iwb/shared'
+import { isStreetNear, where } from '@iwb/shared/geo'
 import { db } from './client'
 import { Prisma, type TagEventType, type TagStatus } from './generated/prisma/client'
 import { countAction } from './limits'
@@ -30,13 +30,49 @@ export async function getLiveTag(id: string, client: Client = db) {
   return tag ?? null
 }
 
-export type RecentTag = PublicTag & { status: TagStatus; live: boolean; createdAt: Date }
+const ADMIN_FIELDS = Prisma.sql`
+  ${PUBLIC_FIELDS}, status, (${LIVE}) AS live, created_at AS "createdAt", removed_at AS "removedAt",
+  confirm_count AS "confirmCount"`
 
 /** For the admin app: the latest tags in any state, newest first. */
 export function listRecentTags() {
-  return db.$queryRaw<RecentTag[]>`
-    SELECT ${PUBLIC_FIELDS}, status, (${LIVE}) AS live, created_at AS "createdAt"
-    FROM tags ORDER BY created_at DESC LIMIT 100`
+  return db.$queryRaw<AdminTag[]>`SELECT ${ADMIN_FIELDS} FROM tags ORDER BY created_at DESC LIMIT 100`
+}
+
+/** For the admin app: the removed tags, the latest removal first, to undo a malicious one (§4.6). */
+export function listRecentRemovals() {
+  return db.$queryRaw<AdminTag[]>`
+    SELECT ${ADMIN_FIELDS} FROM tags WHERE status = 'removed' ORDER BY removed_at DESC NULLS LAST LIMIT 100`
+}
+
+/** For the admin app: one tag in any state, or null. */
+export async function getTag(id: string) {
+  const [tag] = await db.$queryRaw<AdminTag[]>`SELECT ${ADMIN_FIELDS} FROM tags WHERE id = ${id}::uuid`
+  return tag ?? null
+}
+
+/**
+ * For the admin app: a tag's events, each with how many actions its hashed visitor and its hashed IP made on any tag
+ * that UTC day, the day the IP's salt covers (§4.6). A hash cleared after 30 days counts nothing.
+ */
+export function listTagEvents(tagId: string) {
+  return db.$queryRaw<
+    {
+      type: TagEventType
+      at: Date
+      visitorHash: string | null
+      ipHash: string | null
+      visitorActions: number
+      ipActions: number
+    }[]
+  >`
+    WITH events AS (SELECT *, date_trunc('day', at, 'UTC') AS day FROM tag_events WHERE tag_id = ${tagId}::uuid)
+    SELECT type, at, visitor_hash AS "visitorHash", ip_hash AS "ipHash",
+      (SELECT count(*) FROM tag_events same WHERE same.visitor_hash = events.visitor_hash
+         AND same.at >= day AND same.at < day + interval '1 day')::int AS "visitorActions",
+      (SELECT count(*) FROM tag_events same WHERE same.ip_hash = events.ip_hash
+         AND same.at >= day AND same.at < day + interval '1 day')::int AS "ipActions"
+    FROM events ORDER BY at`
 }
 
 /**
@@ -60,10 +96,14 @@ async function claimRequest(tx: Client, { requestId, tagId, type, visitor }: Tag
   return false
 }
 
-/** Create (§4.2): inside the council or its 20 m strip, which where() decides here again, whatever the browser said. */
+/**
+ * Create (§4.2): inside the council or its 20 m strip, which where() decides here again, whatever the browser said.
+ * The street is where()'s nearest, or one picked by name (§10.3) if the data has it within 60 m: no other text gets in.
+ */
 export async function createTag({ tag, visitor }: { tag: NewTag; visitor: Visitor }) {
-  const { inside, suburb, street } = where(tag.lat, tag.lng)
+  const { inside, suburb, street: nearest } = where(tag.lat, tag.lng)
   if (!inside) throw new AppError('outside_area')
+  const street = tag.street && isStreetNear(tag.street, tag.lat, tag.lng) ? tag.street : nearest
   return db.$transaction(async (tx) => {
     // The tag goes in before its created event, which refers to it; the id is the event's request id. A repeat
     // inserts nothing, and the claim then finds the first create.

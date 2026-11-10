@@ -56,6 +56,7 @@ export function TagForm({
       lng: spot.lng,
       operator,
       problem,
+      ...(spot.picked && { street: spot.street }),
     })
     setSending(false)
     if (sent.ok) {

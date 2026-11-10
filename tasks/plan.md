@@ -128,7 +128,9 @@ What does **not** go where:
    `instrumentation-client.ts` and `next.config.ts`.
 6. Apps never import each other. Packages never import apps.
 
-Enforced by ESLint `no-restricted-imports` overrides in `eslint.config.mjs` (task 1.1). A client component that
+Enforced by ESLint `no-restricted-imports` overrides in `eslint.config.mjs` (task 1.1), and for rule 3 by
+`no-restricted-syntax`, which also refuses an `import('@iwb/server')` type in `components/` and `map/`; shapes those
+need, such as `PublicTag` and `AdminTag`, live in `@iwb/shared`. A client component that
 imports `@iwb/server` also fails `next build`, because `pg` and `node:crypto` can't be bundled for the browser.
 
 ### 1.4 The write path — one shape for every public write
@@ -147,13 +149,15 @@ export const POST = write(async ({ request, params, visitor }) => {
 ```
 
 ```ts
-// apps/web/lib/write.ts — the only wrapper; the photo route uses it too (with formData instead of json)
+// apps/web/lib/write.ts — the only wrapper; the photo route uses it too (with formData instead of json, so task 5.3
+// lets multipart/form-data through step 2 as well: a JSON route can't parse it, and only text/plain can carry JSON)
 export function write<P>(run: (ctx: WriteContext<P>) => Promise<object>) {
   return async (request: Request, { params }: { params: Promise<P> }) => {
     try {
       if (await isBot()) throw new AppError('bot')                 // 1. BotID first, before any work
-      const visitor = await identify(request)                       // 2. hashed cookie + hashed IP (daily salt)
-      return Response.json(await run({ request, params, visitor }), { headers: NO_STORE })   // 3. parse + domain
+      if (!isJson(request)) throw new AppError('invalid')           // 2. a form on another site can't send JSON
+      const visitor = await identify(request)                       // 3. hashed cookie + hashed IP (daily salt)
+      return Response.json(await run({ request, params, visitor }), { headers: NO_STORE })   // 4. parse + domain
     } catch (error) {
       return errorResponse(error)   // AppError → its status + {error:{code,message}}; ZodError → 400; else log, 500
     }
@@ -395,7 +399,12 @@ One line each; the spec section is in brackets.
 7. The browser retries a 429 only when `Retry-After` is 30 s or less; longer limits show the limit message at once (§5.3).
 8. The visitor cookie (`iwb_v`) is set by `proxy.ts` on the first request of any kind, including the request itself, so even a first write has a stable visitor for retries (§5.3, §6).
 9. Visitor hash = HMAC-SHA256(`HASH_SECRET`, cookie). IP hash = HMAC-SHA256(daily salt, IPv4 or IPv6 /64). Both hex (§6).
-10. The street stored for a tag is always `where()`'s nearest named street, even on the Choose by street route (§4.1, §10.3).
+10. The street stored for a tag is `where()`'s nearest named street, except on the Choose by street route, where the
+    browser sends the street picked (for a corner, the street chosen, not the cross street) and the server keeps it if
+    the data has a named street by that name within 60 m of the point (`isStreetNear` in `geo.ts`), and otherwise
+    stores the nearest one. No free text gets in, as the name must be the data's. The suburb is always `where()`'s
+    (§4.1, §10.3). Overruled in PR 4's browser check, where 37% of house numbers were stored under another street,
+    usually the lane behind the house.
 11. The `within` label filter uses the buffered polygon, so streets on the boundary (King St, Parramatta Rd) keep their labels (§4.1).
 12. The gold council wall gets a dark (`#1f2328`) casing: gold alone is 1.6:1 on the grass and 1.2:1 on light grey, below the 3:1 in §10.2.
 13. The Hello pin fill darkens from `#2f7bff` to about `#2566e6` so its white letter reaches 4.5:1; all pins get a 1 px white outer halo so they reach 3:1 on the dark greys outside the council (§10.2).
@@ -1133,6 +1142,26 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   per suburb. Corners: where two differently named streets share a vertex (clustered within 15 m), ordered along each
   street's main axis → `picker.json` (`[{ street, suburb, corners: [[cross, lat, lng], …] }]`). `src/picker.ts`:
   `searchStreets(query)`, `cornersOf(entry)`, `loadAddresses(suburb)`, `matchHouseNumber(numbers, typed)`.
+  As built: each query's pages go in the order of the layer's id field, as ArcGIS promises pages that neither overlap
+  nor skip only then (199,329 address points; the council, suburbs and roads came back byte for byte as before). An
+  address's street is looked up by its full name in the road data, so it is written exactly as the road's ("HAWTHORNE
+  PARADE" is "Hawthorne Pde"); 7 points name a street the road data doesn't, and are left out. A whole property's
+  point wins over its units'. Corners are clustered within 50 m, not 15: at 15 m, 146 corners kept a twin 16 to 45 m
+  away under the same name, where a divided road or offset arms meet a street. Further apart, as where a crescent
+  meets a street at both ends, 48 repeats remain. A corner's suburb is the gazetted, unsimplified one it is in. Each
+  street's house numbers are stored as steps from the one before in 1e-5 degrees, going up one side of the street and
+  then the other: Marrickville went from 52 KB gzipped to 30 KB. Each corner and house is checked again on that
+  grid: rounding put 7 houses (on Church St, Newtown, New Canterbury Rd, Hurlstone Park and The Strand, Croydon)
+  just outside the 20 m strip, where the server would refuse them, so each takes the nearest grid point inside it,
+  about a metre away; none is left out. A test reads every committed corner and house back and checks it. `picker.ts` exports `searchStreets`,
+  `loadHouseNumbers(street)` (one street's numbers from its suburb's file) and `matchHouseNumber`; each entry carries
+  its corners, so there is no `cornersOf`. `matchHouseNumber` reads what is typed as digits and perhaps letters,
+  and nothing else. A typed letter must match exactly (12C finds no 12A); a bare number with no house of its own
+  takes its lettered house (12A) before a range that holds it (10-14), the rule PR 4's review proposed. Measured: 53,513 house numbers on 1,479 streets in their suburbs (1,058
+  names), in 29 suburb files, the largest 30,475 B gzipped (Marrickville) and the median 5,420 B; `picker.json` has
+  2,007 streets and 6,716 corners in 75,950 B gzipped. Each street with house numbers is marked `numbered` (1,479;
+  77,475 B gzipped), so on the other 528, lanes mostly, the picker hides the House number box and leads with the
+  corners, saying it has none.
 - **Accept:** totals close to §4.1's measurement (about 53,548 numbers on about 1,482 streets) are logged and
   recorded; `picker.json` ≤ 100 KB and the largest suburb file ≤ 40 KB gzipped; `picker.test.ts` covers §5.5 house
   numbers (12 matches 12, 12A and 10–14; an unknown number returns null).
@@ -1151,6 +1180,20 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   keyboard never covers them. From the placement step: "Choose by street", and on success the map centres there with
   the pin so it can be fine-tuned. `ListTagButton.tsx` on `/list`: "Tag a dumped bike" offers Use my location and
   Choose by street, then `TagFlow` without a map.
+  As built: the picker is three steps in one dialog: the search, then the street with its house number box and its
+  corners, then the readback, which takes the focus, with **Back** and **Use this spot**. Corners are buttons that go
+  straight to the readback rather than radios that need a Next; a cross street that meets the street more than once
+  reads "near Edwin St (1 of 2)" in order along it. At most 8 streets are listed, and the count ("5 streets match.")
+  is spoken as it changes, as are the errors. The picker loads `@iwb/shared/picker` and `/geo` together, and a
+  street's suburb file as the street is picked. Its Use this spot goes straight to the match question or the form,
+  as §10.3's "the usual form follows" says, with the pin on the map behind: in the strip above the dialog on a phone,
+  brought into view in the side-panel layout. Fine-tuning is the form's Change location, as for any spot. The spot
+  carries the street picked (`picked`), which `TagForm` sends and the server checks (assumption 10, as overruled at
+  PR 4's browser check); otherwise `TagFlow` is unchanged. `/list` reuses `Placement` (`withMap={false}`), so `ListTagButton` is the button, the bar and
+  `TagFlow`, and a tag added there refreshes the page. Esc inside a dialog is the dialog's own, so Esc in the picker
+  no longer also cancels placing. While an on-screen keyboard is open, `Dialog` fills the visual viewport from its
+  top, over the map strip and the header: on an iPhone 13 a 300 px keyboard left the strip's dialog 236 px, below the
+  first street.
 - **Accept:** the house number is never sent or stored; `/list` tagging loads no MapLibre (perf assertion); the
   readback is announced.
 - **Files:** `components/{StreetPicker,ListTagButton,TagFlow,Placement}.tsx`, `app/list/page.tsx`.
@@ -1165,6 +1208,13 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   only accurate to about 80 m. Tap where the bike is, or choose a street."; outside → "You're outside the Inner
   West. Tap the map or choose a street."; refused or timed out → a plain message. Nothing submits automatically and
   the position is never sent except as the confirmed pin.
+  As built: `LocateButton` sits in `Placement` beside Choose by street, so the map screen and `/list` share it. It
+  loads `@iwb/shared/geo` while the position is found, reads "Finding you…" meanwhile, and says what happened in the
+  bar's line, which is also announced. A result replaces the pin: only an accurate position inside the council leaves
+  one. Accurate and rough positions centre the map at street level (`MapView`'s `centre`), and a refused permission
+  says "Your browser didn't share your location." while a timeout or no position says "We couldn't find your
+  location.". On `/list` each message ends "Choose a street instead." The refused case is its own test, without the
+  permission from the start, as WebKit keeps answering after `clearPermissions()`.
 - **Accept:** §5.5 Use my location in Playwright (`context.setGeolocation`, granted and denied permissions): an
   accurate inside position proposes a pin; rough, outside and refused leave no pin and the other ways work.
 - **Files:** `components/{LocateButton,Placement,ListTagButton}.tsx`, `e2e/tag-no-map.spec.ts`.
@@ -1178,6 +1228,12 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   (shown while `status = 'removed'`; an expired one shows "Expired, can't undo") and **Take down** (with a
   confirmation step, final) as form posts to `POST /api/tags/[id]/undo` and `/take-down`. A skipped-unless-configured
   `e2e/admin-access.spec.ts` that asserts an unauthenticated request to `ADMIN_PREVIEW_URL` is refused.
+  As built: the per-hash counts come with the events, from one query (`listTagEvents`), rather than a separate
+  `countActionsByHashOnDay`; the day is the event's UTC day, the day an IP salt covers. `getTag` and
+  `listRecentRemovals` read tags in any state as `AdminTag` (the tables' type, which replaces `RecentTag`, in
+  `@iwb/shared` with its `TagStatus`). The
+  lookup takes the first UUID in what is pasted. Take down's link reloads the page with `?confirm=take-down`, which
+  shows the question and the one form that posts. `action()` answers a post without a matching `Origin` with 403.
 - **Accept:** a cross-origin POST is rejected; undo makes the tag live again with only its remaining time; admin
   pages pass axe.
 - **Files:** `apps/admin/lib/action.ts`, `app/tags/page.tsx`, `app/tags/[id]/page.tsx`,
@@ -1194,6 +1250,12 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   `deleteOldSalts` in `visitors.ts`, older than 48 h). `apps/web/vercel.json`: `{"regions": ["syd1"], "crons":
   [{"path": "/api/cron/hourly", "schedule": "0 * * * *"}]}`; `apps/admin/vercel.json`: `{"regions": ["syd1"]}`.
   `CRON_SECRET` in `lib/env.ts` (local default `dev-cron-secret`) and `.env.example`.
+  As built: the 30 days and 48 hours are `HASH_RETENTION_DAYS` and `COUNTER_RETENTION_HOURS` in `config.ts`. A
+  salt goes 48 hours after its UTC day starts, and a counter 48 hours after its window starts. The summary is
+  `{ done: { step: rows changed }, failed: [step names] }`, answered with 500 when a step failed so the cron log
+  shows it; the error itself goes to `console.error`. `cronSecret()` in `lib/env.ts` checks the variable with no
+  Zod, which the web app doesn't depend on, and throws on Vercel when it is missing. The route test watches the real
+  `runHourly` with `vi.fn` to show a refused request runs nothing.
 - **Accept:** §5.5 access: 401 without or with a wrong token; §5.5 hourly job twice: two runs in a row and two at
   once (`Promise.all`) leave the same rows as one run.
 - **Files:** `app/api/cron/hourly/route.ts` (+ test), `packages/server/src/{hourly,visitors,limits}.ts`,
@@ -1207,6 +1269,14 @@ retention steps (3 and 4), and `vercel.json` files are added. This PR closes M2.
   At an SE-sized viewport (375×667) with `html { font-size: 200% }`, the form's Add to the map and Cancel can be
   scrolled to and pressed. axe on the street picker in each step and on admin tags. `perf.spec.ts`: picker data
   ≤ 100 KB and one suburb's numbers ≤ 40 KB, each loaded only when needed.
+  As built: each start-to-end test ends with `undoInAdmin` (`e2e/support.ts`), which pastes the tag's public link
+  into the admin lookup and presses Undo removal: the touch and keyboard ones in `tag-map.spec.ts`, and in
+  `tag-no-map.spec.ts` Use my location on the map and Choose by street on `/list` by house number and by corner. At
+  the SE size and 200% text, `tag-map.spec.ts` sends the form and `tag-no-map.spec.ts` walks the picker's steps and
+  cancels it. `perf.spec.ts` also gates typing in the street search and choosing a street at 200 ms (16 to 24 ms
+  measured). Measured at the end of PR 4: 146,901 B of JavaScript before the map (PR 3: 145,813 B; Use my location
+  and the street picker's button are in it, the picker itself is not), Lighthouse's LCP on `/` 2,401 to 2,421 ms,
+  and a 291,081 B map bundle.
 - **Accept:** green on three projects; M2 exit criteria in §15 that can run here are all covered.
 - **Files:** `e2e/{tag-no-map,admin,perf}.spec.ts`.
 - **Verify:** `pnpm verify`.
@@ -1450,7 +1520,9 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   (random 32 bytes each, on `web` for production and preview); Vercel Authentication "All deployments" on `admin`;
   spend-management alert; Speed Insights check; domain later. Then the post-deploy checks: §11.2 PMTiles checks,
   `admin-access.spec.ts` against a preview, a tag added and removed from a phone on a preview while a `curl` POST
-  gets 403, the `iwb_v` cookie sent `Secure`, cron 401 in production. **Launch checklist**: every item in Left for Michael. `docs/accessibility-checklist.md`:
+  gets 403, the `iwb_v` cookie sent `Secure`, cron 401 in production without the token and 200 when run from the
+  project's Cron Jobs settings (an hourly schedule needs the Pro plan), and an admin Undo on a preview answering 303,
+  not 403, so its same-origin check holds behind Vercel's proxy. **Launch checklist**: every item in Left for Michael. `docs/accessibility-checklist.md`:
   the §10.6, §12 and §13 manual checks as a ticklist per milestone. `docs/esafety.md`: the §7 one-page response
   procedure, with an empty "Classification" section for Michael. Review every `.env.example` against `env.ts`
   files; update the README's Status section; re-read `/accessibility`, `/privacy` and `/terms` against what was

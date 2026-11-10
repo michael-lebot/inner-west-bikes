@@ -8,6 +8,7 @@ import { announce } from './Announcer'
 import { PRIMARY } from './buttons'
 import { CrowdChooser } from './CrowdChooser'
 import { Legend } from './Legend'
+import type { Located } from './LocateButton'
 import { OUTSIDE, Placement, pinOn, type Spot } from './Placement'
 import { TagCard } from './TagCard'
 import { TagList } from './TagList'
@@ -39,7 +40,10 @@ export function MapScreen() {
   // Tagging a bike (§3): placing the pin, then describing the bike.
   const [tagging, setTagging] = useState<'place' | 'describe'>()
   const [spot, setSpot] = useState<Spot>()
-  const [outside, setOutside] = useState(false)
+  // Why the last try placed no pin, or where Use my location put it, said in place of the spot.
+  const [note, setNote] = useState<string>()
+  // Where Use my location centres the map.
+  const [centre, setCentre] = useState<Located['centre']>()
   const tagButton = useRef<HTMLButtonElement>(null)
   const geo = useRef<Promise<Geo>>(null)
 
@@ -83,9 +87,23 @@ export function MapScreen() {
   /** A tap or an arrow key: the pin moves there if it is inside the council or its 20 m strip (§4.1). */
   const place = async (lat: number, lng: number) => {
     const { inside, street, suburb } = (await loadGeo()).where(lat, lng)
-    setOutside(!inside)
+    setNote(inside ? undefined : OUTSIDE)
     if (inside) setSpot({ lat, lng, street, suburb })
     announce(inside ? pinOn({ lat, lng, street, suburb }) : OUTSIDE)
+  }
+
+  /** Use my location proposes a pin only when it is close enough, and centres the map on any position (§4.1). */
+  const locate = (located: Located) => {
+    setNote(located.note)
+    setSpot(located.spot)
+    setCentre(located.centre)
+  }
+
+  /** Chosen by street, the spot goes straight to the form, with the map behind it centred there (§10.3). */
+  const choose = (chosen: Spot) => {
+    setSpot(chosen)
+    setNote(undefined)
+    setTagging('describe')
   }
 
   const endTagging = () => {
@@ -93,7 +111,8 @@ export function MapScreen() {
     flushSync(() => {
       setTagging(undefined)
       setSpot(undefined)
-      setOutside(false)
+      setNote(undefined)
+      setCentre(undefined)
     })
     tagButton.current?.focus()
   }
@@ -112,11 +131,13 @@ export function MapScreen() {
     else document.getElementById('sheet')?.focus()
   }
 
-  // Esc closes the chooser or the card, or cancels placing, wherever focus is: none of them is a dialog (§10.4).
+  // Esc closes the chooser or the card, or cancels placing, wherever focus is: none of them is a dialog (§10.4). Esc in
+  // a dialog, as in the street picker over the placement bar, is the dialog's own.
   const close = crowded?.length ? closeChooser : card ? closeCard : tagging === 'place' ? endTagging : undefined
   useEffect(() => {
     if (!close) return
-    const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && close()
+    const closeOnEscape = (event: KeyboardEvent) =>
+      event.key === 'Escape' && !(event.target as Element).closest('dialog') && close()
     document.addEventListener('keydown', closeOnEscape)
     return () => document.removeEventListener('keydown', closeOnEscape)
   }, [close])
@@ -172,6 +193,7 @@ export function MapScreen() {
             }}
             onStatus={setStatus}
             spot={spot}
+            centre={centre}
             onPlace={tagging === 'place' ? place : undefined}
             onUse={() => setTagging('describe')}
           />
@@ -214,7 +236,14 @@ export function MapScreen() {
           <TagCard key={card.id} tag={card} now={now} onDone={(tag) => apply(card.id, tag)} onClose={closeCard} />
         ) : tagging ? (
           <>
-            <Placement spot={spot} outside={outside} onUse={() => setTagging('describe')} onCancel={endTagging} />
+            <Placement
+              spot={spot}
+              note={note}
+              onLocate={locate}
+              onChoose={choose}
+              onUse={() => setTagging('describe')}
+              onCancel={endTagging}
+            />
             <Suspense>
               <TagFlow
                 spot={tagging === 'describe' ? spot : undefined}

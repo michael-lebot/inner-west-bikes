@@ -4,6 +4,7 @@ import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
 import type { MultiPolygon, Polygon, Position } from 'geojson'
 import buffered from '../data/council-buffered.json'
 import places from '../data/places.json'
+import { PICKED_STREET_METERS } from './config'
 import { METERS_PER_DEGREE } from './near'
 
 type Suburb = { name: string; geometry: Polygon | MultiPolygon }
@@ -48,4 +49,10 @@ export function where(lat: number, lng: number) {
       .name,
     street: nearest(streets, (street) => street.lines, point).name,
   }
+}
+
+/** Whether a named street in the data, called `name`, runs within 60 m of a point: a street picked by name (§10.3). */
+export function isStreetNear(name: string, lat: number, lng: number) {
+  const street = streets.find((street) => street.name === name)
+  return !!street && distance([lng, lat], street.lines) <= PICKED_STREET_METERS
 }

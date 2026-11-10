@@ -26,6 +26,8 @@ export const CreateTagBody = z.object({
   lng: coordinate,
   operator: z.enum(operators),
   problem: z.enum(Object.keys(PROBLEMS) as [Problem, ...Problem[]]),
+  // Chosen by name in the street picker (§10.3). The server keeps it only if the data has it near the spot.
+  street: z.optional(z.string().check(z.maxLength(100))),
 })
 export type NewTag = z.infer<typeof CreateTagBody>
 
@@ -40,4 +42,16 @@ export type PublicTag = {
   problem: Problem
   lastConfirmedAt: Date
   expiresAt: Date
+}
+
+/** A tag's state (§4.2). It is live only while active and its time hasn't run out. */
+export type TagStatus = 'active' | 'removed' | 'taken_down'
+
+/** A tag in any state, as the admin app sees it. It never carries visitor data either. */
+export type AdminTag = PublicTag & {
+  status: TagStatus
+  live: boolean
+  createdAt: Date
+  removedAt: Date | null
+  confirmCount: number
 }

@@ -11,8 +11,8 @@ export default defineConfig({
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: { baseURL: 'http://localhost:3000', trace: 'retain-on-failure' },
   projects: [
-    { name: 'iphone', use: devices['iPhone 13'], testIgnore: ['admin.spec.ts', 'perf.spec.ts'] },
-    { name: 'pixel', use: devices['Pixel 7'], testIgnore: ['admin.spec.ts'] },
+    { name: 'iphone', use: devices['iPhone 13'], testIgnore: ['admin*.spec.ts', 'perf.spec.ts'] },
+    { name: 'pixel', use: devices['Pixel 7'], testIgnore: ['admin*.spec.ts'] },
     {
       name: 'desktop',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } },
