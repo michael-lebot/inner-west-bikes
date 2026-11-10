@@ -11,7 +11,7 @@ const BANS = {
   'maplibre-gl': 'Only apps/web/map/ imports MapLibre.',
   pmtiles: 'Only apps/web/map/ imports pmtiles.',
   '@/map/*': 'Load the map with import() from components/MapScreen.tsx.',
-  sharp: 'Only apps/web/lib/image.ts, the preview script and tests import sharp.',
+  sharp: 'Only apps/web/lib/image.ts, the preview and icon scripts and tests import sharp.',
   botid: 'Only lib/bot.ts, instrumentation-client.ts and next.config.ts import botid.',
   '@iwb/web': 'Apps never import each other, and packages never import apps.',
   '@iwb/admin': 'Apps never import each other, and packages never import apps.',
@@ -70,7 +70,7 @@ export default defineConfig([
   },
   {
     // Tests make their pictures with it.
-    files: ['apps/web/lib/image.ts', 'apps/web/scripts/build-preview.ts', 'apps/web/**/*.test.ts'],
+    files: ['apps/web/lib/image.ts', 'apps/web/scripts/build-*.ts', 'apps/web/**/*.test.ts'],
     rules: { 'no-restricted-imports': bansExcept('@iwb/server', 'sharp') },
   },
   {
