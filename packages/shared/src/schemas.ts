@@ -60,6 +60,9 @@ export type TagStatus = 'active' | 'removed' | 'taken_down'
 /** A photo's moderation state (§4.3). It never changes because its tag changed. */
 export type PhotoStatus = 'visible' | 'hidden' | 'deleted'
 
+/** Why photo uploads are paused (§4.6): more than 15 reports in an hour, or Michael, by hand. */
+export type PauseReason = 'circuit_breaker' | 'by_hand'
+
 /** A tag in any state, as the admin app sees it. It never carries visitor data either. */
 export type AdminTag = Omit<PublicTag, 'photoId'> & {
   status: TagStatus

@@ -3,7 +3,7 @@
 // deleted again if the row isn't; its row is marked deleted before its files are deleted (plan §1.4). Restoring or
 // deleting a photo closes its open reports in the same statement, so this file needs nothing from reports.ts.
 import { randomUUID } from 'node:crypto'
-import { AppError } from '@iwb/shared'
+import { AppError, type PauseReason } from '@iwb/shared'
 import { deleteFiles, getFile, listFiles, putFile } from './blob'
 import { db } from './client'
 import { Prisma } from './generated/prisma/client'
@@ -25,6 +25,29 @@ const taggedBy = (visitor: Visitor) => Prisma.sql`
 export async function uploadsPaused() {
   const [state] = await db.$queryRaw<{ paused: boolean }[]>`SELECT ${PAUSED} AS paused`
   return state!.paused
+}
+
+/** For the admin app's switch: since when uploads are paused, and why, or nulls while they are on. */
+export async function uploadsSwitch() {
+  const [state] = await db.$queryRaw<{ pausedAt: Date | null; reason: PauseReason | null }[]>`
+    SELECT uploads_paused_at AS "pausedAt", uploads_paused_reason AS reason FROM site_state`
+  return state!
+}
+
+/**
+ * Pauses photo uploads (§4.6) until Michael resumes them: nothing resumes them by itself. True when this call paused
+ * them; one while they are paused already keeps the first time and reason, and is false.
+ */
+export async function pauseUploads(reason: PauseReason, client: Prisma.TransactionClient = db) {
+  const paused = await client.$executeRaw`
+    UPDATE site_state SET uploads_paused_at = now(), uploads_paused_reason = ${reason}
+    WHERE uploads_paused_at IS NULL`
+  return paused === 1
+}
+
+/** Resume (admin, §4.6): photos can be added again. */
+export async function resumeUploads() {
+  await db.$executeRaw`UPDATE site_state SET uploads_paused_at = NULL, uploads_paused_reason = NULL`
 }
 
 /**

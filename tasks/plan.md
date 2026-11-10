@@ -1541,6 +1541,13 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   uploads_paused_at IS NULL RETURNING` → after commit, email Michael once. `pauseUploads(reason)` and
   `resumeUploads()` in `photos.ts` (the form already reacts to `uploadsPaused`, task 5.5). Nothing resumes
   automatically.
+  As built: the pause's `UPDATE … WHERE uploads_paused_at IS NULL` is the claim, so of two reports at once one
+  alerts; the report that paused uploads is claimed for the alert (`notified_at`), which is sent after the commit
+  in its place, and a failed alert releases it to the digest, which says while uploads are paused that they are.
+  `uploads_paused_reason` holds `circuit_breaker` or `by_hand` (`PauseReason` in `@iwb/shared`), and
+  `uploadsSwitch()` reads the time and the reason for the admin app. With a pause now possible while the form is
+  open, the photo's failure offers Try again only for what could succeed later (`canRetry` in `send.ts`: a failed
+  send or a limit); a refusal such as `uploads_paused` gets Skip alone.
 - **Accept:** the 16th report in an hour pauses uploads and sends one email; a 17th sends no second email; attach is
   refused while paused; tagging without a photo still works.
 - **Files:** `packages/server/src/{reports,photos,index}.ts`, `src/reports.test.ts`.

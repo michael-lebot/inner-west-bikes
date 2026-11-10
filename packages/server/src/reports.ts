@@ -2,12 +2,18 @@
 // is emailed. Owns photo_reports. photos.ts changes the photo itself, and closes its reports when it is restored or
 // deleted. An email is a side effect after commit (plan §1.4): its reports are claimed by setting notified_at in a
 // transaction, it is sent once that commits, and the claim is released if the send fails, for the hourly digest.
-import { AppError, REPORT_EMAILS_PER_DAY, REPORT_REASONS, type ReportReason } from '@iwb/shared'
+import {
+  AppError,
+  CIRCUIT_BREAKER_REPORTS_PER_HOUR,
+  REPORT_EMAILS_PER_DAY,
+  REPORT_REASONS,
+  type ReportReason,
+} from '@iwb/shared'
 import { db } from './client'
 import { sendEmail } from './email'
 import type { Prisma } from './generated/prisma/client'
 import { countAction } from './limits'
-import { hidePhoto } from './photos'
+import { hidePhoto, pauseUploads, uploadsPaused } from './photos'
 import type { Visitor } from './visitors'
 
 type Report = { photoId: string; requestId: string; reason: ReportReason; visitor: Visitor }
@@ -44,15 +50,35 @@ async function emailReports(ids: string[], subject: string, text: string) {
 }
 
 /**
- * Claims a new report, inside its transaction, for an email of its own when it is among the first 10 of the UTC day
- * (§4.6, assumption 5). The rest wait for the hourly digest. True when it is claimed.
+ * Claims a new report, inside its transaction, for the email it goes out with, and writes that email (§4.6). The
+ * report that makes more than 15 in an hour site-wide pauses photo uploads, and goes with that alert; any other among
+ * the first 10 of the UTC day (assumption 5) gets an email of its own. The rest wait for the hourly digest.
  */
-async function claimEmail(tx: Prisma.TransactionClient, id: string) {
-  const [{ today }] = await tx.$queryRaw<[{ today: number }]>`
-    SELECT count(*)::int AS today FROM photo_reports WHERE created_at >= date_trunc('day', now(), 'UTC')`
-  if (today > REPORT_EMAILS_PER_DAY) return false
+async function claimEmail(tx: Prisma.TransactionClient, id: string, reason: ReportReason, hidden: boolean) {
+  const [{ today, lastHour }] = await tx.$queryRaw<[{ today: number; lastHour: number }]>`
+    SELECT count(*) FILTER (WHERE created_at >= date_trunc('day', now(), 'UTC'))::int AS today,
+           count(*) FILTER (WHERE created_at > now() - interval '1 hour')::int AS "lastHour"
+    FROM photo_reports WHERE created_at >= least(date_trunc('day', now(), 'UTC'), now() - interval '1 hour')`
+  let email: { subject: string; text: string } | undefined
+  // Of two at once, the second waits for the first's pause, then finds uploads paused already: one alert.
+  if (lastHour > CIRCUIT_BREAKER_REPORTS_PER_HOUR && (await pauseUploads('circuit_breaker', tx)))
+    email = {
+      subject: 'Photo uploads paused',
+      text:
+        `More than ${CIRCUIT_BREAKER_REPORTS_PER_HOUR} photos were reported in the last hour, so photo uploads are ` +
+        `paused until you resume them. Tags without photos can still be added.\n` +
+        `The latest reason: ${REPORT_REASONS[reason]}.`,
+    }
+  else if (today <= REPORT_EMAILS_PER_DAY)
+    email = {
+      subject: 'A photo was reported',
+      text:
+        `Reason: ${REPORT_REASONS[reason]}.\n` +
+        (hidden ? 'The photo is hidden until you restore or delete it.' : 'You restored it before, so it stays up.'),
+    }
+  if (!email) return
   await tx.$executeRaw`UPDATE photo_reports SET notified_at = now() WHERE id = ${id}::uuid`
-  return true
+  return { id, ...email }
 }
 
 /**
@@ -61,29 +87,21 @@ async function claimEmail(tx: Prisma.TransactionClient, id: string) {
  * as a repeat does too.
  */
 export async function reportPhoto(report: Report) {
-  const { hidden, emailed } = await db.$transaction(async (tx) => {
+  const { hidden, email } = await db.$transaction(async (tx) => {
     const id = await claimReport(tx, report)
-    let emailed: string | undefined
     if (id) {
       // Rolling back takes the report back too.
       await countAction(tx, 'report', report.visitor)
       await hidePhoto(tx, report.photoId)
-      if (await claimEmail(tx, id)) emailed = id
     }
     const [photo] = await tx.$queryRaw<{ hidden: boolean }[]>`
       SELECT status <> 'visible' AS hidden FROM photos WHERE id = ${report.photoId}::uuid`
-    return { hidden: photo!.hidden, emailed }
+    return { hidden: photo!.hidden, email: id ? await claimEmail(tx, id, report.reason, photo!.hidden) : undefined }
   })
-  if (emailed) {
-    const outcome = hidden
-      ? 'The photo is hidden until you restore or delete it.'
-      : 'You restored it before, so it stays up.'
-    await emailReports(
-      [emailed],
-      'A photo was reported',
-      `Reason: ${REPORT_REASONS[report.reason]}.\n${outcome}`,
-    ).catch((error) => console.error('A report email failed; the hourly digest sends it', error))
-  }
+  if (email)
+    await emailReports([email.id], email.subject, email.text).catch((error) =>
+      console.error('A report email failed; the hourly digest sends it', error),
+    )
   return { hidden }
 }
 
@@ -100,10 +118,12 @@ export async function sendDigest() {
     SELECT reason, array_agg(id::text) AS ids FROM claimed GROUP BY reason ORDER BY reason`
   const ids = claimed.flatMap((group) => group.ids)
   if (!ids.length) return 0
-  const text = [
+  const lines = [
     `${reports(ids.length)} arrived since the last email.`,
     ...claimed.map((group) => `${REPORT_REASONS[group.reason]}: ${group.ids.length}`),
-  ].join('\n')
-  await emailReports(ids, `${reports(ids.length)} to review`, text)
+  ]
+  // Said again here, in case the alert that paused them failed.
+  if (await uploadsPaused()) lines.push('Photo uploads are paused until you resume them.')
+  await emailReports(ids, `${reports(ids.length)} to review`, lines.join('\n'))
   return ids.length
 }

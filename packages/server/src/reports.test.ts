@@ -4,9 +4,19 @@ import { listFiles } from './blob'
 import { db } from './client'
 import { sendEmail } from './email'
 import { env } from './env'
-import { attachPhoto, deleteExpiredPhotos, deletePhoto, openPhoto, restorePhoto } from './photos'
+import {
+  attachPhoto,
+  deleteExpiredPhotos,
+  deletePhoto,
+  openPhoto,
+  pauseUploads,
+  restorePhoto,
+  resumeUploads,
+  uploadsPaused,
+  uploadsSwitch,
+} from './photos'
 import { reportPhoto, sendDigest } from './reports'
-import { markRemoved, takeDown, undoRemoval } from './tags'
+import { createTag, markRemoved, takeDown, undoRemoval } from './tags'
 import type { Visitor } from './visitors'
 
 vi.mock('./email', () => ({ sendEmail: vi.fn(async () => {}) }))
@@ -40,6 +50,7 @@ const reportMany = async (n: number) => {
 
 beforeEach(async () => {
   await db.$executeRaw`TRUNCATE tags, rate_counters CASCADE`
+  await resumeUploads()
   await rm(env.LOCAL_BLOB_DIR, { recursive: true, force: true })
   await db.$executeRaw`
     INSERT INTO tags (id, lat, lng, suburb, street, operator, problem, expires_at)
@@ -231,5 +242,67 @@ describe('emails to Michael (§4.6)', () => {
     expect(await notified()).toBe(10)
     expect(await sendDigest()).toBe(1)
     expect(await notified()).toBe(11)
+  })
+})
+
+describe('pausing photo uploads (§4.6)', () => {
+  const subjects = () => vi.mocked(sendEmail).mock.calls.map(([subject]) => subject)
+
+  it('the 16th report in an hour pauses uploads and goes out with one alert; the 17th sends no second one', async () => {
+    await reportMany(15)
+    expect(await uploadsPaused()).toBe(false)
+    await reportMany(17)
+    expect(await uploadsSwitch()).toEqual({ pausedAt: expect.any(Date), reason: 'circuit_breaker' })
+    expect(subjects().filter((subject) => subject === 'Photo uploads paused')).toHaveLength(1)
+    expect(sendEmail).toHaveBeenCalledWith(
+      'Photo uploads paused',
+      'More than 15 photos were reported in the last hour, so photo uploads are paused until you resume them. ' +
+        'Tags without photos can still be added.\nThe latest reason: Shows a person, face or number plate.',
+    )
+  })
+
+  it('refuses photos while paused, never resumes by itself, and still takes tags without photos', async () => {
+    await reportMany(16)
+    await db.$executeRaw`UPDATE photo_reports SET created_at = created_at - interval '1 day'`
+    await reportMany(1)
+    expect(await uploadsPaused()).toBe(true)
+    const tag = {
+      id: crypto.randomUUID(),
+      lat: -33.904497,
+      lng: 151.171932,
+      operator: 'lime',
+      problem: 'damaged',
+    } as const
+    expect((await createTag({ tag, visitor: alice })).tag).toMatchObject({ id: tag.id })
+    const makePhoto = vi.fn()
+    await expect(attachPhoto({ tagId: tag.id, visitor: alice, makePhoto })).rejects.toMatchObject({
+      code: 'uploads_paused',
+    })
+    await resumeUploads()
+    expect(await uploadsSwitch()).toEqual({ pausedAt: null, reason: null })
+  })
+
+  it('a pause by hand keeps its reason, and the circuit breaker sends no alert while uploads are paused already', async () => {
+    expect(await pauseUploads('by_hand')).toBe(true)
+    expect(await pauseUploads('by_hand')).toBe(false)
+    await reportMany(16)
+    expect(subjects()).not.toContain('Photo uploads paused')
+    expect(await uploadsSwitch()).toMatchObject({ reason: 'by_hand' })
+  })
+
+  it('a failed alert leaves uploads paused, and the digest sends its report and says uploads are paused', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await reportMany(15)
+    vi.mocked(sendEmail).mockRejectedValueOnce(new Error('Resend is down'))
+    await reportMany(1)
+    expect(await uploadsPaused()).toBe(true)
+    vi.mocked(sendEmail).mockClear()
+    expect(await sendDigest()).toBe(6)
+    expect(sendEmail).toHaveBeenCalledExactlyOnceWith(
+      '6 reports to review',
+      '6 reports arrived since the last email.\nShows a person, face or number plate: 6\n' +
+        'Photo uploads are paused until you resume them.',
+    )
+    logged.mockRestore()
   })
 })
