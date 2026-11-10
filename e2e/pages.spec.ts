@@ -161,6 +161,14 @@ test.describe('the list', () => {
       await expect(page.getByRole('main').getByRole('listitem')).toHaveCount(14)
     })
 
+    test('says the map needs it, in place of a map that would never finish loading', async ({ page }) => {
+      await page.goto('/')
+      const status = page.getByRole('region', { name: 'Map' }).getByRole('status')
+      await expect(status.getByText('Turn on JavaScript to see the map.')).toBeVisible()
+      await expect(status.getByText('Map loading')).toBeHidden()
+      await expect(status.locator('svg')).toBeHidden()
+    })
+
     test('says Still there and Removed need it, in place of buttons that would do nothing', async ({ page }) => {
       for (const [path, rows] of [
         ['/list', 14],

@@ -84,7 +84,9 @@ test('offers the list when the tiles fail to load', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
-test('keeps the preview framed in the outside grey while the map loads behind it', async ({ page }) => {
+test('keeps the preview framed in the outside grey, with the loading bike over it, while the map loads behind it', async ({
+  page,
+}) => {
   let release!: () => void
   const held = new Promise<void>((resolve) => (release = resolve))
   await page.route('**/*.pmtiles', async (route) => {
@@ -92,6 +94,9 @@ test('keeps the preview framed in the outside grey while the map loads behind it
     await route.continue()
   })
   await page.goto('/')
+  const loading = page.getByRole('region', { name: 'Map' }).getByRole('status')
+  await expect(loading.getByText('Map loading')).toBeVisible()
+  await expect(loading.getByText('Turn on JavaScript')).toBeHidden()
   // MapLibre has started drawing (its water-blue background) under the preview.
   await expect(page.locator('.maplibregl-canvas')).toBeAttached()
   const corner = await page.evaluate(() => {
@@ -100,7 +105,15 @@ test('keeps the preview framed in the outside grey while the map loads behind it
     return [top.tagName, getComputedStyle(top).backgroundColor]
   })
   expect(corner).toEqual(['IMG', 'rgb(110, 110, 122)'])
+  await expectNoAxeViolations(page)
+  // The bike turns, and stands still for reduced motion.
+  const bike = loading.locator('svg > g')
+  await expect(bike).toHaveCSS('animation-name', 'wheelie')
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect(bike).toHaveCSS('animation-name', 'none')
   release()
+  await expect(page.locator('[data-map-ready]')).toBeAttached()
+  await expect(loading).toHaveCount(0)
 })
 
 test('leaves the map for another page without a script error', async ({ page }) => {
