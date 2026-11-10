@@ -176,6 +176,9 @@ test('the queue shows a reported photo with its reasons and its tag; Restore sho
   for (const text of ['Hidden since it was reported', 'Shows a person, face or number plate: 2', 'Other: 1'])
     await expect(queued.getByText(text)).toBeVisible()
   await expect(queued.getByRole('definition').nth(1)).toHaveText('3')
+  // Its link to the tag is a 44 px target, as every admin link is.
+  const tagLink = (await queued.getByRole('link', { name: 'Active, live' }).boundingBox())!
+  expect(tagLink.height).toBeGreaterThanOrEqual(44)
   await expect(region(page, 'Events of the tag on Llewellyn St').getByRole('row')).toHaveCount(1 + 1)
   await expectNoAxeViolations(page)
   expect(await publicStatus(page, photoId)).toBe(404)

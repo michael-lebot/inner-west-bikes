@@ -54,7 +54,7 @@ export default async function ReportsPage({ searchParams }: PageProps<'/reports'
                 className="h-60 w-80 rounded-[10px] bg-tint object-contain"
               />
             </a>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 [&_dt]:font-bold">
+            <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 [&_dt]:font-bold">
               <dt>Photo</dt>
               <dd>
                 {photo.status === 'hidden'
@@ -77,7 +77,10 @@ export default async function ReportsPage({ searchParams }: PageProps<'/reports'
               <dd>{dateTime(photo.reportedAt)}</dd>
               <dt>Tag</dt>
               <dd>
-                <Link href={`/tags/${tag.id}`} className="underline underline-offset-2">
+                <Link
+                  href={`/tags/${tag.id}`}
+                  className="inline-flex min-h-11 items-center underline underline-offset-2"
+                >
                   {STATUS[tag.status]}, {tag.live ? 'live' : 'not live'}
                 </Link>
               </dd>
