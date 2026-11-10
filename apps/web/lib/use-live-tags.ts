@@ -1,13 +1,13 @@
 'use client'
-import { isExpired, parseTag, type PublicTag, REFRESH_MINUTES } from '@iwb/shared'
+import { isExpired, parseTag, type PublicTag, REFRESH_MINUTES, type TagJson } from '@iwb/shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 const MINUTE = 60_000
 
 /**
  * The live tags (§11.3): fetched on mount, when the tab comes back or regains focus, every 5 minutes while it is
- * visible, and on `refresh()` after the page's own writes. Between fetches, tags drop out as their time runs out.
- * `tags` is undefined until the first fetch succeeds.
+ * visible, and after each of the page's own writes, which `apply` shows at once. Between fetches, tags drop out as
+ * their time runs out. `tags` is undefined until the first fetch succeeds.
  */
 export function useLiveTags() {
   const [tags, setTags] = useState<PublicTag[]>()
@@ -49,6 +49,15 @@ export function useLiveTags() {
     }
   }, [refresh])
 
+  /** A write's answer: the tag as the server has it now, or null when it is no longer live. The refresh reconciles. */
+  const apply = useCallback(
+    (id: string, tag: TagJson | null) => {
+      setTags((current) => current?.filter((other) => other.id !== id).concat(tag ? [parseTag(tag)] : []))
+      refresh()
+    },
+    [refresh],
+  )
+
   const live = useMemo(() => tags?.filter((tag) => !isExpired(tag, now)), [tags, now])
-  return { tags: live, now, refresh }
+  return { tags: live, now, apply }
 }

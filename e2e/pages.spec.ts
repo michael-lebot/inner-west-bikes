@@ -58,6 +58,18 @@ test.describe('the map screen shell', () => {
     expect(nonces[0]).not.toBe(nonces[1])
   })
 
+  test('gives a new visitor a random cookie once, which only the server can read', async ({ page }) => {
+    const first = await page.goto('/')
+    // Over HTTPS, as on Vercel, it is Secure too (proxy.test.ts).
+    expect(await first?.headerValue('set-cookie')).toMatch(
+      /^iwb_v=[\w-]{22}; Path=\/; Expires=[^;]+; Max-Age=31536000; HttpOnly; SameSite=lax$/,
+    )
+    const [cookie] = await page.context().cookies()
+    expect(cookie).toMatchObject({ name: 'iwb_v', httpOnly: true, sameSite: 'Lax' })
+    const again = await page.goto('/list')
+    expect(await again?.headerValue('set-cookie')).toBeNull()
+  })
+
   test('shows a 3 px focus ring on the header link', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'Tab moves through links on desktop browsers')
     await page.goto('/')
@@ -141,6 +153,18 @@ test.describe('the list', () => {
       await page.goto('/list')
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('14 bikes in the graveyard')
       await expect(page.getByRole('main').getByRole('listitem')).toHaveCount(14)
+    })
+
+    test('says Still there and Removed need it, in place of buttons that would do nothing', async ({ page }) => {
+      for (const [path, rows] of [
+        ['/list', 14],
+        [`/tag/${LLEWELLYN_ST}`, 1],
+      ] as const) {
+        await page.goto(path)
+        await expect(page.getByRole('button', { name: /^(Still there|Removed)$/ })).toHaveCount(0)
+        await expect(page.getByText('Turn on JavaScript to mark it Still there or Removed.')).toHaveCount(rows)
+        await expect(page.getByText('Turn on JavaScript to mark it Still there or Removed.').first()).toBeVisible()
+      }
     })
   })
 })

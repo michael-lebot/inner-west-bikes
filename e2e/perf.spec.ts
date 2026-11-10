@@ -28,6 +28,11 @@ const FIRST_VIEW_TILE_BYTES = 1_500_000
 // the CPU at full speed, opening a card measured 224 to 352 ms on a laptop and a zoom tap 88 to 168 ms, so the lab
 // gate is 600 ms, keeping the laptop's time under 60% of it. The real-phone check at M1 (§11.4) holds the 200 ms.
 const INTERACTION_MS = 600
+// Opening the tag form gets INTERACTION_MS, for the card's reason: in the same frame the map pans the new pin into the
+// strip above the dialog, and the runner's software WebGL reads that frame back. It measured 296 ms on GitHub's runner
+// (PR 3's first CI run, pull request #4) and 72 to 104 ms on a laptop. Picking a chip moves no map and keeps §11.1's
+// 200 ms: 16 to 24 ms on a laptop, under 60% of it.
+const CHIP_MS = 200
 
 const LLEWELLYN_ST = '5eed0000-0000-4000-8000-000000000003'
 
@@ -114,7 +119,8 @@ test('a mid-range phone over 4G loads the map from a 300 KB bundle and 40 tiles'
   expect(sum(tiles), 'first view tile bytes').toBeLessThanOrEqual(FIRST_VIEW_TILE_BYTES)
 })
 
-test('opening a card and tapping zoom each reach the next paint in time', async ({ page }) => {
+/** Times each interaction from input to the next paint, with Event Timing, once the map is ready. */
+async function interactionTimer(page: Page) {
   await page.goto('/')
   await expect(page.locator('[data-map-ready]')).toBeAttached({ timeout: 30_000 })
   await page.evaluate(() => {
@@ -127,14 +133,17 @@ test('opening a card and tapping zoom each reach the next paint in time', async 
   })
 
   /** The slowest event of an interaction, from input to the next paint. Under 16 ms, nothing is reported. */
-  const timed = async (act: () => Promise<void>) => {
+  return async (act: () => Promise<void>) => {
     await page.evaluate(() => ((window as unknown as { durations: number[] }).durations.length = 0))
     await act()
     // Event Timing entries arrive after the paint they measure.
     await page.waitForTimeout(500)
     return page.evaluate(() => Math.max(0, ...(window as unknown as { durations: number[] }).durations))
   }
+}
 
+test('opening a card and tapping zoom each reach the next paint in time', async ({ page }) => {
+  const timed = await interactionTimer(page)
   const openCard = await timed(async () => {
     await page.getByRole('button', { name: /Liverpool Rd, Ashfield/ }).click()
     await expect(page.getByRole('heading', { name: 'Hello e-bike' })).toBeVisible()
@@ -143,6 +152,27 @@ test('opening a card and tapping zoom each reach the next paint in time', async 
   test.info().annotations.push({ type: 'measured', description: `open a card ${openCard} ms, zoom tap ${zoom} ms` })
   expect(openCard, 'ms from tapping a pin to its card').toBeLessThanOrEqual(INTERACTION_MS)
   expect(zoom, 'ms from tapping + to the next paint').toBeLessThanOrEqual(INTERACTION_MS)
+})
+
+test('opening the tag form and picking a chip each reach the next paint in time', async ({ page }) => {
+  const timed = await interactionTimer(page)
+  // Instant camera moves, so the tap lands once the map has zoomed in for placing.
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.getByRole('button', { name: 'Tag a dumped bike' }).click()
+  const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
+  await page.touchscreen.tap(map.x + map.width / 2 - 120, map.y + map.height / 2 + 120)
+  await expect(page.getByRole('button', { name: 'Use this spot' })).toBeEnabled()
+
+  const openForm = await timed(async () => {
+    await page.getByRole('button', { name: 'Use this spot' }).click()
+    await expect(page.getByRole('group', { name: "What's wrong?" })).toBeVisible()
+  })
+  const chip = await timed(() => page.getByRole('radio', { name: 'Lime' }).locator('..').click())
+  test
+    .info()
+    .annotations.push({ type: 'measured', description: `open the form ${openForm} ms, pick a chip ${chip} ms` })
+  expect(openForm, 'ms from Use this spot to the form').toBeLessThanOrEqual(INTERACTION_MS)
+  expect(chip, 'ms from tapping a chip to its tick').toBeLessThanOrEqual(CHIP_MS)
 })
 
 test('/api/tags sends 100 live tags in 15 KB or less, gzipped', async ({ request }) => {

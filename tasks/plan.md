@@ -347,8 +347,8 @@ Dev only: `typescript` ~6.0 (typescript-eslint supports < 6.1; TS 7 has no compi
 typescript-eslint), `next` at the root too (eslint-config-next loads its parser from `next` without declaring it),
 `prettier`, `tailwindcss` 4 + `@tailwindcss/postcss`, `vitest` **4.1** (Vitest 5 excludes Node 25, the local
 runtime), `@playwright/test`, `@axe-core/playwright`, `@lhci/cli`, `pg` + `@types/pg` (E2E SQL helper),
-`@turf/turf` (data build scripts only), `@types/geojson` (the GeoJSON types `geo.ts` and the data scripts use; turf
-brings them, but pnpm only resolves a package's own dependencies), `@types/node`, `@types/react`.
+`@turf/turf` (data build scripts only), `@types/geojson` (the GeoJSON types `geo.ts`, the data scripts and the map
+style use; turf brings them, but pnpm only resolves a package's own dependencies), `@types/node`, `@types/react`.
 
 Platform features used instead of packages: Node 24 type stripping runs `.ts` scripts (no `tsx`); `fetch` for Resend
 (no SDK); `crypto.randomUUID` (no `uuid`); `Intl.DateTimeFormat` (no date library); native `<dialog>` with
@@ -927,6 +927,12 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   `packages/server/src/limits.ts`: `countAction(tx, action, visitor, tagId?)` upserts one counter per `LIMITS` rule
   (`INSERT … ON CONFLICT (key) DO UPDATE SET count = rate_counters.count + 1 RETURNING count`, window start from
   Postgres) and throws `AppError('rate_limited', { retryAfter })` when any count passes its maximum.
+  As built: the cookie is `Secure` whenever the request is HTTPS, which on Vercel is always: WebKit drops a `Secure`
+  cookie sent over plain HTTP, as `next start` serves the end-to-end tests, so the `iphone` project would have been a
+  new visitor on every request. The salt isn't cached: one upsert (`ON CONFLICT (day) DO UPDATE SET salt =
+  daily_salts.salt RETURNING salt`) returns the day's salt whoever made it, with Postgres's clock deciding the day,
+  for one small query per write. `HASH_SECRET` is optional in the schema and `visitorFrom` throws without it, so the
+  admin app runs without it.
 - **Accept:** `limits.test.ts`: §5.5 two at once — six concurrent Removed counts for one visitor give exactly three
   successes; per-IP limits apply across different cookies; "1 per tag per 12 h" for Still there; `Retry-After`
   equals the seconds to the bucket end. Raw IPs never appear in the database or logs.
@@ -941,9 +947,18 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   (`last_confirmed_at = now()`, `expires_at = now() + 48 h`, `confirm_count + 1`), `markRemoved`, `undoRemoval`
   (`status = 'removed' AND expires_at > now()`; returns `expired` or `not_removed` reasons for the admin), `takeDown`
   (`status <> 'taken_down'`, final). Each per §1.4.
+  As built: create inserts the tag (`ON CONFLICT (id) DO NOTHING`) before `claimRequest`, because the created event
+  refers to it; a repeat inserts nothing and the claim then finds the first create, and a refused create rolls the
+  tag back with its count. `claimRequest` treats a stored request id as a repeat only for the same visitor, tag and
+  action; anything else is `conflict`, and a tag that doesn't exist is `tag_gone`. A repeat returns the tag's current
+  state, as `SPEC.md` §5.3's bullets and §1.4 say; §5.3's opening sentence said "the first result" and, by the
+  owner's ruling in PR 3's review, now says the current state too. Undo removal and take down are one
+  statement each, the change and its event in one `WITH … INSERT`; undo also clears `removed_at`. Once the web app's
+  type check sees `@iwb/shared/geo` through `@iwb/server`, `@types/geojson` is in its program, so `map/style.ts`
+  types the council JSON as GeoJSON and the web app lists `@types/geojson` too.
 - **Accept:** `tags.test.ts` covers §5.5 expiry edges (Still there and Removed work one second before `expires_at`
   and change nothing one second after; undo refused after `expires_at`), two at once (two simultaneous Removed write
-  one removal), repeats (create, Still there and Removed with the same ID return the first result with one event and
+  one removal), repeats (create, Still there and Removed with the same ID return the current state with one event and
   one count), a repeat from another visitor → 409, Still there never adds time on top, undo returns only the time
   left, take down is final.
 - **Files:** `packages/server/src/{tags,index}.ts`, `src/tags.test.ts`.
@@ -956,6 +971,20 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   public POST routes), `withBotId` in `next.config.ts`, routes `POST /api/tags`, `POST /api/tags/[id]/still-there`,
   `POST /api/tags/[id]/removed`. Schemas `CreateTagBody` (`id` uuid, lat/lng rounded to 6 dp, active operator key,
   problem) and `ActionBody` (`requestId` uuid) in `schemas.ts`.
+  As built: `write()` takes no type parameter; `params` is `Promise<unknown>` and each route parses it.
+  `instrumentation-client.ts` protects one pattern, `POST /api/*`, which covers every public write as later PRs add
+  them, and runs only in a build made on Vercel (`NEXT_PUBLIC_VERCEL_ENV`): elsewhere the challenge it fetches doesn't
+  exist and `bot.ts` treats everyone as human. `proxy.ts` leaves BotID's own paths alone, since `withBotId` gives them
+  headers that let BotID frame itself. `schemas.ts` exports Zod's error class as `ZodError` for `errorResponse`.
+  The route tests are one file, `app/api/tags/route.test.ts`, where each test is a visitor on an IP of its own, so
+  nothing needs truncating; `proxy.test.ts` checks the cookie over HTTPS. The web app's `vitest.config.ts` reuses
+  `packages/server/test/global-setup.ts`, which now runs Prisma from its own folder.
+  Measured: the BotID client is 2.2 KB gzipped, and the map page's JavaScript before the map is 145,856 B of 153,600.
+  Revisited in PR 3's review: with all of PR 3 in the first load, Lighthouse's LCP on `/` measured 2,555 to 2,571 ms
+  against 2,500, as its model charges the preview for every byte loaded with it (task 2.9). `instrumentation-client.ts`
+  now loads the BotID client with `import()` after the page's own scripts, since nothing is written before a visitor
+  fills in a form: LCP 2,413 to 2,448 ms, and 145,813 B of JavaScript before the map. A build with
+  `NEXT_PUBLIC_VERCEL_ENV` set still fetches the client and calls `initBotId`.
 - **Accept:** route tests (Vitest, real Postgres, `vi.mock('@/lib/bot')`): a bot gets 403 and no database row is
   written; invalid JSON or fields → 400 with the error shape; outside the buffer → 422; a non-live tag → 410
   `tag_gone`; over a limit → 429 with `Retry-After`; every response has `Cache-Control: no-store`.
@@ -985,6 +1014,15 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   West. Tap inside the gold line." and no pin; a tap below zoom 16 follows assumption 20. Keyboard crosshair while
   the map has focus: arrows move the pin 10 m, Shift+arrows 50 m, Enter = Use this spot, Esc = Cancel (MapLibre's
   own keyboard panning is disabled during placement). The readback is announced.
+  As built: `PLACEMENT_ZOOM` is 15, §12's zoom 16 in MapLibre's 512 px tiles (about 2 m per pixel). Focus moves to the
+  bar's heading. A refused spot (outside, by tap or arrow) leaves the last accepted pin where it was. A tap on a live
+  tag's pin while tagging reaches the map too, so it places the new pin there rather than opening a card. The
+  crosshair and a one-line key hint show on the map only while it has keyboard focus (`:has(canvas:focus-visible)`),
+  and the canvas's name says what the keys do; Enter with no pin yet puts it at the crosshair. The new pin is the
+  "Not sure" pin and lets taps through. In the browse sheet "Tag a dumped bike" shares a row with `Map | List` where
+  both fit, so the map keeps its height on a phone. While placing, the live pins leave the tab order: from the bar,
+  Shift+Tab passes the map's four buttons (which zoom and pan while MapLibre's own keys are off) and reaches the map,
+  where it used to pass every pin and pan the map to each.
 - **Accept:** the pin lands exactly where tapped; keyboard-only placement works; the whole map stays usable.
 - **Files:** `components/{Placement,MapScreen}.tsx`, `map/MapView.tsx`.
 - **Verify:** `pnpm e2e e2e/tag-map.spec.ts`.
@@ -1000,6 +1038,18 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   bike** → form. `TagForm.tsx`: chosen street with **Change location**, "Whose bike?" and "What's wrong?" as native
   radios in `fieldset`/`legend` styled as 44 px chips with a tick and tint, errors in text, **Cancel** and **Add to
   the map**. Success: close, "Tag added" announced, pin appears, count updates.
+  As built: `TagFlow` is loaded with `lazy()` when tagging starts, so no dialog code is in the first bundle. The
+  match dialog shows each nearby tag with `TagDetails`, not `TagRow`, which is a link to the tag's page and would
+  leave the flow; Yes and No are both secondary buttons, as neither is the expected answer. On a phone the dialog's
+  top is `DIALOG_TOP_REM` (8 rem, in shared config) and the map pans the new pin into the strip above it. The dialog
+  is fixed between that top and the bottom of the layout viewport and scrolls inside: PR 3 has no text field, so no
+  on-screen keyboard, and sizing to the visual viewport comes with PR 4's street picker. The placement bar stays
+  mounted under the dialog, and Change location focuses its heading. Errors (`ErrorText`, also in the match dialog
+  and the card's actions) are bold red text after a red "!" mark, so even without colour they can't pass for a
+  question's label; the red, `--color-error` `#b42318` at 6.6:1 on white, is the one colour PR 3 adds. A field's
+  error is named by the fieldset's `aria-describedby`, and focus moves to the first unanswered question. The form's
+  Cancel and Add to the map share a row where both fit, and at large text sizes take a full-width row each. With `showModal()`, Tab
+  after the last control visits the browser's own toolbar before coming back; nothing on the page behind is reached.
 - **Accept:** nearby tags never block; Change location returns to placement and back with answers kept; Tab stays
   inside each dialog; the rest of the page is inert.
 - **Files:** `components/{Dialog,TagFlow,MatchDialog,TagForm}.tsx`, `packages/shared/src/near.ts`.
@@ -1011,6 +1061,13 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   sending one action; success announces "Marked still there" or "Removed" and updates the card; `tag_gone` announces
   "This tag has already gone" and drops the tag; `rate_limited` shows the message. Used in `TagCard`, on each `/list`
   row and on `/tag/[id]`.
+  As built: on the card, `TagActions` hands the result to the live tags' `apply`, and MapScreen already closes a card
+  whose tag has gone and gives its focus to the count. On `/list` and the tag page, Still there refreshes the page
+  from the server; a tag that has gone keeps its place until the next load, with a focused "Removed." or "This tag
+  has already gone." where its buttons were, so focus never drops and the next row's buttons don't slide under a
+  finger. The buttons sit after the row's link in `TagList` (24 px between rows on `/list`), so `TagRow` is
+  unchanged. The same file's `tagAction()` also sends "Yes, this bike". On `/list` both buttons are outlined, as every
+  row has them and §9 allows one green button a screen; the card and the tag page keep Still there green.
 - **Accept:** reading `/list` still works without JavaScript; actions work from all three places.
 - **Files:** `components/{TagActions,TagCard,TagRow}.tsx`, `app/list/page.tsx`, `app/tag/[id]/page.tsx`.
 - **Verify:** `pnpm e2e e2e/tag-map.spec.ts`.
@@ -1021,6 +1078,12 @@ step covers tap and the keyboard crosshair; the nearby-tag question and the form
   (`desktop`); the nearby question both ways; outside rejection; Change location keeps answers; offline submit shows
   the error and keeps the form, then succeeds once online with one tag. axe on placement, match dialog, form, form
   errors. `perf.spec.ts`: pick a chip and open the form each ≤ 200 ms.
+  As built: picking a chip keeps §11.1's 200 ms (16 to 24 ms on a laptop, CPU at full speed). Opening the form has
+  the card's 600 ms lab gate, for the card's reason: the map pans the new pin into the strip above the dialog in
+  that frame, and GitHub's runner, drawing WebGL in software, measured 296 ms (72 to 104 ms on a laptop).
+  The keyboard run puts the pin at the crosshair, the middle of the map, where no tag is within 25 m, so it goes
+  straight to the form; taps and clicks answer the nearby question. Opening a pin's card from the keyboard
+  focuses the pin directly, as `browse.spec.ts` does, since its place in the tab order depends on where it is.
 - **Accept:** green on three projects.
 - **Files:** `e2e/{tag-map,perf}.spec.ts`.
 - **Verify:** `pnpm verify`.
@@ -1380,11 +1443,14 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   branch-per-preview on; web build command `DATABASE_URL=$DATABASE_URL_UNPOOLED pnpm --filter @iwb/server migrate:deploy
   && pnpm turbo run build --filter=@iwb/web`; Blob: a **public** store for tiles (upload `inner-west-<build>.pmtiles`
   with a one-year immutable cache, set `NEXT_PUBLIC_TILES_URL`) and a **private** photo store connected to both
-  projects as `BLOB_READ_WRITE_TOKEN`; BotID with Deep Analysis on `web`; firewall rule `POST /api/*` 20 per 60 s per
+  projects as `BLOB_READ_WRITE_TOKEN`; BotID with Deep Analysis on `web`, whose system environment variables stay
+  exposed (the default: the browser's BotID check is built in only when `NEXT_PUBLIC_VERCEL_ENV` is set, while the
+  server checks whenever `VERCEL` is, so without them every write gets 403); firewall rule `POST /api/*` 20 per 60 s per
   IP → 429; Resend account and API key (`RESEND_API_KEY`, `ALERT_EMAIL_TO`); `HASH_SECRET` and `CRON_SECRET`
-  (random 32 bytes each); Vercel Authentication "All deployments" on `admin`; spend-management alert; Speed Insights
-  check; domain later. Then the post-deploy checks: §11.2 PMTiles checks, `admin-access.spec.ts` against a preview,
-  cron 401 in production. **Launch checklist**: every item in Left for Michael. `docs/accessibility-checklist.md`:
+  (random 32 bytes each, on `web` for production and preview); Vercel Authentication "All deployments" on `admin`;
+  spend-management alert; Speed Insights check; domain later. Then the post-deploy checks: §11.2 PMTiles checks,
+  `admin-access.spec.ts` against a preview, a tag added and removed from a phone on a preview while a `curl` POST
+  gets 403, the `iwb_v` cookie sent `Secure`, cron 401 in production. **Launch checklist**: every item in Left for Michael. `docs/accessibility-checklist.md`:
   the §10.6, §12 and §13 manual checks as a ticklist per milestone. `docs/esafety.md`: the §7 one-page response
   procedure, with an empty "Classification" section for Michael. Review every `.env.example` against `env.ts`
   files; update the README's Status section; re-read `/accessibility`, `/privacy` and `/terms` against what was

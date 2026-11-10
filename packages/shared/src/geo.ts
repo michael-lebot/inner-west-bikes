@@ -4,6 +4,7 @@ import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
 import type { MultiPolygon, Polygon, Position } from 'geojson'
 import buffered from '../data/council-buffered.json'
 import places from '../data/places.json'
+import { METERS_PER_DEGREE } from './near'
 
 type Suburb = { name: string; geometry: Polygon | MultiPolygon }
 type Street = { name: string; lines: Position[][] }
@@ -11,8 +12,6 @@ type Street = { name: string; lines: Position[][] }
 const area = buffered as Polygon
 const suburbs = places.suburbs as Suburb[]
 const streets = places.streets as Street[]
-
-const METERS_PER_DEGREE = 111_320
 
 /** The distance in metres from a point to the nearest of some lines, on a flat projection centred on the point. */
 function distance([lng = 0, lat = 0]: Position, lines: Position[][]) {

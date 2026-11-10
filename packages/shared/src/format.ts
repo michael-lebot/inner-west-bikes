@@ -43,10 +43,11 @@ export const dateTime = (date: Date) => full.format(date)
 /** The API returns live tags only, so the browser just drops tags whose time has passed since. */
 export const isExpired = (tag: { expiresAt: Date }, now = new Date()) => tag.expiresAt <= now
 
-/** A tag as `GET /api/tags` sends it: JSON makes its two times strings, and this makes them dates again. */
-export const parseTag = (
-  json: Omit<PublicTag, 'lastConfirmedAt' | 'expiresAt'> & Record<'lastConfirmedAt' | 'expiresAt', string>,
-): PublicTag => ({
+/** A tag as the API sends it: JSON makes its two times strings. */
+export type TagJson = Omit<PublicTag, 'lastConfirmedAt' | 'expiresAt'> & Record<'lastConfirmedAt' | 'expiresAt', string>
+
+/** Makes a tag's times dates again. */
+export const parseTag = (json: TagJson): PublicTag => ({
   ...json,
   lastConfirmedAt: new Date(json.lastConfirmedAt),
   expiresAt: new Date(json.expiresAt),

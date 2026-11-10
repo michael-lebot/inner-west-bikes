@@ -70,7 +70,8 @@ export default defineConfig([
   // §1.6: environment variables are read and parsed in one place per deployable.
   {
     files: ['apps/**', 'packages/*/src/**'],
-    ignores: ['packages/server/src/env.ts', 'apps/web/lib/env.ts', 'apps/web/lib/public-env.ts'],
+    // The test configs pick the test database, which TEST_DATABASE_URL may override.
+    ignores: ['packages/server/src/env.ts', 'apps/web/lib/env.ts', 'apps/web/lib/public-env.ts', '**/vitest.config.ts'],
     rules: {
       'no-restricted-properties': [
         'error',

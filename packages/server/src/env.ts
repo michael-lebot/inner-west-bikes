@@ -7,5 +7,7 @@ const local = !process.env.VERCEL
 export const env = z
   .object({
     DATABASE_URL: local ? z.url().default('postgresql://iwb:iwb@localhost:54318/iwb') : z.url(),
+    // Optional here, so the admin app, which never hashes, runs without it; visitors.ts refuses to hash without it.
+    HASH_SECRET: local ? z.string().default('dev-hash-secret') : z.string().min(32).optional(),
   })
   .parse(process.env)

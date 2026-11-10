@@ -1,7 +1,9 @@
 'use client'
-import { bikeName, PROBLEMS, type PublicTag } from '@iwb/shared'
+import { bikeName, PROBLEMS, type PublicTag, type TagJson } from '@iwb/shared'
 import { useEffect, useRef, useState } from 'react'
+import { SMALL } from './buttons'
 import { PinIcon } from './PinIcon'
+import { TagActions } from './TagActions'
 import { TagDetails } from './TagDetails'
 
 /** A vertical swipe at least this long on the handle shrinks or expands the card (§12). */
@@ -11,7 +13,17 @@ const FLICK_PX = 30
  * A live tag's card (§3, §10.4). Not a dialog: the map stays usable beside it. On a phone its handle shrinks it to
  * one line and back, by tap or by flick; in the side panel there is nothing to uncover, so there is no handle (§13).
  */
-export function TagCard({ tag, now, onClose }: { tag: PublicTag; now: Date; onClose: () => void }) {
+export function TagCard({
+  tag,
+  now,
+  onDone,
+  onClose,
+}: {
+  tag: PublicTag
+  now: Date
+  onDone: (tag: TagJson | null) => void
+  onClose: () => void
+}) {
   const [shrunk, setShrunk] = useState(false)
   const heading = useRef<HTMLHeadingElement>(null)
   // shortcut: flick on release, upgrade to a card that follows the finger if this feels stiff on phones at M1.
@@ -28,8 +40,9 @@ export function TagCard({ tag, now, onClose }: { tag: PublicTag; now: Date; onCl
         type="button"
         aria-label={shrunk ? 'Expand card' : 'Shrink card'}
         aria-expanded={!shrunk}
-        // Only the handle takes the flick, so it never fights the card's own scrolling.
-        className="-mx-4 -mt-4 flex h-11 touch-none items-center justify-center wide:hidden"
+        // Only the handle takes the flick, so it never fights the card's own scrolling. It keeps its 44 px when the
+        // card scrolls, as it does at large text sizes.
+        className="-mx-4 -mt-4 flex h-11 shrink-0 touch-none items-center justify-center wide:hidden"
         onPointerDown={(event) => {
           event.currentTarget.setPointerCapture(event.pointerId)
           flick.current = { from: event.clientY, flicked: false }
@@ -62,13 +75,14 @@ export function TagCard({ tag, now, onClose }: { tag: PublicTag; now: Date; onCl
             )}
           </span>
         </h2>
-        <button type="button" className="min-h-11 rounded-[10px] border border-edge px-4 font-bold" onClick={onClose}>
+        <button type="button" className={SMALL} onClick={onClose}>
           Close
         </button>
       </div>
       {/* Shrunk, the rest is out of reach of pointer and keyboard; the panel never shrinks it. */}
-      <div className={shrunk ? 'hidden wide:block' : ''}>
+      <div className={`flex flex-col gap-4 ${shrunk ? 'hidden wide:flex' : ''}`}>
         <TagDetails tag={tag} now={now} />
+        <TagActions id={tag.id} onDone={onDone} />
       </div>
     </section>
   )

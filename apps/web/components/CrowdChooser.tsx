@@ -1,5 +1,6 @@
 import { bikes, byPlace, type PublicTag } from '@iwb/shared'
 import { useEffect, useRef } from 'react'
+import { SMALL } from './buttons'
 import { TagRow } from './TagRow'
 
 /** "N bikes here": the tags under a tap where pins overlap, to choose one (§4.1). Not a dialog: the map stays live. */
@@ -23,7 +24,7 @@ export function CrowdChooser({
         <h2 id="crowd-heading" ref={heading} tabIndex={-1} className="text-lg font-bold">
           {bikes(tags.length)} here
         </h2>
-        <button type="button" className="min-h-11 rounded-[10px] border border-edge px-4 font-bold" onClick={onClose}>
+        <button type="button" className={SMALL} onClick={onClose}>
           Close
         </button>
       </div>

@@ -379,8 +379,8 @@ site_state      one row: uploads_paused_at · uploads_paused_reason
 
 ### 5.3 Safe retries
 
-A phone on a poor connection can lose the reply to a write that actually worked. Sending it again must return the
-first result, not act twice.
+A phone on a poor connection can lose the reply to a write that actually worked. Sending it again must not act twice;
+it returns the current state.
 
 - **Every write carries an ID made in the browser.**
   - **Create:** the ID is the tag's own `id`. The insert uses `ON CONFLICT (id) DO NOTHING`, and a repeat returns the
@@ -418,7 +418,7 @@ These are exit criteria for M2 and M3 (§15). They run in Vitest against a real 
   Undo is refused after `expires_at`.
 - **Two at once:** two simultaneous requests can't take a visitor past a rate limit. Two simultaneous Removed
   requests write one removal.
-- **Repeats:** sending each kind of write again with the same ID returns the first result, with one event, one
+- **Repeats:** sending each kind of write again with the same ID returns the current state, with one event, one
   rate-limit count and one email.
 - **Photo and tag together:** report → remove → undo leaves the photo hidden. A photo URL returns 404 once its tag
   is removed, expired or taken down. A restored photo isn't hidden by a later report.
@@ -740,7 +740,7 @@ dependency versions. If Next.js and MapLibre alone don't fit, the budgets are re
 | Largest Contentful Paint (LCP) | ≤ 2.5 s |
 | Cumulative Layout Shift (CLS) | ≤ 0.1 |
 | Total Blocking Time (the lab stand-in for INP) | ≤ 200 ms on pages without the map (set in PR 2: headless Chrome draws the map in software, and TBT on the map page measured 4.7 to 7 s in CI, while with a GPU opening a card takes 48 ms; the scripted interactions gate the map page instead) |
-| Scripted interactions: open a card, pick a chip, zoom, open the form | Each ≤ 200 ms to the next paint (the lab gate is 600 ms on the map page, set in PR 2: headless Chrome reads its software-drawn canvas back each frame, and with a GPU opening a card takes 48 ms; the M1 real-phone check holds 200 ms) |
+| Scripted interactions: open a card, pick a chip, zoom, open the form | Each ≤ 200 ms to the next paint (in the lab, picking a chip keeps 200 ms and the other three get 600 ms, set in PR 2: headless Chrome reads its software-drawn canvas back in each frame the map takes part in, and with a GPU opening a card takes 48 ms; the M1 real-phone check holds 200 ms) |
 | **Map ready for placement:** tiles, labels and pins drawn, and taps accepted | ≤ 6 s (to be set properly from M1 measurements; the lab gate is 14.5 s over the 4G profile, set in PR 2 from 8.2 s measured: 960 KB behind four round trips) |
 | JavaScript before the map loads (gzip, as transferred) | ≤ 150 KiB (reset at M0: the framework alone is 139 KB gzip, 119 KB Brotli) |
 | Map bundle: MapLibre + `pmtiles` + style (compressed, as transferred) | ≤ 300 KB, loaded after first paint |
@@ -873,7 +873,7 @@ under 100 visits a day there may be too little data to judge these, so they are 
     both are optional;
   - the photo input lets iOS and Android offer camera or library.
 - **Poor connections:**
-  - Every write carries an ID made in the browser, and the server returns the first result for a repeat, so a retry
+  - Every write carries an ID made in the browser, and the server returns the current state for a repeat, so a retry
     can't act twice (§5.3).
   - Network failures and server errors are retried up to three times with backoff, and the form keeps its state.
   - The tag and its photo are sent separately. If only the photo fails, the tag is kept and the photo can be retried

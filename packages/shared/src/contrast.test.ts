@@ -32,6 +32,7 @@ describe('interface', () => {
     ['focus ring', 'focus', 'white', 3],
     ['focus halo on the header', 'white', 'night', 3],
     ['timer bar', 'brand', 'meter', 3],
+    ['error text, and the white "!" on its mark', 'error', 'white', 4.5],
   ])('%s: %s on %s reaches %s:1', (_, fg, bg, min) => {
     expect(contrast(token(fg), token(bg))).toBeGreaterThanOrEqual(min)
   })

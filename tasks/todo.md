@@ -23,7 +23,7 @@ acceptance criteria pass and `pnpm verify` is green.
 - [x] 2.3 Overworld style: base layers, labels, Atkinson PBF glyphs, `within` filters
 - [x] 2.4 Map art: pattern sprites, mask, gold wall with dark casing; contrast test extended
 - [x] 2.5 Map screen: preview image, lazy MapLibre, ready mark, failure fallback, zoom and Move map, "i" panel
-- [x] 2.6 Live tags: `GET /api/tags`, refresh hook parsing through the `PublicTag` schema, count and legend
+- [x] 2.6 Live tags: `GET /api/tags` from a typed query, a refresh hook whose `parseTag` makes the two times dates, count and legend
 - [x] 2.7 Pins: HTML marker buttons, accessible names, tab order, focus pan, crowd chooser, bob
 - [x] 2.8 Sheet, tag card (handle, tap and flick) and desktop side panel
 - [x] 2.9 Browse E2E, axe states, map perf gates; map-bundle budget confirmed or reset
@@ -31,15 +31,15 @@ acceptance criteria pass and `pnpm verify` is green.
 
 ## PR 3 — `build/03-tag-on-map` (from `build/02-browse-map`)
 
-- [ ] 3.1 Visitor cookie and hashes; rate limits in Postgres (two-at-once test)
-- [ ] 3.2 Tag lifecycle in `tags.ts`: create, still there, removed, undo, take down (expiry, two-at-once, repeat tests)
-- [ ] 3.3 Write wrapper, BotID seam and the three tag write routes
-- [ ] 3.4 Browser `send()` with retries, request IDs and announcements
-- [ ] 3.5 Placement step: tap, readback, outside message, keyboard crosshair
-- [ ] 3.6 Native dialog, "Is it one of these?", tag form with Change location
-- [ ] 3.7 Still there and Removed on the card, `/list` and `/tag/[id]`
-- [ ] 3.8 Tagging E2E (touch and keyboard), axe on dialogs, interaction perf
-- [ ] Checkpoint: CI green, browser verification at both sizes, PR opened against `build/02-browse-map`
+- [x] 3.1 Visitor cookie and hashes; rate limits in Postgres (two-at-once test)
+- [x] 3.2 Tag lifecycle in `tags.ts`: create, still there, removed, undo, take down (expiry, two-at-once, repeat tests)
+- [x] 3.3 Write wrapper, BotID seam and the three tag write routes
+- [x] 3.4 Browser `send()` with retries, request IDs and announcements
+- [x] 3.5 Placement step: tap, readback, outside message, keyboard crosshair
+- [x] 3.6 Native dialog, "Is it one of these?", tag form with Change location
+- [x] 3.7 Still there and Removed on the card, `/list` and `/tag/[id]`
+- [x] 3.8 Tagging E2E (touch and keyboard), axe on dialogs, interaction perf
+- [x] Checkpoint: CI green, browser verification at both sizes, PR opened against `build/02-browse-map`
 
 ## PR 4 — `build/04-tag-without-map` (from `build/03-tag-on-map`)
 
