@@ -57,12 +57,17 @@ test('names the headstone SVG for tabs, favicon.ico for older browsers, and the 
   }
 })
 
-test("draws the header's headstone in the tab", async ({ page, request }) => {
+test("draws the header's headstone in the tab", async ({ page }) => {
   const [, svg] = await icons(page)
-  const paths = (markup: string) => markup.match(/fill="#\w+" d="[^"]+"/g)
-  expect(paths(await (await request.get(svg!.href)).text())).toEqual(
-    paths(await page.getByRole('banner').locator('svg').innerHTML()),
-  )
+  // Every shape in each drawing: its kind, colour and outline.
+  const [icon, header] = await page.evaluate(async (href) => {
+    const icon = new DOMParser().parseFromString(await (await fetch(href)).text(), 'image/svg+xml').documentElement
+    return [icon, document.querySelector('header svg')!].map((svg) =>
+      [...svg.children].map((shape) => [shape.localName, shape.getAttribute('fill'), shape.getAttribute('d')]),
+    )
+  }, svg!.href)
+  expect(icon).toHaveLength(4)
+  expect(icon).toEqual(header)
 })
 
 test('draws every icon in whole pixels of the 16 px tab icon', async ({ page }) => {
@@ -73,10 +78,8 @@ test('draws every icon in whole pixels of the 16 px tab icon', async ({ page }) 
   // Each pixel twice the size on a 2× screen, and in favicon.ico.
   expect(await draw(page, svg!.href, 32)).toEqual(scale(tab, 2))
   expect(await draw(page, ico!.href, 32)).toEqual(scale(tab, 2))
-  // Ten times the size on an iPhone home screen, on the night slate with a 10 px margin, as iOS allows no clear.
-  const home = await draw(page, apple!.href, 180)
-  expect(new Set(home.flat())).toEqual(new Set(HEADSTONE))
-  expect(home.slice(10, 170).map((row) => row.slice(10, 170))).toEqual(
-    scale(tab, 10).map((row) => row.map((pixel) => (pixel === CLEAR ? NIGHT : pixel))),
-  )
+  // Ten times the size on an iPhone home screen, which shows no clear: on night slate, with a pixel of it all round.
+  const onNight = (row: string[]) => [NIGHT, ...row.map((pixel) => (pixel === CLEAR ? NIGHT : pixel)), NIGHT]
+  const edge = Array(16).fill(CLEAR)
+  expect(await draw(page, apple!.href, 180)).toEqual(scale([edge, ...tab, edge].map(onNight), 10))
 })
