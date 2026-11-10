@@ -13,7 +13,7 @@ afterEach(() => {
 })
 
 describe('sendEmail', () => {
-  it('writes the email to the console without a key, off Vercel, ending with the link to the queue', async () => {
+  it('writes the email to the console without a key, on Vercel too, ending with the link to the queue', async () => {
     const logged = vi.spyOn(console, 'info').mockImplementation(() => {})
     await sendEmail('A photo was reported', 'Reason: Other.', 'report-1')
     expect(logged).toHaveBeenCalledWith(
@@ -21,6 +21,22 @@ describe('sendEmail', () => {
     )
     expect(fetch).not.toHaveBeenCalled()
     logged.mockRestore()
+  })
+
+  it('writes it to the function log on Vercel too, with no key and no address, as before Resend is set up', async () => {
+    vi.stubEnv('VERCEL', '1')
+    vi.stubEnv('BLOB_READ_WRITE_TOKEN', 'token')
+    vi.stubEnv('ADMIN_URL', 'https://admin.example.com')
+    vi.resetModules()
+    const { sendEmail: sendOnVercel } = await import('./email')
+    const logged = vi.spyOn(console, 'info').mockImplementation(() => {})
+    await sendOnVercel('A photo was reported', 'Reason: Other.', 'report-1')
+    expect(logged).toHaveBeenCalledWith(
+      '[email] A photo was reported\nReason: Other.\n\nReported photos: https://admin.example.com/reports',
+    )
+    expect(fetch).not.toHaveBeenCalled()
+    logged.mockRestore()
+    vi.unstubAllEnvs()
   })
 
   it('sends it to Michael through Resend with the key', async () => {

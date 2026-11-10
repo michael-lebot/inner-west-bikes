@@ -4,7 +4,7 @@
 import { z } from 'zod'
 
 /** Off Vercel: local development, the tests and CI. */
-export const local = !process.env.VERCEL
+const local = !process.env.VERCEL
 
 export const env = z
   .object({
@@ -15,8 +15,8 @@ export const env = z
     // is resolved from each package's working directory: the repo's .data/blob.
     BLOB_READ_WRITE_TOKEN: local ? z.string().optional() : z.string().min(1),
     LOCAL_BLOB_DIR: z.string().default('../../.data/blob'),
-    // Michael's alerts (§4.6), which only the web app sends. Off Vercel, without a key, they go to the console. On
-    // Vercel email.ts refuses to send without them, so the admin app and the build load without them.
+    // Michael's alerts (§4.6), which only the web app sends. Without a key they go to the console, the function log on
+    // Vercel; with one, email.ts needs ALERT_EMAIL_TO and ADMIN_URL, so the admin app and the build load without them.
     RESEND_API_KEY: z.string().optional(),
     ALERT_EMAIL_TO: z.string().optional(),
     ALERT_EMAIL_FROM: z.string().default('onboarding@resend.dev'),

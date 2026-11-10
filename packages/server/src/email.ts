@@ -1,6 +1,7 @@
-// The email seam (plan §1.7): Michael's alerts go through Resend's API when there is a key, and otherwise, off Vercel,
-// to the console. Nothing else knows which. An alert carries no visitor data and no photo, only a link to the queue.
-import { env, local } from './env'
+// The email seam (plan §1.7): Michael's alerts go through Resend's API when there is a key, and otherwise to the
+// console, which on Vercel is the function log, so the site can launch before Resend is set up. Nothing else knows
+// which. An alert carries no visitor data and no photo, only a link to the queue.
+import { env } from './env'
 
 /** Resend gets this long to answer each try, so a report never waits on it for more than two. */
 const TIMEOUT_MS = 5_000
@@ -13,8 +14,8 @@ const TIMEOUT_MS = 5_000
 export async function sendEmail(subject: string, text: string, key: string) {
   const { RESEND_API_KEY: apiKey, ALERT_EMAIL_TO: to, ALERT_EMAIL_FROM: from, ADMIN_URL: admin } = env
   const body = `${text}\n\nReported photos: ${admin}/reports`
-  if (!apiKey && local) return console.info(`[email] ${subject}\n${body}`)
-  if (!apiKey || !to || !admin) throw new Error('Set RESEND_API_KEY, ALERT_EMAIL_TO and ADMIN_URL to send email')
+  if (!apiKey) return console.info(`[email] ${subject}\n${body}`)
+  if (!to || !admin) throw new Error('Set ALERT_EMAIL_TO and ADMIN_URL to send email')
   const post = () =>
     fetch('https://api.resend.com/emails', {
       method: 'POST',

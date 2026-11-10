@@ -289,7 +289,8 @@ a flick threshold, stay beside the behaviour they control.
 - Each is Zod-parsed once. Off Vercel every variable has a safe local default (Docker URL, fixed dev secrets, Blob and
   email switched to local), so a fresh clone runs with no app env files. On Vercel (`VERCEL=1`) a missing secret
   throws the first time the code that needs it runs (so the admin app, which never hashes or emails, doesn't need
-  `HASH_SECRET` or `RESEND_API_KEY`).
+  `HASH_SECRET` or `RESEND_API_KEY`). Email is the exception: without `RESEND_API_KEY` alerts go to the console there
+  too (task 6.2).
 - `packages/server/.env` (from `.env.example`) exists only for the Prisma CLI. Each deployable has an `.env.example`
   listing its production variables; a PR that adds a variable updates it.
 
@@ -1545,7 +1546,9 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   5 s each time.
   The email variables are optional when `env.ts` loads and checked by `email.ts` when it sends, because on Vercel
   `next build` loads `env.ts` with only the variables `turbo.json` passes through, `VERCEL` among them, so the build
-  knows it is on Vercel; `env.test.ts` loads it with exactly that list.
+  knows it is on Vercel; `env.test.ts` loads it with exactly that list. Ship (PR 6): without `RESEND_API_KEY` the
+  alerts go to the console on Vercel too, the function log there, as the site launches before Resend is set up; with a
+  key, `ALERT_EMAIL_TO` and `ADMIN_URL` are still required.
 - **Accept:** §5.5 repeats: a repeated report sends no second email; §5.5 outside failures for Resend: a throwing
   send leaves the report saved with `notified_at` null and the next hourly run sends it in the digest; a claim whose
   send never ended is sent by the hourly run once 10 minutes old; two overlapping hourly runs send one digest.

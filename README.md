@@ -59,8 +59,9 @@ The hourly job deletes expired photos and stray photo files, removes visitor has
 retention runs out, and emails Michael a digest of any reports not yet emailed. It runs on Vercel Cron in production.
 Locally, run it with `curl -H "Authorization: Bearer dev-cron-secret" localhost:3000/api/cron/hourly`.
 
-Michael's emails about reported photos go through Resend in production. Without `RESEND_API_KEY`, as in development,
-the web app prints each one to its console instead.
+Michael's emails about reported photos go through Resend in production. Without `RESEND_API_KEY`, as in development
+or on Vercel before Resend is set up, the web app prints each one to its console instead (on Vercel, the function
+log).
 
 Photos go to a private Vercel Blob store in production. Without `BLOB_READ_WRITE_TOKEN`, as in development, they are
 files in `.data/blob/` (git-ignored), or wherever `LOCAL_BLOB_DIR` says (relative to each app's folder); the tests

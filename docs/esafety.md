@@ -22,6 +22,9 @@ deletes it. After a restore, later reports on that photo are recorded and queued
 it: a photo restored by mistake needs Delete or Take down. If more than 15 photos are reported in an hour, uploads
 pause by themselves and Michael is emailed.
 
+**Until Resend is set up** (`docs/launch.md`, runbook 6), the alerts go only to the web project's function log, so
+nothing reaches Michael's phone: he opens Reported photos at least once a day instead.
+
 **While Michael is away.** He pauses photo uploads before leaving, and resumes them when he is back: they stay off
 until he does. Reported photos stay hidden until he reviews them, and every photo is deleted when its tag's 48
 hours run out.
