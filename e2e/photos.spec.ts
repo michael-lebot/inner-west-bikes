@@ -98,6 +98,11 @@ test('adds a photo with a new tag, and its page shows the thumbnail, which opens
     return [image.naturalWidth, image.naturalHeight]
   })
   expect(size).toEqual([1600, 1200])
+
+  // At 320 px with the largest text, the details go under the thumbnail: nothing to scroll sideways (1.4.10).
+  await page.setViewportSize({ width: 320, height: 640 })
+  await page.addStyleTag({ content: ':root { font-size: 200% }' })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
 })
 
 test('at the largest text on an SE-sized phone, the chosen photo and Remove photo stay inside the form', async ({
