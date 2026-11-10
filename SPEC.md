@@ -478,8 +478,8 @@ mobile users share one IP.
 
 **Visitor identity without accounts:**
 - **Cookie:** a random 128-bit HttpOnly cookie (Secure, SameSite=Lax). Only a keyed hash of it is stored.
-- **IP:** stored as HMAC-SHA256 with a daily salt (the /64 prefix for IPv6). Each salt is deleted after 48h, and raw
-  IPs are never logged.
+- **IP:** stored as HMAC-SHA256 with a daily salt (the /64 prefix for IPv6). Each salt is deleted after 48h, and the
+  app never logs raw IPs. The host's own request logs do (§7).
 
 **What is kept, and for how long.** Every place that holds a visitor identifier is listed here. The hourly job does
 the clearing (§5.4).
@@ -519,7 +519,9 @@ Michael sees it. Reporting stops it loading from then on, but can't undo views o
   - what we collect and how it's hashed;
   - how long it's kept (§4.2, §6);
   - providers and regions: Vercel `syd1`, Neon Sydney, Resend;
-  - BotID's browser signals;
+  - BotID's browser signals, which Vercel says it judges with machine learning: the one use of AI in running the
+    site;
+  - what the host sees: every request's IP address, in its request logs and its firewall's rate limit;
   - the optional location button: the location is used in the browser and never stored (§4.1);
   - the Reduce motion choice, kept in the browser's `localStorage` and never sent (§10.5);
   - a contact address: the feedback address (§4.7).
