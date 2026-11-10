@@ -5,6 +5,8 @@ A no-login, 90s-video-game-style map of Sydney's Inner West Council area. Anyone
 
 - Tags expire after 48 hours unless someone marks them **Still there**.
 - Anyone can mark a tag **Removed**, which hides it straight away.
+- **Notify the service provider?** on each tag opens the visitor's own email app with a message to the operator's
+  support address, and offers the message to copy. The site itself sends nothing.
 - Photos can be reported. The first report hides a photo straight away and queues it for review. Once a photo has
   been reviewed and restored, later reports are queued but no longer hide it.
 
