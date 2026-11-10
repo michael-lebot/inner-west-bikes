@@ -26,8 +26,8 @@ export default function PrivacyPage() {
       <h2>How long we keep it</h2>
       <ul>
         <li>
-          Visitor and IP hashes are cleared from tags and reports after 30 days. The anonymous record (place, operator,
-          problem and times) is kept.
+          Visitor and IP hashes are cleared from tags and reports after 30 days. The anonymous record is kept: a
+          tag&apos;s place, operator, problem and times, and a report&apos;s reason and times.
         </li>
         <li>Rate-limit counters are deleted 48 hours after they start.</li>
         <li>
