@@ -79,7 +79,7 @@ async function claimEmail(tx: Prisma.TransactionClient, id: string, reason: Repo
     email = {
       subject: 'Photo uploads paused',
       text:
-        `More than ${CIRCUIT_BREAKER_REPORTS_PER_HOUR} photos were reported in the last hour, so photo uploads are ` +
+        `More than ${CIRCUIT_BREAKER_REPORTS_PER_HOUR} reports arrived in the last hour, so photo uploads are ` +
         `paused until you resume them. Tags without photos can still be added.\n` +
         `The latest reason: ${REPORT_REASONS[reason]}.`,
     }

@@ -318,7 +318,7 @@ describe('pausing photo uploads (§4.6)', () => {
     expect(subjects().filter((subject) => subject === 'Photo uploads paused')).toHaveLength(1)
     expect(sendEmail).toHaveBeenCalledWith(
       'Photo uploads paused',
-      'More than 15 photos were reported in the last hour, so photo uploads are paused until you resume them. ' +
+      'More than 15 reports arrived in the last hour, so photo uploads are paused until you resume them. ' +
         'Tags without photos can still be added.\nThe latest reason: Shows a person, face or number plate.',
       ALERT_KEY,
     )

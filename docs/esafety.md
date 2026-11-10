@@ -19,8 +19,8 @@ which is forwarded to Michael's phone. An eSafety removal notice must be met wit
 
 Anyone can report a photo from its card or its page. The first report hides it at once, until Michael restores or
 deletes it. After a restore, later reports on that photo are recorded and queued, and reach Michael, but no longer hide
-it: a photo restored by mistake needs Delete or Take down. If more than 15 photos are reported in an hour, uploads
-pause by themselves and Michael is emailed.
+it: a photo restored by mistake needs Delete or Take down. If more than 15 reports arrive in an hour, uploads pause
+by themselves and Michael is emailed.
 
 **Until Resend is set up** (`docs/launch.md`, runbook 7), the alerts go only to the web project's function log, so
 nothing reaches Michael's phone: he opens Reported photos at least once a day instead.
