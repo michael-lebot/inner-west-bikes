@@ -20,10 +20,11 @@ const SAYS: Record<Problem, string> = {
 export function operatorEmail(tag: PublicTag, origin: string) {
   const to = OPERATORS[tag.operator].email
   if (!to) return null
+  const bike = bikeName(tag.operator)
   const place = [tag.street, tag.suburb].filter(Boolean).join(', ')
-  const subject = `${bikeName(tag.operator)}, ${PROBLEMS[tag.problem].toLowerCase()}, ${place}`
+  const subject = `${bike}, ${PROBLEMS[tag.problem].toLowerCase()}, ${place}`
   const message =
-    `I am reporting that there is ${withArticle(bikeName(tag.operator))} ${SAYS[tag.problem]} near ${place}.\n\n` +
+    `I am reporting that there is ${withArticle(bike)} ${SAYS[tag.problem]} near ${place}.\n\n` +
     `Coordinates: ${tag.lat}, ${tag.lng}\n` +
     `Tagged on The Inner West E-bike Graveyard: ${origin}/tag/${tag.id}`
   // A mailto body breaks its lines with CRLF (RFC 6068).

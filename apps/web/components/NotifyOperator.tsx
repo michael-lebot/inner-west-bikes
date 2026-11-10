@@ -10,7 +10,7 @@ import { SECONDARY, SMALL } from './buttons'
  * nothing. A "Not sure" tag has no one to write to, so it shows nothing. `origin` as operatorEmail takes it.
  */
 export function NotifyOperator({ tag, origin }: { tag: PublicTag; origin: string }) {
-  const [copied, setCopied] = useState('')
+  const [status, setStatus] = useState('')
   const email = operatorEmail(tag, origin)
   if (!email) return null
 
@@ -21,7 +21,7 @@ export function NotifyOperator({ tag, origin }: { tag: PublicTag; origin: string
     } catch {
       said = "Couldn't copy. Select the message and copy it."
     }
-    setCopied(said)
+    setStatus(said)
     announce(said)
   }
 
@@ -53,7 +53,7 @@ export function NotifyOperator({ tag, origin }: { tag: PublicTag; origin: string
           <button type="button" className={SMALL} onClick={copy}>
             Copy message
           </button>
-          <span className="text-sm text-muted">{copied}</span>
+          <span className="text-sm text-muted">{status}</span>
         </p>
       </div>
     </details>
