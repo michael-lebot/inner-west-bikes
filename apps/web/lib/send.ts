@@ -37,6 +37,9 @@ export async function send<T>(path: string, body: object): Promise<Sent<T>> {
   }
 }
 
+/** Whether trying again later could succeed: only for what `send` itself tries again, a failed send or a limit. */
+export const canRetry = (error: SendError) => error.code === 'failed' || error.code === 'rate_limited'
+
 /** Our own error, or "Couldn't send…" for anything else; the firewall's 429 has no body of ours (§6). */
 async function failure(response: Response | null): Promise<SendError> {
   const body = response && response.status < 500 ? await response.json().catch(() => null) : null

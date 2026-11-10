@@ -1,7 +1,7 @@
 'use client'
 import { type Operator, OPERATORS, type Problem, PROBLEMS, type TagJson } from '@iwb/shared'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
-import { send } from '@/lib/send'
+import { canRetry, send, type SendError } from '@/lib/send'
 import { announce } from './Announcer'
 import { FOCUS_RING_WITHIN, PRIMARY, SECONDARY, SMALL } from './buttons'
 import { Dialog } from './Dialog'
@@ -44,7 +44,7 @@ export function TagForm({
   const [checked, setChecked] = useState(false)
   const [failure, setFailure] = useState<string>()
   // Why the photo of a tag already added didn't upload.
-  const [photoFailure, setPhotoFailure] = useState<string>()
+  const [photoFailure, setPhotoFailure] = useState<SendError>()
   const [sending, setSending] = useState(false)
   const status = useRef<HTMLParagraphElement>(null)
   const missing = (['operator', 'problem'] as const).filter((field) => !draft[field])
@@ -69,7 +69,7 @@ export function TagForm({
       apply(draft.id, sent.data.tag)
       done(photoFailure ? 'Photo added' : 'Tag added')
     } else {
-      setPhotoFailure(sent.error.message)
+      setPhotoFailure(sent.error)
       announce(`${PHOTO_FAILED} ${sent.error.message}`)
     }
   }
@@ -112,14 +112,17 @@ export function TagForm({
         <p ref={status} tabIndex={-1} className="font-bold">
           {PHOTO_FAILED}
         </p>
-        <ErrorText>{photoFailure}</ErrorText>
+        <ErrorText>{photoFailure.message}</ErrorText>
         <div className="flex flex-wrap gap-2">
           <button type="button" className={`${SECONDARY} grow`} onClick={onClose}>
             Skip
           </button>
-          <button type="button" className={`${PRIMARY} grow`} onClick={attach}>
-            {sending ? 'Sending…' : 'Try again'}
-          </button>
+          {/* A refusal, such as a paused upload or a file that isn't a photo, would only be refused again. */}
+          {canRetry(photoFailure) && (
+            <button type="button" className={`${PRIMARY} grow`} onClick={attach}>
+              {sending ? 'Sending…' : 'Try again'}
+            </button>
+          )}
         </div>
       </Dialog>
     )

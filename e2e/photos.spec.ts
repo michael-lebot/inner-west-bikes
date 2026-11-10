@@ -154,6 +154,20 @@ test('Skip leaves the tag added without its photo', async ({ page }) => {
   expect(await photoCount()).toBe(0)
 })
 
+test('a refusal that would come again, as from uploads paused after the form opened, offers Skip alone', async ({
+  page,
+}) => {
+  await fillForm(page)
+  await sql('UPDATE site_state SET uploads_paused_at = now()')
+  await dialog(page).getByRole('button', { name: 'Add to the map' }).click()
+  await expect(dialog(page).getByText(FAILED)).toBeFocused()
+  await expect(dialog(page).getByText('Photos are switched off for now. Your tag can still be added.')).toBeVisible()
+  await expect(dialog(page).getByRole('button', { name: 'Try again' })).toHaveCount(0)
+  await dialog(page).getByRole('button', { name: 'Skip' }).click()
+  await expect(dialog(page)).toBeHidden()
+  expect(await photoCount()).toBe(0)
+})
+
 test('a card shows its photo, and passes axe', async ({ page }) => {
   const { id } = await tagWithPhoto(page)
   await page.goto('/')
