@@ -1,4 +1,5 @@
 import { OPERATORS, PIN_HALO, PINS, type Operator } from '@iwb/shared'
+import { pixels } from './pixels'
 
 // The mockup's 13 × 15 pixel pin: X is the outline, C the operator colour, W the shine.
 const PIN = [
@@ -19,17 +20,9 @@ const PIN = [
   '......X......',
 ]
 
-/** An SVG path over every pixel whose letter is in `letters`, one rectangle per run along a row. */
-const pixels = (letters: string) =>
-  PIN.flatMap((row, y) =>
-    [...row.matchAll(new RegExp(`[${letters}]+`, 'g'))].map(
-      ({ index, 0: run }) => `M${index} ${y}h${run.length}v1h-${run.length}z`,
-    ),
-  ).join('')
-
-const SHAPE = pixels('XCW')
-const FILL = pixels('C')
-const SHINE = pixels('W')
+const SHAPE = pixels(PIN, 'XCW')
+const FILL = pixels(PIN, 'C')
+const SHINE = pixels(PIN, 'W')
 
 /** A pixel pin, `scale` CSS px per pixel. Decorative: the operator is always named in text beside it. */
 export function PinIcon({ operator, scale = 2 }: { operator: Operator; scale?: number }) {
