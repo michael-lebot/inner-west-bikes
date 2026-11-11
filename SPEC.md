@@ -352,7 +352,7 @@ runs.
 | Functions | Vercel, **region `syd1`** (Vercel's default is Washington DC, iad1) |
 | Storage | Vercel Blob: a **public** store for PMTiles and a **private** store for photos |
 | Map | MapLibre GL JS + `pmtiles` protocol + custom Overworld pixel style |
-| Bot defence | Vercel BotID (Basic free; Deep Analysis on) |
+| Bot defence | Vercel BotID at its free Basic level. Deep Analysis stays off: it uses machine learning, and the privacy page says the app uses no AI |
 | Email | Resend |
 | Tests | Vitest (unit, and integration against a real Postgres) + Playwright (end-to-end), as in StoryCraft. Required cases are in §5.5 |
 
@@ -478,8 +478,8 @@ mobile users share one IP.
 
 **Visitor identity without accounts:**
 - **Cookie:** a random 128-bit HttpOnly cookie (Secure, SameSite=Lax). Only a keyed hash of it is stored.
-- **IP:** stored as HMAC-SHA256 with a daily salt (the /64 prefix for IPv6). Each salt is deleted after 48h, and raw
-  IPs are never logged.
+- **IP:** stored as HMAC-SHA256 with a daily salt (the /64 prefix for IPv6). Each salt is deleted after 48h, and the
+  app never logs raw IPs. The host's own request logs do (§7).
 
 **What is kept, and for how long.** Every place that holds a visitor identifier is listed here. The hourly job does
 the clearing (§5.4).
@@ -517,9 +517,11 @@ Michael sees it. Reporting stops it loading from then on, but can't undo views o
   - The site isn't affiliated with Lime, Hello, Ario, Inner West Council or Transport for NSW.
 - **Privacy note:**
   - what we collect and how it's hashed;
-  - how long it's kept (§4.2, §6);
+  - how long it's kept (§4.2, §6), and the day of recovery history the database keeps;
   - providers and regions: Vercel `syd1`, Neon Sydney, Resend;
-  - BotID's browser signals;
+  - BotID's browser signals, checked in its free Basic mode, which uses no machine learning. Turning on Deep Analysis,
+    which does, would make the page's "doesn't use any AI" untrue;
+  - what the host sees: every request's IP address, in its request logs and its firewall's rate limit;
   - the optional location button: the location is used in the browser and never stored (§4.1);
   - the Reduce motion choice, kept in the browser's `localStorage` and never sent (§10.5);
   - a contact address: the feedback address (§4.7).
