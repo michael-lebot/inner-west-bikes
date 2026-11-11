@@ -20,9 +20,9 @@ test.beforeEach(() => resetDb())
 // Instant camera moves, so each tap lands on the map as it will stay.
 test.use({ reducedMotion: 'reduce' })
 
-/** Where a pin is: the middle of its base, its bottom edge. */
+/** Where a pin is: the middle of its headstone's base, the bottom edge of its drawing. */
 async function base(pin: Locator) {
-  const box = (await pin.boundingBox())!
+  const box = (await pin.locator('svg').boundingBox())!
   return { x: box.x + box.width / 2, y: box.y + box.height }
 }
 

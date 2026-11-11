@@ -1,24 +1,23 @@
 import { OPERATORS, PIN_HALO, PINS, type Operator } from '@iwb/shared'
 import { pixels } from './pixels'
 
-// The header's headstone, 13 × 15 pixels: X is the outline, C the operator colour, W the shine. Its ground line is in the
-// outline's colour, as the logo's green vanishes on the map's grass. The middle of the base is where the bike is.
+// The header's 12 × 14 headstone without its empty top row: X is the outline, C the operator colour, W the shine. The
+// operator's letter takes the cross's place, and the ground line is in the outline's colour, as the logo's green
+// vanishes on the map's grass. The middle of the ground line, the bottom centre, is where the bike is.
 const STONE = [
-  '...XXXXXXX...',
-  '..XXCCCCCXX..',
-  '.XXWCCCCCCXX.',
-  '.XWCCCCCCCCX.',
-  '.XWCCCCCCCCX.',
-  '.XCCCCCCCCCX.',
-  '.XCCCCCCCCCX.',
-  '.XCCCCCCCCCX.',
-  '.XCCCCCCCCCX.',
-  '.XCCCCCCCCCX.',
-  '.XCCCCCCCCCX.',
-  '.XCCCCCCCCCX.',
-  '.XCCCCCCCCCX.',
-  '.XXXXXXXXXXX.',
-  'XXXXXXXXXXXXX',
+  '...XXXXXX...',
+  '..XWCCCCXX..',
+  '.XXWCCCCCXX.',
+  '.XCCCCCCCCX.',
+  '.XCCCCCCCCX.',
+  '.XCCCCCCCCX.',
+  '.XCCCCCCCCX.',
+  '.XCCCCCCCCX.',
+  '.XCCCCCCCCX.',
+  '.XCCCCCCCCX.',
+  '.XCCCCCCCCX.',
+  '.XXXXXXXXXX.',
+  'XXXXXXXXXXXX',
 ]
 
 const SHAPE = pixels(STONE, 'XCW')
@@ -30,9 +29,9 @@ export function PinIcon({ operator, scale = 2 }: { operator: Operator; scale?: n
   const colors = PINS[operator]
   return (
     <svg
-      width={15 * scale}
-      height={17 * scale}
-      viewBox="-1 -1 15 17"
+      width={14 * scale}
+      height={15 * scale}
+      viewBox="-1 -1 14 15"
       shapeRendering="crispEdges"
       aria-hidden="true"
       className="shrink-0"
@@ -42,8 +41,8 @@ export function PinIcon({ operator, scale = 2 }: { operator: Operator; scale?: n
       <path d={FILL} fill={colors.fill} />
       <path d={SHINE} fill={colors.shine} />
       <text
-        x={6.5}
-        y={7.5}
+        x={6}
+        y={6}
         fill={colors.letter}
         fontSize={6.5}
         fontWeight={700}
