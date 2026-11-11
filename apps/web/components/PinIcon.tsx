@@ -1,30 +1,31 @@
 import { OPERATORS, PIN_HALO, PINS, type Operator } from '@iwb/shared'
 import { pixels } from './pixels'
 
-// The mockup's 13 × 15 pixel pin: X is the outline, C the operator colour, W the shine.
-const PIN = [
-  '....XXXXX....',
+// The header's headstone, 13 × 15 pixels: X is the outline, C the operator colour, W the shine. Its ground line is in the
+// outline's colour, as the logo's green vanishes on the map's grass. The middle of the base is where the bike is.
+const STONE = [
+  '...XXXXXXX...',
   '..XXCCCCCXX..',
-  '.XCWCCCCCCCX.',
-  '.XCWCCCCCCCX.',
-  'XCCCCCCCCCCCX',
-  'XCCCCCCCCCCCX',
-  'XCCCCCCCCCCCX',
-  'XCCCCCCCCCCCX',
+  '.XXWCCCCCCXX.',
+  '.XWCCCCCCCCX.',
+  '.XWCCCCCCCCX.',
   '.XCCCCCCCCCX.',
   '.XCCCCCCCCCX.',
-  '..XXCCCCCXX..',
-  '...XXCCCXX...',
-  '....XXCXX....',
-  '.....XXX.....',
-  '......X......',
+  '.XCCCCCCCCCX.',
+  '.XCCCCCCCCCX.',
+  '.XCCCCCCCCCX.',
+  '.XCCCCCCCCCX.',
+  '.XCCCCCCCCCX.',
+  '.XCCCCCCCCCX.',
+  '.XXXXXXXXXXX.',
+  'XXXXXXXXXXXXX',
 ]
 
-const SHAPE = pixels(PIN, 'XCW')
-const FILL = pixels(PIN, 'C')
-const SHINE = pixels(PIN, 'W')
+const SHAPE = pixels(STONE, 'XCW')
+const FILL = pixels(STONE, 'C')
+const SHINE = pixels(STONE, 'W')
 
-/** A pixel pin, `scale` CSS px per pixel. Decorative: the operator is always named in text beside it. */
+/** A pixel headstone, `scale` CSS px per pixel. Decorative: the operator is always named in text beside it. */
 export function PinIcon({ operator, scale = 2 }: { operator: Operator; scale?: number }) {
   const colors = PINS[operator]
   return (
@@ -42,7 +43,7 @@ export function PinIcon({ operator, scale = 2 }: { operator: Operator; scale?: n
       <path d={SHINE} fill={colors.shine} />
       <text
         x={6.5}
-        y={5.8}
+        y={7.5}
         fill={colors.letter}
         fontSize={6.5}
         fontWeight={700}

@@ -66,7 +66,8 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
 
 1. **Browse.** The map opens on the whole council area, with everything outside it greyed out and live tags shown as
    pins. A tag is live until it is removed or its 48 hours run out (§4.2).
-   - Each pin is coloured by operator and also carries a letter (L/H/A/?), so colour is never the only cue.
+   - Each pin is a small headstone coloured by operator, with a letter (L/H/A/?) on its face, so colour is never the
+     only cue.
    - The panel below the map shows "N bikes in the graveyard", the operator key and one primary action.
    - Visitors can zoom down to street level.
    - Where pins overlap, tapping them opens a short list to choose from (§4.1).
@@ -116,7 +117,7 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
   - a custom MapLibre style with the Overworld palette (§9);
   - texture from `fill-pattern` sprites authored as pixel art at 2× (grass tufts, trees, a dithered grey outside the
     council);
-  - pixel-art pin images.
+  - pixel-art pin images: the header's headstone (§9) in each operator's colours.
 - **Map text:** rendered at the device's full resolution. There is no `pixelRatio` downscale, because that would
   pixelate every label.
   - Labels use **Atkinson Hyperlegible** glyphs (PBF, ranges 0–255): 13–16 px, bold where needed, with a 2 px white
@@ -574,7 +575,7 @@ The reference is **`docs/mockups/graveyard-v3.html`**. The five original explora
   - grass-green council and sandy roads with brown edging;
   - dashed suburb borders and a gold council line;
   - tree and tuft patterns, with greyscale and dither outside the council;
-  - black-outlined pixel-art pins.
+  - black-outlined pixel-art pins, each a small headstone.
   - These are graphics, not text.
 - **Everything you read is plain:**
   - one typeface, Atkinson Hyperlegible (400 and 700), for the interface, map labels and pin letters;
@@ -895,8 +896,8 @@ under 100 visits a day there may be too little data to judge these, so they are 
   about the site are in the footer (§4.7).
 - **Accurate placement:**
   - Placing a tag needs zoom 16 or closer, at about 2 m per screen pixel. "Tag a dumped bike" zooms there first.
-  - Placement is its own step with the whole map usable. The pin's tip sits exactly on the tapped point, tapping
-    somewhere else moves it, and **Use this spot** opens the form (§3).
+  - Placement is its own step with the whole map usable. The middle of the pin's base sits exactly on the tapped point,
+    tapping somewhere else moves it, and **Use this spot** opens the form (§3).
   - From the form, **Change location** comes back to this step.
   - **Use my location** proposes a pin when the phone's location is accurate to 50 m or better (§4.1).
   - Tags up to 20 m outside the boundary are accepted (§4.1).
