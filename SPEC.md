@@ -218,6 +218,12 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
 and page offer to help. It is a disclosure, closed at first, under "Is it still there?". Opened, it shows:
 - **Email Lime** (Hello, Ario), a `mailto:` link to the operator's support address (Appendix B), with a subject and the
   message filled in. A line under it names the address and says the visitor's own email app sends it.
+  - A device with no email app does nothing with a `mailto:` link, and the page can't tell whether one opened. So
+    every click also follows the link and, in place of that line, shows: "Opening your email app. If nothing opens,
+    copy the address and the message below, or write the email in Gmail or Outlook.com." It is announced through the
+    live region (§10.4) and focus stays on the link. Under it: the address with a **Copy address** button, and
+    **Write it in Gmail** and **Write it in Outlook.com**, links to their compose pages with the address, subject and
+    message filled in, opening in a new tab (said to screen readers). No guessing whether the email app opened.
 - **Message**, a read-only field holding the same text, with a **Copy message** button. "Copied" is announced
   (§10.4). The text can be selected without JavaScript, which the disclosure doesn't need either.
 - The message is built from the tag's fields, never typed by the visitor:
