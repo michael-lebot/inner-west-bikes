@@ -1,5 +1,11 @@
 # The Inner West E-bike Graveyard
 
+> **The code now lives in the public repo
+> [michael-lebot/innerwestbikegraveyard](https://github.com/michael-lebot/innerwestbikegraveyard).** This private
+> repo keeps the spec (`SPEC.md`), the build plan (`tasks/`) and the docs (`docs/`), with the full history and PR
+> threads. Code changes go to the public repo; changes to the spec, plan and docs come here. The code here is a
+> copy as of 11 November 2026 and is no longer updated.
+
 A no-login, 90s-video-game-style map of Sydney's Inner West Council area. Anyone can tag a dumped share bike
 (Lime, Hello, Ario) so it gets seen and collected.
 
