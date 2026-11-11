@@ -8,14 +8,11 @@ const OS_REDUCES = '(prefers-reduced-motion: reduce)'
 /** Run in <head> before the first paint (layout.tsx), so a stored choice never shows a frame of motion. */
 export const RESTORE_CHOICE = `try{const c=localStorage.getItem('${KEY}');if(c)document.documentElement.dataset.reduceMotion=c}catch{}`
 
-/** The visitor's choice, or undefined without one. */
-export function motionChoice() {
-  const choice = document.documentElement.dataset.reduceMotion
-  return choice === 'true' ? true : choice === 'false' ? false : undefined
-}
-
 /** Whether motion is reduced: by the visitor's choice, or else by the OS. */
-export const reducesMotion = () => motionChoice() ?? matchMedia(OS_REDUCES).matches
+export function reducesMotion() {
+  const choice = document.documentElement.dataset.reduceMotion
+  return choice === 'true' || (choice !== 'false' && matchMedia(OS_REDUCES).matches)
+}
 
 /** The visitor's choice: it applies at once, and on every later visit in this browser. */
 export function chooseReduceMotion(reduce: boolean) {

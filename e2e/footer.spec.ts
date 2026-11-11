@@ -155,7 +155,7 @@ test.describe('Reduce motion', () => {
     await expect(toggle(page).locator('span').first()).toHaveCSS('background-color', 'rgb(29, 107, 42)')
   })
 
-  test('reaches the map: its camera moves and the picked pin', async ({ page }) => {
+  test("reaches the map: its camera moves, a drag's glide and the picked pin", async ({ page, isMobile }) => {
     for (const [os, reduce] of [
       ['no-preference', true],
       ['reduce', false],
@@ -178,6 +178,26 @@ test.describe('Reduce motion', () => {
       })
       if (reduce) expect(next, os).toEqual(end)
       else expect(next, os).not.toEqual(end)
+
+      // Where it is just after a flick with the mouse, and once any glide has ended: within the pixel the pins snap
+      // to when the map stops, or far beyond it. Phones drag by touch, which Playwright can't script.
+      if (!isMobile) {
+        const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
+        const pinX = () => page.evaluate(() => document.querySelector('[data-tag] button')!.getBoundingClientRect().x)
+        await page.mouse.move(map.x + 40, map.y + 60)
+        await page.mouse.down()
+        // A frame apart: MapLibre judges the glide from the moves it drew in the last 160 ms.
+        for (let x = 70; x <= 160; x += 30) {
+          await page.mouse.move(map.x + x, map.y + 60)
+          await page.evaluate(() => new Promise(requestAnimationFrame))
+        }
+        await page.mouse.up()
+        const released = await pinX()
+        await page.waitForTimeout(2500)
+        const glide = Math.abs((await pinX()) - released)
+        if (reduce) expect(glide, os).toBeLessThan(1)
+        else expect(glide, os).toBeGreaterThan(10)
+      }
 
       const pin = page.getByRole('button', { name: /Liverpool Rd, Ashfield/ })
       await pin.focus()
