@@ -237,6 +237,8 @@ test('keeps every map control in sight and the count above the fold at twice the
   const sheet = (await page.locator('#sheet').boundingBox())!
   const count = (await page.getByRole('heading', { name: '14 bikes in the graveyard' }).boundingBox())!
   expect(count.y + count.height).toBeLessThanOrEqual(sheet.y + sheet.height)
+  // The name wraps beside the headstone, which keeps its size.
+  expect((await page.locator('header svg').boundingBox())!.width).toBe(24)
 })
 
 test.describe('pins', () => {
