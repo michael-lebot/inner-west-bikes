@@ -104,8 +104,8 @@ app every day (`docs/esafety.md`).
 ### 5. Protection
 
 - **BotID** on `web` runs at its free Basic level as soon as the site is deployed, with nothing to turn on beyond the
-  system variables of step 4. Deep Analysis, later: **Firewall → Rules → Vercel BotID Deep Analysis** (Pro, US$1 per
-  1,000 checks).
+  system variables of step 4. Leave Deep Analysis off: it uses machine learning, and `/privacy` says the app uses no
+  AI (`SPEC.md` §5).
 - **Firewall** on `web`: **Firewall → Configure → + New Rule**, named `Public writes`. If **Request Path** starts with
   `/api/` and **Method** equals `POST`, then **Rate Limit**: **Fixed Window**, **Time Window** 60 s, **Request Limit**
   20, keyed on **IP Address**, answering **Too Many Requests (429)**. **Save Rule**, then **Review Changes** and
@@ -180,8 +180,7 @@ Tick each when it is done. This is `tasks/plan.md` §6.
 - [ ] The two Vercel projects in `syd1`, Neon from the Marketplace, both Blob stores and the tiles upload (runbook
       1 to 3)
 - [ ] `HASH_SECRET`, `CRON_SECRET`, `ADMIN_URL` and the tiles URL (runbook 4)
-- [ ] BotID at its Basic level, the firewall rule, Vercel Authentication on `admin` (runbook 5); BotID Deep Analysis
-      when wanted (`SPEC.md` §5 has it on)
+- [ ] BotID at its Basic level with Deep Analysis off, the firewall rule, Vercel Authentication on `admin` (runbook 5)
 - [ ] Resend, and later its domain (runbook 7)
 - [ ] The spend alert and the Speed Insights check (runbook 7)
 - [ ] Empty apps deploy, and the Prisma migration runs on Neon (`SPEC.md` §15, M0)
@@ -200,7 +199,7 @@ Tick each when it is done. This is `tasks/plan.md` §6.
 
 **Content and legal (M4)**
 
-- [ ] The `/why` copy (`SPEC.md` §14.1); launch waits for it
+- [x] The `/why` copy, supplied on 11 November 2026 (`SPEC.md` §14.1)
 - [ ] A review of `/privacy` and `/terms`, with `/privacy`'s claims checked against the deployment: BotID's level,
       Resend on or off, Neon's history window (a day by default on the Launch plan) and Vercel's log retention
 - [ ] The contact address, on `/accessibility` and `/privacy`, monitored and forwarded to Michael's phone
@@ -209,8 +208,8 @@ Tick each when it is done. This is `tasks/plan.md` §6.
 
 **Decisions**
 
-- [ ] Operator report links on the tag card (`SPEC.md` §14.2, not built)
-- [ ] The domain (`SPEC.md` §14.3)
+- [x] Operator report links: built as "Notify the service provider?" (`SPEC.md` §14.2)
+- [x] The domain: innerwestbikegraveyard.com, live since 11 November 2026 (`SPEC.md` §14.3)
 - [ ] Whether a photo whose tag is no longer live can still be reported, as built: the report hides it, so an Undo
       removal can't bring a harmful photo back (`tasks/plan.md` assumption 29)
 
