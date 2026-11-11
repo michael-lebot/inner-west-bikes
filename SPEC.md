@@ -305,8 +305,8 @@ runs.
 
 ### 4.4 "Why this page exists"
 
-- A static page at `/why`, in Michael's words (supplied on 11 November 2026). It's linked from the footer on every
-  screen (§4.7).
+- A static page at `/why`, in Michael's words (supplied on 11 November 2026). It's linked from the footer, or the
+  header's menu on a phone, on every screen (§4.7).
 
 ### 4.5 Hosting costs and contributions — dropped (deferred)
 
@@ -352,20 +352,32 @@ runs.
   - While uploads are paused, tagging without a photo works as normal, and the form says photos are switched off for
     now.
 
-### 4.7 Footer
+### 4.7 Footer and phone menu
 
-- **Pinned to the bottom of the screen on every page,** the map screen included, where it sits below the map and the
-  sheet. It covers nothing: the map and the sheet share the space above it, and a page that scrolls ends clear of it.
+- **In the side-panel layout** (768 px and wider, or a phone held sideways; §13), the footer is **pinned to the bottom
+  of the screen on every page,** the map screen included, where it sits below the map and the panel. It covers
+  nothing: the map and the panel share the space above it, and a page that scrolls ends clear of it.
+- **On a phone held upright there is no footer** (changed 11 November 2026, so the map and sheet get its room).
+  Instead the header has a **menu button** at its right end, holding the same items in the same order:
+  - a real button, 44 × 44 px, named "Menu", with `aria-expanded` and `aria-controls`;
+  - it opens a panel just under the header, over the page, that lists the items one per line. Focus moves to its
+    first link. Esc, the button again or a tap outside closes it, and focus returns to the button;
+  - it is a native popover (`popover`, `popovertarget`), so it opens and closes without JavaScript too, and its links
+    work. Script only reports its state and moves the focus in.
 - **What it holds,** in this order:
   - **Feedback:** a `mailto:` link to **hello@innerwestbikegraveyard.com**. The address shows where there is room
     for it (1024 px and wider). On a narrower screen the link reads "Feedback", and screen readers still hear the
     address. Michael sets up the mailbox and its forwarding himself; the site only links to it.
   - Links to **Why this page exists**, **Privacy**, **Accessibility** and **Terms**. This is their one home on every
-    screen: the header holds only the name, and the map's "i" panel only the map's credits.
+    screen: the header holds only the name (and, on a phone held upright, this menu), and the map's "i" panel only
+    the map's credits.
+  - **Source code:** a link to the public repository, https://github.com/michael-lebot/innerwestbikegraveyard. It
+    reads "Source code", and screen readers hear "Source code on GitHub".
   - The **Reduce motion** switch (§10.5).
-- **Size:** two rows on a phone, down to 320 px wide, and one row in the side-panel layout, so a phone held sideways
-  keeps every map control in view (§12). Its targets are 44 × 44 px at any text size. At large text sizes it is never
-  taller than a fifth of the screen, and what doesn't fit scrolls inside it, as the sheet does.
+- **Size:** the footer is one row in the side-panel layout, from 768 px wide, so a phone held sideways keeps every map
+  control in view (§12). Its targets, and the menu's, are 44 × 44 px at any text size. At large text sizes the
+  footer is never taller than a fifth of the screen, and what doesn't fit scrolls inside it, as the sheet does; the
+  menu scrolls inside itself too.
 - **Safe areas:** it pads itself clear of the home indicator and side notches (`env(safe-area-inset-*)`).
 - A page scrolled with the keyboard keeps the focused control clear of it (2.4.11).
 
@@ -611,7 +623,7 @@ The reference is **`docs/mockups/graveyard-v3.html`**. The five original explora
   - a white bottom sheet with a night-slate header (`#1f2a36`) holding the name and a small pixel headstone icon
     (decorative);
   - a plain white footer pinned below everything else, with the feedback address, the links about the site and
-    Reduce motion (§4.7);
+    Reduce motion, in the side-panel layout; on a phone held upright they are in the header's menu instead (§4.7);
   - one green primary button per screen (`#1d6b2a` with white text, about 6.9:1 contrast);
   - secondary buttons outlined;
   - option chips with a tick and a tinted fill when selected;
@@ -744,7 +756,7 @@ are WCAG success criteria. Where our own rule is stricter than the criterion, th
 
 - **Motion:**
   - Transitions are 200 ms or less, and nothing loops by default.
-  - **Reduce motion,** a switch in the footer (§4.7): a button named "Reduce motion" that reports its state with
+  - **Reduce motion,** a switch in the footer or the phone's menu (§4.7): a button named "Reduce motion" that reports its state with
     `aria-pressed`.
     - It starts at the OS setting (`prefers-reduced-motion`). The visitor's choice overrides that either way.
     - The choice is kept in this browser's `localStorage` only: never in a cookie, and never sent to the server. A
@@ -827,7 +839,7 @@ under 100 visits a day there may be too little data to judge these, so they are 
 ### 11.2 Loading
 
 - **First paint:**
-  - The shell is static: header, sheet, footer and a reserved space for the bike count.
+  - The shell is static: header, sheet, footer (side-panel layout only) and a reserved space for the bike count.
   - Show a **static preview image** of the council (a pre-rendered WebP of about 40 KB, regenerated at build). It is
     the page's largest element, so it sets LCP.
   - MapLibre is loaded with a dynamic import after first paint and replaces the preview once the map is ready. The
@@ -894,7 +906,7 @@ under 100 visits a day there may be too little data to judge these, so they are 
 
 - **Mobile first,** designed for 320–430 px. At 768 px and wider, the bottom sheet becomes a side panel (§13).
 - **Layout:**
-  - The map fills the viewport between the header and the footer (`100dvh`).
+  - The map fills the viewport below the header (`100dvh`). A phone held upright has no footer (§4.7).
   - The sheet has three heights, set by what it is showing:
     - **peek:** the count and primary button, the placement bar, or a shrunk tag card;
     - **half:** a tag card;
@@ -915,9 +927,9 @@ under 100 visits a day there may be too little data to judge these, so they are 
     a stray swipe can't dismiss a half-filled form.
   - The page itself never scrolls while the map is visible, so scrolling and panning never fight. `touch-action` is
     set on the map only.
-  - **The sheet scrolls inside itself.** Its height is capped at the space left between the header and the footer,
-    and its content scrolls vertically (`overflow-y: auto`, `overscroll-behavior: contain`). A form made taller by
-    large text, wrapped chips or an error message can always be scrolled to its buttons.
+  - **The sheet scrolls inside itself.** Its height is capped at the space left between the header and the
+    foot of the screen, and its content scrolls vertically (`overflow-y: auto`, `overscroll-behavior: contain`). A
+    form made taller by large text, wrapped chips or an error message can always be scrolled to its buttons.
   - Every card and dialog has a visible Close or Cancel button at the top, and the focused control is scrolled into
     view.
   - **On-screen keyboard:** only the street picker opens one, for the street search and the house number. Each
@@ -925,8 +937,8 @@ under 100 visits a day there may be too little data to judge these, so they are 
     viewport so the keyboard doesn't cover them.
     `100dvh` alone doesn't handle this.
 - **Safe areas:** `viewport-fit=cover` and `env(safe-area-inset-*)` padding for notches and the home indicator.
-- **Thumb reach:** primary actions sit in the bottom 40% of the screen. The header holds only the name; the links
-  about the site are in the footer (§4.7).
+- **Thumb reach:** primary actions sit in the bottom 40% of the screen. The header holds the name and, on a phone
+  held upright, the menu with the links about the site; in the side-panel layout those are in the footer (§4.7).
 - **Accurate placement:**
   - Placing a tag needs zoom 16 or closer, at about 2 m per screen pixel. "Tag a dumped bike" zooms there first.
   - Placement is its own step with the whole map usable. The middle of the pin's base sits exactly on the tapped point,
