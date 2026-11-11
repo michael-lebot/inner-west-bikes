@@ -128,7 +128,9 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
   (§10.4).
   - **Crowded pins:** pins sit where the bikes are, so at the council-wide zoom two of them can overlap. Tapping a
     pin whose centre is within 44 px of another opens "N bikes here", a short list built from the same rows as the
-    list view, to choose from.
+    list view, to choose from. A mouse is precise, so on a fine pointer the chooser opens only when the click lands
+    on two or more headstones at once; otherwise it selects the pin whose headstone is under the pointer, or the
+    clicked pin when it lands on no headstone. Touch keeps the 44 px rule.
   - Focusing a pin with the keyboard pans the map to bring it into view.
 - **Risk:** pattern fills at native resolution may look less "game-like" than the chunky mockups. Judge this on real
   phones in M1.
