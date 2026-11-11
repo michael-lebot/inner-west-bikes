@@ -53,10 +53,13 @@ test('sits under the map screen, leaving the sheet whole and every map control i
   }
 })
 
+/** Its height in rows of 44 px controls, 8 px apart, with 5 px above and below and its 1 px border. */
+const rows = (n: number) => n * 44 + (n - 1) * 8 + 2 * 5 + 1
+
 test('keeps to two rows at 320 px wide, and to a fifth of the screen at twice the text size', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 })
   await page.goto('/')
-  expect((await footer(page).boundingBox())!.height).toBeLessThanOrEqual(2 * 44 + 1)
+  expect((await footer(page).boundingBox())!.height).toBeCloseTo(rows(2), 0)
   await page.addStyleTag({ content: ':root { font-size: 200% }' })
   const foot = (await footer(page).boundingBox())!
   expect(foot.height).toBeLessThanOrEqual(568 / 5 + 1)
@@ -72,11 +75,22 @@ test.describe('on a phone held sideways', () => {
   test('takes one row, so the map keeps room for its controls', async ({ page }) => {
     await page.goto('/')
     await expect(page.locator('[data-map-ready]')).toBeAttached()
-    expect((await footer(page).boundingBox())!.height).toBeLessThanOrEqual(44 + 1)
+    expect((await footer(page).boundingBox())!.height).toBeLessThanOrEqual(rows(1))
     const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
     const about = await box(page, 'About this map')
     expect(about.y + about.height).toBeLessThanOrEqual(map.y + map.height)
   })
+})
+
+test('leaves room inside it for the focus ring, which its scrolling would otherwise clip', async ({ page }) => {
+  await page.goto('/privacy')
+  const foot = (await footer(page).boundingBox())!
+  for (const control of await footer(page).locator('a, button').all()) {
+    const { y, height } = (await control.boundingBox())!
+    // theme.css: a 3 px ring, 2 px out. The footer's own border is above it.
+    expect(y - 5).toBeGreaterThanOrEqual(foot.y + 1 - 0.5)
+    expect(y + height + 5).toBeLessThanOrEqual(foot.y + foot.height + 0.5)
+  }
 })
 
 test('scrolls whatever has the focus clear of it', async ({ page, browserName }) => {
