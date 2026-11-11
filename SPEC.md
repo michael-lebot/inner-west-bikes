@@ -125,7 +125,8 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
     halo or white label boxes.
   - No pixel, bitmap or dot-matrix font is used anywhere.
 - **Pins are MapLibre HTML markers** (`<button>`s), not a symbol layer, so they're focusable and have accessible names
-  (§10.4).
+  (§10.4). Each button is its headstone's size, so its outline (focus, hover, picked) hugs the stone; a box around it,
+  44 × 44 px with the middle of the stone's base at the middle of its bottom edge, takes the taps.
   - **Crowded pins:** pins sit where the bikes are, so at the council-wide zoom two of them can overlap. Tapping a
     pin whose centre is within 44 px of another opens "N bikes here", a short list built from the same rows as the
     list view, to choose from. A mouse is precise, so on a fine pointer the chooser opens only when the click lands
@@ -206,7 +207,7 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
   - Adding or retiring an operator is a config change and a deploy. A retired operator stays in the file, so old
     records still display.
 - **Problems (pick-list):** Blocking footpath · Knocked over · Blocking ramp / driveway · In waterway ·
-  In park or reserve · Damaged.
+  In park or reserve · Damaged · Abandoned.
 - **Nearby tags are a suggestion, never a block.** Two dumped bikes can sit a metre apart.
   - When a visitor picks a spot within about 25 m of live tags, the app lists those tags and asks "Is it one of
     these?"
@@ -217,13 +218,14 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
 **Notify the service provider?** The council asks residents to report bikes to the operators, so each tag's card
 and page offer to help. It is a disclosure, closed at first, under "Is it still there?". Opened, it shows:
 - **Email Lime** (Hello, Ario), a `mailto:` link to the operator's support address (Appendix B), with a subject and the
-  message filled in. A line under it names the address and says the visitor's own email app sends it.
-  - A device with no email app does nothing with a `mailto:` link, and the page can't tell whether one opened. So
-    every click also follows the link and, in place of that line, shows: "Opening your email app. If nothing opens,
-    copy the address and the message below, or write the email in Gmail or Outlook.com." It is announced through the
-    live region (§10.4) and focus stays on the link. Under it: the address with a **Copy address** button, and
-    **Write it in Gmail** and **Write it in Outlook.com**, links to their compose pages with the address, subject and
-    message filled in, opening in a new tab (said to screen readers). No guessing whether the email app opened.
+  message filled in. Directly under it, buttons of the same kind: **Write it in Gmail** and **Write it in
+  Outlook.com**, their compose pages with the address, subject and message filled in, opening in a new tab (said to
+  screen readers), for a device with no email app. A line under them names the address and says Email opens the
+  visitor's own email app.
+  - The page can't tell whether an email app opened. So every click on Email also follows the link and, in place of
+    that line, shows: "Opening your email app. If nothing opens, write it in Gmail or Outlook.com, or copy the address
+    and the message below." It is announced through the live region (§10.4) and focus stays on the link. Under it: the
+    address with a **Copy address** button.
 - **Message**, a read-only field holding the same text, with a **Copy message** button. "Copied" is announced
   (§10.4). The text can be selected without JavaScript, which the disclosure doesn't need either.
 - The message is built from the tag's fields, never typed by the visitor:
@@ -316,8 +318,8 @@ runs.
 
 ### 4.4 "Why this page exists"
 
-- A static page at `/why`, in Michael's words (supplied on 11 November 2026). It's linked from the footer, or the
-  header's menu on a phone, on every screen (§4.7).
+- A static page at `/why`, in Michael's words (supplied on 11 November 2026, revised on 12 November). It's linked
+  from the footer, or the header's menu on a phone, on every screen (§4.7).
 
 ### 4.5 Hosting costs and contributions — dropped (deferred)
 
@@ -384,6 +386,8 @@ runs.
     the map's credits.
   - **Source code:** a link to the public repository, https://github.com/michael-lebot/innerwestbikegraveyard. It
     reads "Source code", and screen readers hear "Source code on GitHub".
+  - The pages and Source code open in a new tab (said to screen readers), so the map, or a tag being added, stays as
+    it was. Feedback opens the email app, not a page, so it doesn't.
   - The **Reduce motion** switch (§10.5).
 - **Size:** the footer is one row in the side-panel layout, from 768 px wide, so a phone held sideways keeps every map
   control in view (§12). Its targets, and the menu's, are 44 × 44 px at any text size. At large text sizes the
