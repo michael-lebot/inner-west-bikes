@@ -7,7 +7,7 @@ import { SECONDARY, SMALL } from './buttons'
 /**
  * "Notify the service provider?" (§4.2): a disclosure, so it opens without JavaScript, holding a link that opens the
  * visitor's own email app with the email to the tag's operator written, and the message to copy. The site sends
- * nothing. A "Not sure" tag has no one to write to, so it shows nothing. `origin` as operatorEmail takes it.
+ * nothing. A "Not sure" tag has no one to write to, so it shows nothing.
  */
 export function NotifyOperator({ tag, origin }: { tag: PublicTag; origin: string }) {
   const [status, setStatus] = useState('')

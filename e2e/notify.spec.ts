@@ -31,9 +31,8 @@ test.describe('Notify the service provider?', () => {
     await expect(message(page)).toHaveValue(MESSAGE)
     await expect(message(page)).not.toBeEditable()
     // It comes after the questions the page is for, so they keep their place at the top.
-    const below = async (page: Page) =>
-      (await cta(page).boundingBox())!.y > (await page.getByRole('button', { name: 'Removed' }).boundingBox())!.y
-    expect(await below(page)).toBe(true)
+    const removed = await page.getByRole('button', { name: 'Removed' }).boundingBox()
+    expect((await cta(page).boundingBox())!.y).toBeGreaterThan(removed!.y)
     await expectNoAxeViolations(page)
   })
 
