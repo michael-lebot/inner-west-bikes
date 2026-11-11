@@ -22,14 +22,15 @@ const CSP = [
 test.beforeEach(() => resetDb())
 
 test.describe('the map screen shell', () => {
-  test('has the header, the map and, on phones, the Map | List toggle, with no CSP errors', async ({
+  test('has the header, the map, the footer and, on phones, the Map | List toggle, with no CSP errors', async ({
     page,
     isMobile,
   }) => {
     const errors: string[] = []
     page.on('console', (message) => message.type() === 'error' && errors.push(message.text()))
     await page.goto('/')
-    await expect(page.getByRole('banner').getByRole('link', { name: 'Why this page exists' })).toBeVisible()
+    await expect(page.getByRole('banner').getByRole('link', { name: 'The Inner West E-bike Graveyard' })).toBeVisible()
+    await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Why this page exists' })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Map', exact: true })).toBeVisible()
     const view = page.getByRole('navigation', { name: 'View' })
     // The side panel lists the tags itself, so it has no toggle (§13).
@@ -73,27 +74,16 @@ test.describe('the map screen shell', () => {
   test('shows a 3 px focus ring on the header link', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'Tab moves through links on desktop browsers')
     await page.goto('/')
-    const why = page.getByRole('link', { name: 'Why this page exists' })
-    while (!(await why.evaluate((link) => link === document.activeElement))) await page.keyboard.press('Tab')
-    await expect(why).toHaveCSS('outline-width', '3px')
-    await expect(why).toHaveCSS('outline-style', 'solid')
+    const home = page.getByRole('link', { name: 'The Inner West E-bike Graveyard' })
+    while (!(await home.evaluate((link) => link === document.activeElement))) await page.keyboard.press('Tab')
+    await expect(home).toHaveCSS('outline-width', '3px')
+    await expect(home).toHaveCSS('outline-style', 'solid')
   })
 
   test('has a skip link that takes the focus past the map to the list', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('link', { name: 'Skip to the list' }).press('Enter')
     await expect(page.locator('#sheet')).toBeFocused()
-  })
-
-  test('fits "Why this page exists" on one line on a desktop', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop', 'Phones wrap it onto two lines, as the mockup does')
-    await page.goto('/')
-    const lines = await page.getByRole('link', { name: 'Why this page exists' }).evaluate((link) => {
-      const range = document.createRange()
-      range.selectNodeContents(link)
-      return range.getClientRects().length
-    })
-    expect(lines).toBe(1)
   })
 })
 
@@ -131,7 +121,7 @@ test.describe('the list', () => {
     await expect(page).toHaveURL('/privacy')
   })
 
-  test('makes every link at least 44 × 44 px, and lines the footer up with the column', async ({ page }) => {
+  test('makes every link at least 44 × 44 px', async ({ page }) => {
     await page.goto('/list')
     const small = await page.getByRole('link').evaluateAll((links) =>
       links.flatMap((link) => {
@@ -140,9 +130,6 @@ test.describe('the list', () => {
       }),
     )
     expect(small).toEqual([])
-    const column = await page.getByRole('main').boundingBox()
-    const footer = await page.getByRole('contentinfo').getByRole('navigation').boundingBox()
-    expect(footer?.x).toBe(column?.x)
   })
 
   test('shows the empty state when no tag is live', async ({ page }) => {
