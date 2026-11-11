@@ -42,14 +42,17 @@ export const resetDb = () =>
 /**
  * Fails on any WCAG 2.2 A or AA violation axe finds, whatever impact it gives it (§10.6). The map's pins alone are
  * spared the target-size rule: they sit where the bikes are, so they may overlap, and overlapping pins open a
- * chooser (§10.5), which is 2.5.8's "equivalent" exception.
+ * chooser (§10.5), which is 2.5.8's "equivalent" exception. Target sizes are measured with the pinned footer let go:
+ * a target that is partly under it where the page is scrolled to scrolls clear of it.
  */
 export async function expectNoAxeViolations(page: Page) {
   const { violations } = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .disableRules(['target-size'])
     .analyze()
+  const unpinned = await page.addStyleTag({ content: 'body > footer { position: static }' })
   const targets = await new AxeBuilder({ page }).withRules(['target-size']).exclude('[data-tag]').analyze()
+  await unpinned.evaluate((style) => (style as Element).remove())
   expect(
     [...violations, ...targets.violations].map(
       (v) => `${v.id}: ${v.nodes.map((node) => node.target.join(' ')).join(', ')}`,

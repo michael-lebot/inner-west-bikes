@@ -51,6 +51,30 @@
   }
 }
 
+/* Motion follows the visitor's Reduce motion choice (lib/motion.ts) either way, and the OS setting without one, so
+   every motion-safe: and motion-reduce: class obeys the footer's switch (§10.5). */
+@custom-variant motion-safe {
+  &:where([data-reduce-motion='false'] *) {
+    @slot;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    &:where(:root:not([data-reduce-motion='true']) *) {
+      @slot;
+    }
+  }
+}
+
+@custom-variant motion-reduce {
+  &:where([data-reduce-motion='true'] *) {
+    @slot;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &:where(:root:not([data-reduce-motion='false']) *) {
+      @slot;
+    }
+  }
+}
+
 /* The map screen's side-panel layout: 768 px and wider, and phones held sideways (§12, §13). */
 @custom-variant wide {
   @media (width >= 48rem), (orientation: landscape) {

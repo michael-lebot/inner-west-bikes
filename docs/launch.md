@@ -201,7 +201,8 @@ Tick each when it is done. This is `tasks/plan.md` §6.
 **Content and legal (M4)**
 
 - [ ] The `/why` copy (`SPEC.md` §14.1); launch waits for it
-- [ ] A review of `/privacy` and `/terms`
+- [ ] A review of `/privacy` and `/terms`, with `/privacy`'s claims checked against the deployment: BotID's level,
+      Resend on or off, Neon's history window (a day by default on the Launch plan) and Vercel's log retention
 - [ ] The contact address, on `/accessibility` and `/privacy`, monitored and forwarded to Michael's phone
 - [ ] The eSafety classification in `docs/esafety.md` (`SPEC.md` §7)
 - [ ] The address data's licence confirmed as CC BY 4.0 with NSW Spatial Services (`SPEC.md` §14.4)

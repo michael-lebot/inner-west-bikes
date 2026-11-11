@@ -237,7 +237,7 @@ export function MapScreen() {
       <div
         id="sheet"
         tabIndex={-1}
-        className="z-10 flex max-h-[60dvh] flex-col gap-3 overflow-y-auto overscroll-contain border-t border-line bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgb(0_0_0/0.08)] wide:max-h-none wide:w-95 wide:shrink-0 wide:border-t-0 wide:border-r wide:shadow-[4px_0_12px_rgb(0_0_0/0.08)]"
+        className="z-10 flex max-h-[60dvh] flex-col gap-3 overflow-y-auto overscroll-contain border-t border-line bg-white p-4 shadow-[0_-4px_12px_rgb(0_0_0/0.08)] wide:max-h-none wide:w-95 wide:shrink-0 wide:border-t-0 wide:border-r wide:shadow-[4px_0_12px_rgb(0_0_0/0.08)]"
       >
         {crowded?.length ? (
           <CrowdChooser tags={crowded} now={now} onSelect={select} onClose={closeChooser} />
