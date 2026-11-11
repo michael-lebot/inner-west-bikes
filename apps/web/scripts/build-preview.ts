@@ -1,6 +1,7 @@
 // Renders public/preview.webp (git-ignored): the council as the map first frames it, painted before MapLibre loads
 // and kept if it can't (§11.2). Land, grey outside, the wall and dashed suburb lines, from the map's own data and
 // colours. `dev` and `build` run it first.
+import { fileURLToPath } from 'node:url'
 import council from '@iwb/shared/data/council.json' with { type: 'json' }
 import places from '@iwb/shared/data/places.json' with { type: 'json' }
 import { GREYS, MAP_COLORS, WALL } from '@iwb/shared/palette'
@@ -38,5 +39,5 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${
 
 const { size } = await sharp(Buffer.from(svg))
   .webp({ quality: 50, effort: 6 })
-  .toFile(new URL('../public/preview.webp', import.meta.url).pathname)
+  .toFile(fileURLToPath(new URL('../public/preview.webp', import.meta.url)))
 console.info(`preview.webp: ${WIDTH} × ${HEIGHT}, ${size} B`)

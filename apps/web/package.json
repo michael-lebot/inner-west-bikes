@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/build-preview.ts && next dev --port 3000",
-    "build": "node scripts/build-preview.ts && next build",
+    "dev": "node scripts/build-preview.ts && node scripts/build-icons.ts && next dev --port 3000",
+    "build": "node scripts/build-preview.ts && node scripts/build-icons.ts && next build",
     "start": "next start --port 3000",
     "test": "vitest run",
     "typecheck": "next typegen && tsc"
