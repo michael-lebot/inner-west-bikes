@@ -77,6 +77,8 @@ export const STREET_TYPES: Record<string, string> = {
   Close: 'Cl',
 }
 
+/** Where visitors send feedback, from the footer on every page and the privacy page (§4.7). */
+export const FEEDBACK_EMAIL = 'hello@innerwestbikegraveyard.com'
 /** A photo upload over this size is refused (§4.3). The browser's re-encoded photos are about 1 MB. */
 export const PHOTO_MAX_BYTES = 4 * 1024 * 1024
 /** A tag disappears this long after it was last confirmed (§1). */

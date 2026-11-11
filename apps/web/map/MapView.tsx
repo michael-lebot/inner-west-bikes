@@ -8,6 +8,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { PinIcon } from '@/components/PinIcon'
 import { FOCUS_RING_ON_HOVER } from '@/components/buttons'
+import { reducesMotion } from '@/lib/motion'
 import { MapControls } from './MapControls'
 import { IMAGES } from './patterns'
 import { overworldStyle } from './style'
@@ -85,6 +86,9 @@ export function MapView({ tags, now, selected, onPick, onStatus, spot, centre, o
         attributionControl: false,
         // The canvas is a region inside the map screen's own "Map" region, so it needs a name of its own.
         locale: { 'Map.Title': 'Map: arrow keys move it' },
+        // Off, so MapLibre's own reading of the OS setting never overrides the visitor's: easeTo below applies Reduce
+        // motion on every move (§10.5).
+        reduceMotion: false,
       })
     } catch {
       // No WebGL.
@@ -93,6 +97,17 @@ export function MapView({ tags, now, selected, onPick, onStatus, spot, centre, o
     }
     created.touchZoomRotate.disableRotation()
     created.keyboard.disableRotation()
+    // Every animated camera move, a gesture's or ours, comes through easeTo, and Reduce motion can change while the
+    // map is open, so each move asks. Reduced, a move jumps.
+    const easeTo = created.easeTo.bind(created)
+    created.easeTo = (options, eventData) => {
+      if (!reducesMotion()) return easeTo(options, eventData)
+      // A drag's glide, MapLibre's one easeTo with noMoveStart, ends where the finger let go.
+      return easeTo(
+        options.noMoveStart ? { noMoveStart: true, animate: false } : { ...options, animate: false },
+        eventData,
+      )
+    }
     // When the sheet below grows or shrinks, keep the map still under the header, as if the sheet slid over it.
     let height = container.current!.clientHeight
     created.on('resize', () => {

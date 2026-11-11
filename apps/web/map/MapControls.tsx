@@ -1,8 +1,6 @@
 'use client'
 import type { Map } from 'maplibre-gl'
-import Link from 'next/link'
 import { useState } from 'react'
-import { ABOUT_LINKS } from '@/components/Footer'
 
 // 44 px at any text size, like the icons in them, so a short map at a large text size still has room for them all.
 const BUTTON = 'flex size-[44px] items-center justify-center rounded-[10px] border border-edge bg-white text-ink'
@@ -76,17 +74,6 @@ export function MapControls({ map }: { map: Map }) {
         >
           <p>© OpenStreetMap contributors</p>
           <p>© State of New South Wales (Spatial Services, DCS NSW), CC BY 4.0</p>
-          <nav aria-label="About this site" className="flex flex-wrap gap-x-4">
-            {ABOUT_LINKS.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center underline underline-offset-2"
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
         </div>
         <button
           type="button"

@@ -5,6 +5,15 @@ import { expectNoAxeViolations, resetDb, sql } from './support'
 const MARION_ST = '5eed0000-0000-4000-8000-000000000002'
 const LLEWELLYN_ST = '5eed0000-0000-4000-8000-000000000003'
 
+/**
+ * Zooms in a step, at once. An iPhone's map, short under the footer, draws pins over a kilometre apart within 44 px of
+ * each other at the council-wide zoom, so a tap there opens a chooser; a step in, only Norton and Marion St overlap.
+ */
+async function zoomIn(page: Page) {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.getByRole('button', { name: 'Zoom in' }).click()
+}
+
 test.beforeEach(() => resetDb())
 
 test('counts the live tags by operator, and drops one that expires at the next refresh', async ({ page }) => {
@@ -142,7 +151,7 @@ test('leaves the map for another page without a script error', async ({ page }) 
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('/')
   await expect(page.locator('[data-map-ready]')).toBeAttached()
-  await page.getByRole('banner').getByRole('link', { name: 'Why this page exists' }).click()
+  await page.getByRole('contentinfo').getByRole('link', { name: 'Why this page exists' }).click()
   await expect(page).toHaveURL('/why')
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   expect(errors).toEqual([])
@@ -228,6 +237,8 @@ test('keeps every map control in sight and the count above the fold at twice the
   const sheet = (await page.locator('#sheet').boundingBox())!
   const count = (await page.getByRole('heading', { name: '14 bikes in the graveyard' }).boundingBox())!
   expect(count.y + count.height).toBeLessThanOrEqual(sheet.y + sheet.height)
+  // The name wraps beside the headstone, which keeps its size.
+  expect((await page.locator('header svg').boundingBox())!.width).toBe(24)
 })
 
 test.describe('pins', () => {
@@ -255,28 +266,31 @@ test.describe('pins', () => {
   })
 
   test('select a lone pin on tap, and a focused pin on Enter even where pins overlap', async ({ page }) => {
-    const ashfield = page.getByRole('button', { name: /Liverpool Rd, Ashfield/ })
-    await ashfield.click()
-    await expect(ashfield).toHaveAttribute('aria-expanded', 'true')
+    await zoomIn(page)
+    const stanmore = page.getByRole('button', { name: /Percival Rd, Stanmore/ })
+    await stanmore.click()
+    await expect(stanmore).toHaveAttribute('aria-expanded', 'true')
     await expect(page.getByRole('heading', { name: /bikes here/ })).toHaveCount(0)
 
     const norton = page.getByRole('button', { name: /Norton St, Leichhardt/ })
     await norton.focus()
     await page.keyboard.press('Enter')
     await expect(norton).toHaveAttribute('aria-expanded', 'true')
-    await expect(ashfield).toHaveAttribute('aria-expanded', 'false')
+    await expect(stanmore).toHaveAttribute('aria-expanded', 'false')
     await expect(page.getByRole('heading', { name: /bikes here/ })).toHaveCount(0)
   })
 
   test('bob twice when selected, and not at all under reduced motion', async ({ page }) => {
     const ashfield = page.getByRole('button', { name: /Liverpool Rd, Ashfield/ })
-    await ashfield.click()
+    // Enter, as a tap at the council-wide zoom may open a chooser (zoomIn).
+    await ashfield.press('Enter')
     expect(await ashfield.evaluate((pin) => getComputedStyle(pin).animationIterationCount)).toBe('2')
     await page.emulateMedia({ reducedMotion: 'reduce' })
     expect(await ashfield.evaluate((pin) => getComputedStyle(pin).animationName)).toBe('none')
   })
 
   test('tapped where they overlap, offer "2 bikes here" to choose from', async ({ page }) => {
+    await zoomIn(page)
     const norton = page.getByRole('button', { name: /Norton St, Leichhardt/ })
     // Marion St's pin covers part of Norton St's: the tap lands on whichever is on top.
     await norton.click({ force: true })
@@ -385,6 +399,7 @@ test.describe('the tag card', () => {
   })
 
   test('opens from a chooser that a refresh has trimmed', async ({ page }) => {
+    await zoomIn(page)
     await page.getByRole('button', { name: /Norton St, Leichhardt/ }).click({ force: true })
     await expect(page.getByRole('heading', { name: '2 bikes here' })).toBeVisible()
     await sql(`UPDATE tags SET expires_at = now() WHERE id = '${MARION_ST}'`)
@@ -397,12 +412,15 @@ test.describe('the tag card', () => {
 
   test.describe('on a phone', () => {
     test.skip(({ isMobile }) => !isMobile, 'phones only')
+    // Each opens its pin with Enter, as a tap at the council-wide zoom may open a chooser (zoomIn).
 
     test('opens at half height, and shrinks to one line and back by tap and by flick', async ({ page }) => {
-      await page.getByRole('button', { name: /Liverpool Rd, Ashfield/ }).click()
+      await page.getByRole('button', { name: /Liverpool Rd, Ashfield/ }).press('Enter')
       const sheet = page.locator('#sheet')
       const viewport = page.viewportSize()!
-      expect((await sheet.boundingBox())!.height).toBeGreaterThan(viewport.height * 0.45)
+      // Half the room between the header and the footer, or more where the map is down to its minimum.
+      const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
+      expect((await sheet.boundingBox())!.height).toBeGreaterThanOrEqual(map.height)
 
       const handle = page.getByRole('button', { name: 'Shrink card' })
       await expect(handle).toHaveAttribute('aria-expanded', 'true')
@@ -440,7 +458,7 @@ test.describe('the tag card', () => {
     test('stays still under the header when the card shrinks at the council-wide zoom', async ({ page }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' })
       const pin = page.getByRole('button', { name: /Liverpool Rd, Ashfield/ })
-      await pin.click()
+      await pin.press('Enter')
       const top = async () => (await pin.boundingBox())!.y
       // Once the map has stopped moving for the card that just opened.
       let before = NaN
@@ -455,7 +473,7 @@ test.describe('the tag card', () => {
 
     test('brings its pin back into view each time the card grows over it', async ({ page }) => {
       const pin = page.getByRole('button', { name: /Marrickville Rd, Dulwich Hill/ })
-      await pin.click()
+      await pin.press('Enter')
       // Growing the map moves it if its edges reach the bounds; growing the card again would then cover the pin.
       await page.getByRole('button', { name: 'Shrink card' }).click()
       await page.getByRole('button', { name: 'Expand card' }).click()

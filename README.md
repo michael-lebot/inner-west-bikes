@@ -70,6 +70,10 @@ files in `.data/blob/` (git-ignored), or wherever `LOCAL_BLOB_DIR` says (relativ
 use `.data/blob-test/` and the end-to-end servers `.data/blob-e2e/`. The hourly job also deletes any file there that
 is an hour old and that no photo in the dev database has.
 
+The site's icon is [`apps/web/app/icon.svg`](apps/web/app/icon.svg), the header's headstone. `pnpm dev` and
+`pnpm build` first draw the iPhone home-screen icon and `favicon.ico` from it (git-ignored) with
+[`apps/web/scripts/build-icons.ts`](apps/web/scripts/build-icons.ts).
+
 ## Map data
 
 - **Tiles:** `pnpm tiles` runs [`apps/web/scripts/fetch-tiles.sh`](apps/web/scripts/fetch-tiles.sh), which needs the

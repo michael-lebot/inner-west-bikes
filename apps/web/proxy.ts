@@ -36,6 +36,7 @@ export function proxy(request: NextRequest) {
   // Next reads the nonce from the request's CSP header and adds it to every script it renders.
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('Content-Security-Policy', csp)
+  requestHeaders.set('x-nonce', nonce)
   const response = NextResponse.next({ request: { headers: requestHeaders } })
 
   response.headers.set('Content-Security-Policy', csp)

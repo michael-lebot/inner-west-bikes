@@ -28,7 +28,7 @@ tap the map to tag a dumped or badly parked **share bike** (Lime, Hello, Ario), 
 - Other visitors can mark a tag **Still there**, which restarts the 48 hours, or **Removed**, which hides the tag
   straight away.
 - Anyone can report a photo. It stops being shown straight away and is queued for Michael to restore or delete.
-- A **"Why this page exists"** link leads to a page whose copy Michael will supply.
+- A **"Why this page exists"** link leads to a page explaining the site, in Michael's words.
 
 **Why now.** NSW's shared e-bike laws took effect on 14 August 2026. They let councils set parking rules and fine
 operators that don't move bikes. Complaints are rising sharply: Snap Send Solve reports +931% in Marrickville. Yet
@@ -56,7 +56,7 @@ operators, and has no reporting channel of its own.
 | Hosting | New projects inside StoryCraft's existing Vercel team and its **Vercel-managed Neon organisation, which is on the paid Launch plan** (verified, §5) |
 | Cost tracker and contributions | **Dropped.** Estimated running cost is about A$1.50–4 a week. Revisit only if that changes (§4.5) |
 | History | **Keep anonymous records** of expired and removed tags (location, operator, problem, times). Photos and visitor data are deleted |
-| Domain | Michael will buy one. Use `*.vercel.app` until then |
+| Domain | **innerwestbikegraveyard.com**, with DNS at Crazy Domains. `www` and the old `inner-west-bikes.vercel.app` redirect to it. The hourly cron is unaffected: Vercel calls it on the deployment's own address, and the redirect skips `/api/cron/` too. The admin stays on `inner-west-bikes-admin.vercel.app` |
 | Repo | **Public**, under `michael-lebot` |
 | Expected traffic | Under 100 visits a day at first |
 
@@ -302,8 +302,8 @@ runs.
 
 ### 4.4 "Why this page exists"
 
-- A static page at `/why`. It's linked from the header, top right, on every screen. Michael will supply the copy;
-  launch is blocked until it arrives.
+- A static page at `/why`. It's linked from the footer on every screen (§4.7). Michael will supply the copy; launch
+  is blocked until it arrives.
 
 ### 4.5 Hosting costs and contributions — dropped (deferred)
 
@@ -340,8 +340,7 @@ runs.
     minutes old with no email sent, as a server that stopped mid-send leaves, is taken again by the digest.
   - Every email goes to Resend with an idempotency key, so a request tried again after its reply was lost doesn't
     send it twice.
-  - Until the domain is verified, send from `onboarding@resend.dev`, which can only email the account owner. That's
-    fine, because Michael is the only recipient.
+  - Emails send from an address on innerwestbikegraveyard.com, verified with Resend on 10 November 2026.
 - **Pausing photo uploads:**
   - **Circuit breaker:** if more than 15 reports arrive site-wide in an hour, photo uploads pause and Michael is
     emailed.
@@ -349,6 +348,23 @@ runs.
   - Michael can also pause uploads by hand, for example before going away (§7).
   - While uploads are paused, tagging without a photo works as normal, and the form says photos are switched off for
     now.
+
+### 4.7 Footer
+
+- **Pinned to the bottom of the screen on every page,** the map screen included, where it sits below the map and the
+  sheet. It covers nothing: the map and the sheet share the space above it, and a page that scrolls ends clear of it.
+- **What it holds,** in this order:
+  - **Feedback:** a `mailto:` link to **hello@innerwestbikegraveyard.com**. The address shows where there is room
+    for it (1024 px and wider). On a narrower screen the link reads "Feedback", and screen readers still hear the
+    address. Michael sets up the mailbox and its forwarding himself; the site only links to it.
+  - Links to **Why this page exists**, **Privacy**, **Accessibility** and **Terms**. This is their one home on every
+    screen: the header holds only the name, and the map's "i" panel only the map's credits.
+  - The **Reduce motion** switch (§10.5).
+- **Size:** two rows on a phone, down to 320 px wide, and one row in the side-panel layout, so a phone held sideways
+  keeps every map control in view (§12). Its targets are 44 × 44 px at any text size. At large text sizes it is never
+  taller than a fifth of the screen, and what doesn't fit scrolls inside it, as the sheet does.
+- **Safe areas:** it pads itself clear of the home indicator and side notches (`env(safe-area-inset-*)`).
+- A page scrolled with the keyboard keeps the focused control clear of it (2.4.11).
 
 ## 5. Architecture
 
@@ -360,7 +376,7 @@ runs.
 | Functions | Vercel, **region `syd1`** (Vercel's default is Washington DC, iad1) |
 | Storage | Vercel Blob: a **public** store for PMTiles and a **private** store for photos |
 | Map | MapLibre GL JS + `pmtiles` protocol + custom Overworld pixel style |
-| Bot defence | Vercel BotID (Basic free; Deep Analysis on) |
+| Bot defence | Vercel BotID at its free Basic level. Deep Analysis stays off: it uses machine learning, and the privacy page says the app uses no AI |
 | Email | Resend |
 | Tests | Vitest (unit, and integration against a real Postgres) + Playwright (end-to-end), as in StoryCraft. Required cases are in §5.5 |
 
@@ -486,8 +502,8 @@ mobile users share one IP.
 
 **Visitor identity without accounts:**
 - **Cookie:** a random 128-bit HttpOnly cookie (Secure, SameSite=Lax). Only a keyed hash of it is stored.
-- **IP:** stored as HMAC-SHA256 with a daily salt (the /64 prefix for IPv6). Each salt is deleted after 48h, and raw
-  IPs are never logged.
+- **IP:** stored as HMAC-SHA256 with a daily salt (the /64 prefix for IPv6). Each salt is deleted after 48h, and the
+  app never logs raw IPs. The host's own request logs do (§7).
 
 **What is kept, and for how long.** Every place that holds a visitor identifier is listed here. The hourly job does
 the clearing (§5.4).
@@ -525,17 +541,20 @@ Michael sees it. Reporting stops it loading from then on, but can't undo views o
   - The site isn't affiliated with Lime, Hello, Ario, Inner West Council or Transport for NSW.
 - **Privacy note:**
   - what we collect and how it's hashed;
-  - how long it's kept (§4.2, §6);
+  - how long it's kept (§4.2, §6), and the day of recovery history the database keeps;
   - providers and regions: Vercel `syd1`, Neon Sydney, Resend;
-  - BotID's browser signals;
+  - BotID's browser signals, checked in its free Basic mode, which uses no machine learning. Turning on Deep Analysis,
+    which does, would make the page's "doesn't use any AI" untrue;
+  - what the host sees: every request's IP address, in its request logs and its firewall's rate limit;
   - the optional location button: the location is used in the browser and never stored (§4.1);
-  - a contact address.
+  - the Reduce motion choice, kept in the browser's `localStorage` and never sent (§10.5);
+  - a contact address: the feedback address (§4.7).
 
   The site is likely exempt from the Australian Privacy Principles (under $3M turnover) but should follow APPs
   1, 3, 5 and 11 anyway. The statutory privacy tort applies to everyone.
 - **eSafety:**
-  - Keep the report button and a monitored contact email, and be able to delete within hours. A removal notice must
-    be met within 24h.
+  - Keep the report button and a monitored contact email (the feedback address, §4.7), and be able to delete within
+    hours. A removal notice must be met within 24h.
   - **Do the classification for real.** Before launch, work out which online-safety codes or standards apply to an
     anonymous site that publishes visitors' photos. Cover both the unlawful-material rules and the
     age-restricted-material rules, using eSafety's guidance as it stands at the time
@@ -567,8 +586,8 @@ Michael sees it. Reporting stops it loading from then on, but can't undo views o
     allowance;
   - watch team-wide CDN requests if traffic grows, because the included allowance is shared with StoryCraft.
 - **Blob:** about 10 MB of tiles plus a few MB of live photos (they're deleted on expiry).
-- **Other:** Resend $0. BotID Deep Analysis about US$0.30–2/month. Domain: `.com.au` or `.au`, about A$20–40/year
-  (to confirm at purchase).
+- **Other:** Resend $0. BotID $0 at its Basic level. Domain: innerwestbikegraveyard.com, registered
+  through Crazy Domains on 10 November 2026, renewing yearly.
 
 ## 9. Visual direction — Overworld map, plain interface
 
@@ -586,12 +605,21 @@ The reference is **`docs/mockups/graveyard-v3.html`**. The five original explora
   - no pixel, bitmap or dot-matrix fonts anywhere;
   - suburb labels in dark text with a white halo, and street names in white label boxes.
 - **Interface:**
-  - a white bottom sheet with a night-slate header (`#1f2a36`) holding the name, a small pixel headstone icon
-    (decorative) and "Why this page exists";
+  - a white bottom sheet with a night-slate header (`#1f2a36`) holding the name and a small pixel headstone icon
+    (decorative);
+  - a plain white footer pinned below everything else, with the feedback address, the links about the site and
+    Reduce motion (§4.7);
   - one green primary button per screen (`#1d6b2a` with white text, about 6.9:1 contrast);
   - secondary buttons outlined;
   - option chips with a tick and a tinted fill when selected;
   - no game windows, bevels or 3D shadows.
+- **Site icon:** the header's headstone, in its own four colours.
+  - In browser tabs it sits on a 16 × 16 pixel grid with no background, so each of its pixels is a whole screen pixel
+    and it reads on light and dark tab bars. It is an SVG, with a 32 px `favicon.ico` for Safari before 26, which
+    can't show SVG icons, and for tools that only ask for that file.
+  - On an iPhone home screen (180 × 180 px) it is scaled up tenfold on the night slate, because iOS fills a
+    transparent icon with black.
+  - There is no web app manifest, as the site isn't an installable app (§16).
 - **Copy tone:** plain and friendly — "14 bikes in the graveyard", "Disappears in 31 h", "Is it still there?".
 
 ## 10. Accessibility plan
@@ -713,9 +741,19 @@ are WCAG success criteria. Where our own rule is stricter than the criterion, th
 
 - **Motion:**
   - Transitions are 200 ms or less, and nothing loops by default.
-  - The pin bob plays only under `prefers-reduced-motion: no-preference` and stops after two cycles.
+  - **Reduce motion,** a switch in the footer (§4.7): a button named "Reduce motion" that reports its state with
+    `aria-pressed`.
+    - It starts at the OS setting (`prefers-reduced-motion`). The visitor's choice overrides that either way.
+    - The choice is kept in this browser's `localStorage` only: never in a cookie, and never sent to the server. A
+      short script in the page's `<head>` applies it before the first paint, so no visit starts with a frame of
+      motion.
+    - Without JavaScript the switch can't work, so it isn't shown, and the OS setting decides.
+  - "Reduced motion" below means the switch's state, whichever way it was set.
+  - The pin bob plays only when motion isn't reduced, and stops after two cycles.
   - The map's loading bike and its "Map loading" dots are the one exception. They show the map is still coming, so
-    they repeat until it is ready or fails (at most 15 s, §11.2), and stand still under `prefers-reduced-motion: reduce`.
+    they repeat until it is ready or fails (at most 15 s, §11.2), and stand still when motion is reduced.
+  - Map camera moves (the zoom buttons, Move map, a pan to a pin, the zoom to street level, a drag's glide) are
+    instant when motion is reduced.
   - Nothing flashes (2.3.1).
 - **Touch targets:** at least 44 × 44 CSS px, well above the 24 px minimum in 2.5.8. Interface controls sit at least
   8 px apart. Pins can't promise that spacing, because they sit where the bikes are; overlapping pins open a chooser
@@ -786,7 +824,7 @@ under 100 visits a day there may be too little data to judge these, so they are 
 ### 11.2 Loading
 
 - **First paint:**
-  - The shell is static: header, sheet and a reserved space for the bike count.
+  - The shell is static: header, sheet, footer and a reserved space for the bike count.
   - Show a **static preview image** of the council (a pre-rendered WebP of about 40 KB, regenerated at build). It is
     the page's largest element, so it sets LCP.
   - MapLibre is loaded with a dynamic import after first paint and replaces the preview once the map is ready. The
@@ -853,7 +891,7 @@ under 100 visits a day there may be too little data to judge these, so they are 
 
 - **Mobile first,** designed for 320–430 px. At 768 px and wider, the bottom sheet becomes a side panel (§13).
 - **Layout:**
-  - The map fills the viewport below the header (`100dvh`).
+  - The map fills the viewport between the header and the footer (`100dvh`).
   - The sheet has three heights, set by what it is showing:
     - **peek:** the count and primary button, the placement bar, or a shrunk tag card;
     - **half:** a tag card;
@@ -874,9 +912,9 @@ under 100 visits a day there may be too little data to judge these, so they are 
     a stray swipe can't dismiss a half-filled form.
   - The page itself never scrolls while the map is visible, so scrolling and panning never fight. `touch-action` is
     set on the map only.
-  - **The sheet scrolls inside itself.** Its height is capped at the space left under the header and inside the safe
-    areas, and its content scrolls vertically (`overflow-y: auto`, `overscroll-behavior: contain`). A form made
-    taller by large text, wrapped chips or an error message can always be scrolled to its buttons.
+  - **The sheet scrolls inside itself.** Its height is capped at the space left between the header and the footer,
+    and its content scrolls vertically (`overflow-y: auto`, `overscroll-behavior: contain`). A form made taller by
+    large text, wrapped chips or an error message can always be scrolled to its buttons.
   - Every card and dialog has a visible Close or Cancel button at the top, and the focused control is scrolled into
     view.
   - **On-screen keyboard:** only the street picker opens one, for the street search and the house number. Each
@@ -884,8 +922,8 @@ under 100 visits a day there may be too little data to judge these, so they are 
     viewport so the keyboard doesn't cover them.
     `100dvh` alone doesn't handle this.
 - **Safe areas:** `viewport-fit=cover` and `env(safe-area-inset-*)` padding for notches and the home indicator.
-- **Thumb reach:** primary actions sit in the bottom 40% of the screen. The header holds only the name and "Why this
-  page exists".
+- **Thumb reach:** primary actions sit in the bottom 40% of the screen. The header holds only the name; the links
+  about the site are in the footer (§4.7).
 - **Accurate placement:**
   - Placing a tag needs zoom 16 or closer, at about 2 m per screen pixel. "Tag a dumped bike" zooms there first.
   - Placement is its own step with the whole map usable. The pin's tip sits exactly on the tapped point, tapping
@@ -933,8 +971,8 @@ keyboard. The layout is the fourth screen in `docs/mockups/graveyard-v3.html`.
 - **Browsers:** the last two versions of Chrome, Edge, Firefox and Safari on desktop. If the map can't load, the list
   is offered in its place, as on phones (§11.2).
 - **Layout, at 768 px and wider:**
-  - The header runs across the top. Below it, the panel sits on the left, 380 px wide and full height. The map fills
-    the rest.
+  - The header runs across the top and the footer across the bottom (§4.7). Between them, the panel sits on the left,
+    380 px wide and full height. The map fills the rest.
   - There is no maximum width. On a very wide screen the map gets wider and the panel stays 380 px.
   - The text pages (`/why`, `/privacy` and the rest) and `/list` keep their content in a centred column no wider than
     about 70 characters.
@@ -968,8 +1006,7 @@ keyboard. The layout is the fourth screen in `docs/mockups/graveyard-v3.html`.
 1. **"Why this page exists" copy:** to be supplied by Michael; launch is blocked until then.
 2. **Operator report links:** decided on 2026-11-11. Each tag offers "Notify the service provider?" (§4.2), using
    the addresses in Appendix B.
-3. **Domain:** which one to buy, for example a `.com.au` or `.au` built on "ebikegraveyard". Availability hasn't been
-   checked.
+3. **Domain:** settled. innerwestbikegraveyard.com, live since 11 November 2026 (§2).
 4. **Address data licence:** the NSW record says "Creative Commons" without a version. Confirm CC BY 4.0 with Spatial
    Services before launch (§4.1).
 

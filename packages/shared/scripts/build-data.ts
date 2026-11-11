@@ -17,11 +17,12 @@ const PAD_EW_METERS = 4000
 /**
  * MapLibre keeps the whole view inside maxBounds, so they must hold the view that fits the council in the tallest and
  * the widest maps the layouts make, in CSS px: the side panel's narrowest (768 − 380 wide) on an upright iPad mini,
- * and a Pixel 7 held sideways. Past the tiles, the mask's grey carries on.
+ * and a Pixel 7 held sideways, each less the header (56) and the footer's one row (55). Past the tiles, the mask's
+ * grey carries on.
  * shortcut: a 21:9 screen's map is wider still and crops the council's top and bottom, widen WIDEST if one matters.
  */
-const TALLEST = { width: 388, height: 968 }
-const WIDEST = { width: 483, height: 304 }
+const TALLEST = { width: 388, height: 913 }
+const WIDEST = { width: 483, height: 249 }
 /** Douglas–Peucker tolerance in degrees: about 2 m, far below anything a tap can tell apart. */
 const SIMPLIFY = 0.00002
 

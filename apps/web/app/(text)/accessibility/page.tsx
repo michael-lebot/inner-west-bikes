@@ -1,3 +1,4 @@
+import { FEEDBACK_EMAIL } from '@iwb/shared'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -29,7 +30,8 @@ export default function AccessibilityPage() {
 
       <h2>Contact</h2>
       <p>
-        If something on this site doesn&apos;t work for you, please tell us. <strong>Contact address to come.</strong>
+        If something on this site doesn&apos;t work for you, please tell us at{' '}
+        <a href={`mailto:${FEEDBACK_EMAIL}`}>{FEEDBACK_EMAIL}</a>.
       </p>
     </>
   )
