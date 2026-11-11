@@ -315,8 +315,7 @@ runs.
     minutes old with no email sent, as a server that stopped mid-send leaves, is taken again by the digest.
   - Every email goes to Resend with an idempotency key, so a request tried again after its reply was lost doesn't
     send it twice.
-  - Until the domain is verified, send from `onboarding@resend.dev`, which can only email the account owner. That's
-    fine, because Michael is the only recipient.
+  - Emails send from an address on innerwestbikegraveyard.com, verified with Resend on 10 November 2026.
 - **Pausing photo uploads:**
   - **Circuit breaker:** if more than 15 reports arrive site-wide in an hour, photo uploads pause and Michael is
     emailed.
@@ -542,8 +541,8 @@ Michael sees it. Reporting stops it loading from then on, but can't undo views o
     allowance;
   - watch team-wide CDN requests if traffic grows, because the included allowance is shared with StoryCraft.
 - **Blob:** about 10 MB of tiles plus a few MB of live photos (they're deleted on expiry).
-- **Other:** Resend $0. BotID Deep Analysis about US$0.30–2/month. Domain: `.com.au` or `.au`, about A$20–40/year
-  (to confirm at purchase).
+- **Other:** Resend $0. BotID Deep Analysis about US$0.30–2/month. Domain: innerwestbikegraveyard.com, registered
+  through Crazy Domains on 10 November 2026, renewing yearly.
 
 ## 9. Visual direction — Overworld map, plain interface
 
@@ -943,8 +942,7 @@ keyboard. The layout is the fourth screen in `docs/mockups/graveyard-v3.html`.
 1. **"Why this page exists" copy:** to be supplied by Michael; launch is blocked until then.
 2. **Operator report links:** should the tag card show a small "Report to Lime" contact link? It's still
    public-visibility only, but it helps the bike actually get moved. The contact details are in Appendix B.
-3. **Domain:** which one to buy, for example a `.com.au` or `.au` built on "ebikegraveyard". Availability hasn't been
-   checked.
+3. **Domain:** settled. innerwestbikegraveyard.com, live since 11 November 2026 (§2).
 4. **Address data licence:** the NSW record says "Creative Commons" without a version. Confirm CC BY 4.0 with Spatial
    Services before launch (§4.1).
 
