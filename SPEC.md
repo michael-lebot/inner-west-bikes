@@ -129,6 +129,11 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
   - **Crowded pins:** pins sit where the bikes are, so at the council-wide zoom two of them can overlap. Tapping a
     pin whose centre is within 44 px of another opens "N bikes here", a short list built from the same rows as the
     list view, to choose from.
+  - **Stack counts:** so the scale reads at a glance when zoomed out, pins whose headstones overlap (centres under
+    28 px apart, the stone's width, chained) form a stack, and its top pin, the one highest on screen, carries a
+    small night-slate count, "×7", above the others. Counts follow the zoom, never animate and are decorative
+    (`aria-hidden`): every pin stays its own button with its own name, the chooser and Tab order are unchanged, and the
+    sheet's "N bikes in the graveyard" stays the total.
   - Focusing a pin with the keyboard pans the map to bring it into view.
 - **Risk:** pattern fills at native resolution may look less "game-like" than the chunky mockups. Judge this on real
   phones in M1.
@@ -600,6 +605,7 @@ The reference is **`docs/mockups/graveyard-v3.html`**. The five original explora
   - dashed suburb borders and a gold council line;
   - tree and tuft patterns, with greyscale and dither outside the council;
   - black-outlined pixel-art pins, each a small headstone.
+  - where headstones overlap, the top one carries a plain-text count of the stack ("×7", §4.1).
   - These are graphics, not text.
 - **Everything you read is plain:**
   - one typeface, Atkinson Hyperlegible (400 and 700), for the interface, map labels and pin letters;
