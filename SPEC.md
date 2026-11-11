@@ -28,7 +28,7 @@ tap the map to tag a dumped or badly parked **share bike** (Lime, Hello, Ario), 
 - Other visitors can mark a tag **Still there**, which restarts the 48 hours, or **Removed**, which hides the tag
   straight away.
 - Anyone can report a photo. It stops being shown straight away and is queued for Michael to restore or delete.
-- A **"Why this page exists"** link leads to a page whose copy Michael will supply.
+- A **"Why this page exists"** link leads to a page explaining the site, in Michael's words.
 
 **Why now.** NSW's shared e-bike laws took effect on 14 August 2026. They let councils set parking rules and fine
 operators that don't move bikes. Complaints are rising sharply: Snap Send Solve reports +931% in Marrickville. Yet
@@ -56,7 +56,7 @@ operators, and has no reporting channel of its own.
 | Hosting | New projects inside StoryCraft's existing Vercel team and its **Vercel-managed Neon organisation, which is on the paid Launch plan** (verified, §5) |
 | Cost tracker and contributions | **Dropped.** Estimated running cost is about A$1.50–4 a week. Revisit only if that changes (§4.5) |
 | History | **Keep anonymous records** of expired and removed tags (location, operator, problem, times). Photos and visitor data are deleted |
-| Domain | Michael will buy one. Use `*.vercel.app` until then |
+| Domain | **innerwestbikegraveyard.com**, with DNS at Crazy Domains. `www` and the old `inner-west-bikes.vercel.app` redirect to it. The hourly cron is unaffected: Vercel calls it on the deployment's own address, and the redirect skips `/api/cron/` too. The admin stays on `inner-west-bikes-admin.vercel.app` |
 | Repo | **Public**, under `michael-lebot` |
 | Expected traffic | Under 100 visits a day at first |
 
@@ -316,8 +316,7 @@ runs.
     minutes old with no email sent, as a server that stopped mid-send leaves, is taken again by the digest.
   - Every email goes to Resend with an idempotency key, so a request tried again after its reply was lost doesn't
     send it twice.
-  - Until the domain is verified, send from `onboarding@resend.dev`, which can only email the account owner. That's
-    fine, because Michael is the only recipient.
+  - Emails send from an address on innerwestbikegraveyard.com, verified with Resend on 10 November 2026.
 - **Pausing photo uploads:**
   - **Circuit breaker:** if more than 15 reports arrive site-wide in an hour, photo uploads pause and Michael is
     emailed.
@@ -563,8 +562,8 @@ Michael sees it. Reporting stops it loading from then on, but can't undo views o
     allowance;
   - watch team-wide CDN requests if traffic grows, because the included allowance is shared with StoryCraft.
 - **Blob:** about 10 MB of tiles plus a few MB of live photos (they're deleted on expiry).
-- **Other:** Resend $0. BotID Deep Analysis about US$0.30–2/month. Domain: `.com.au` or `.au`, about A$20–40/year
-  (to confirm at purchase).
+- **Other:** Resend $0. BotID $0 at its Basic level. Domain: innerwestbikegraveyard.com, registered
+  through Crazy Domains on 10 November 2026, renewing yearly.
 
 ## 9. Visual direction — Overworld map, plain interface
 
@@ -590,6 +589,13 @@ The reference is **`docs/mockups/graveyard-v3.html`**. The five original explora
   - secondary buttons outlined;
   - option chips with a tick and a tinted fill when selected;
   - no game windows, bevels or 3D shadows.
+- **Site icon:** the header's headstone, in its own four colours.
+  - In browser tabs it sits on a 16 × 16 pixel grid with no background, so each of its pixels is a whole screen pixel
+    and it reads on light and dark tab bars. It is an SVG, with a 32 px `favicon.ico` for Safari before 26, which
+    can't show SVG icons, and for tools that only ask for that file.
+  - On an iPhone home screen (180 × 180 px) it is scaled up tenfold on the night slate, because iOS fills a
+    transparent icon with black.
+  - There is no web app manifest, as the site isn't an installable app (§16).
 - **Copy tone:** plain and friendly — "14 bikes in the graveyard", "Disappears in 31 h", "Is it still there?".
 
 ## 10. Accessibility plan
@@ -976,8 +982,7 @@ keyboard. The layout is the fourth screen in `docs/mockups/graveyard-v3.html`.
 1. **"Why this page exists" copy:** to be supplied by Michael; launch is blocked until then.
 2. **Operator report links:** should the tag card show a small "Report to Lime" contact link? It's still
    public-visibility only, but it helps the bike actually get moved. The contact details are in Appendix B.
-3. **Domain:** which one to buy, for example a `.com.au` or `.au` built on "ebikegraveyard". Availability hasn't been
-   checked.
+3. **Domain:** settled. innerwestbikegraveyard.com, live since 11 November 2026 (§2).
 4. **Address data licence:** the NSW record says "Creative Commons" without a version. Confirm CC BY 4.0 with Spatial
    Services before launch (§4.1).
 

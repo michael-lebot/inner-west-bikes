@@ -213,7 +213,9 @@ test('the text pages each have one h1 and headings in order, and pass axe', asyn
     await expectNoAxeViolations(page)
   }
   await page.goto('/why')
-  await expect(page.getByRole('main')).toContainText('Placeholder: Michael will supply this text.')
+  await expect(page.getByRole('main')).toContainText(
+    'This site exists to illustrate to our council the scale of the problem',
+  )
 })
 
 test('an unknown address is a 404', async ({ page }) => {
