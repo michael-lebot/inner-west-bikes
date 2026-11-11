@@ -15,7 +15,9 @@ const holdMap = (page: Page) => page.route('**/*.pmtiles', () => {})
 test.beforeEach(() => resetDb())
 
 test('stays at the foot of the screen on every page, covering none of the page', async ({ page }) => {
-  for (const path of ['/', '/list', `/tag/${LLEWELLYN_ST}`, '/why', '/privacy', '/accessibility', '/terms', '/nope']) {
+  const pages = ['/', '/list', `/tag/${LLEWELLYN_ST}`, '/why', '/privacy', '/accessibility', '/terms']
+  // And both 404s: the site's, and a tag's.
+  for (const path of [...pages, '/nope', '/tag/not-a-uuid']) {
     await page.goto(path)
     for (const scrolled of [false, true]) {
       if (scrolled) await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight))
@@ -147,9 +149,11 @@ test.describe('Reduce motion', () => {
     await page.goto('/list')
     await toggle(page).click()
     await expect(toggle(page)).toHaveAttribute('aria-pressed', 'true')
-    // Without its scripts the page never hydrates: only the inline one in <head> runs.
+    // Without its scripts the page never hydrates: only the inline one in <head> runs, and as an inline script there
+    // it runs before any of the page is drawn.
     await page.route('**/_next/static/chunks/**/*.js', (route) => route.abort())
-    await page.goto('/')
+    const html = await (await page.goto('/'))!.text()
+    expect(html.slice(0, html.indexOf('</head>'))).toMatch(/<script nonce="[^"]+">try\{const c=localStorage/)
     await expect(bike(page)).toHaveCSS('animation-name', 'none')
     // The switch already looks pressed.
     await expect(toggle(page).locator('span').first()).toHaveCSS('background-color', 'rgb(29, 107, 42)')
