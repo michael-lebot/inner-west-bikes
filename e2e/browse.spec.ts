@@ -358,7 +358,7 @@ test.describe('the tag card', () => {
     await pin.focus()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('heading', { name: 'Hello e-bike' })).toBeFocused()
-    await expect(page.getByText('Liverpool Rd, Ashfield')).toBeVisible()
+    await expect(page.getByText('Liverpool Rd, Ashfield', { exact: true })).toBeVisible()
     await expect(page.getByText(/^Last seen \d+ h ago$/)).toBeVisible()
     await expectNoAxeViolations(page)
     await page.keyboard.press('Escape')

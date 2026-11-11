@@ -1,11 +1,14 @@
 // Every list and tunable number the spec defines, in one place (plan §1.5).
 
-/** Share-bike operators (§4.2). Retire one with `active: false`, never by deleting it: old tags still show it. */
+/**
+ * Share-bike operators (§4.2). Retire one with `active: false`, never by deleting it: old tags still show it. `email`
+ * is where the operator's own website asks for reports in Australia (SPEC Appendix B).
+ */
 export const OPERATORS = {
-  lime: { label: 'Lime', letter: 'L', active: true },
-  hello: { label: 'Hello', letter: 'H', active: true },
-  ario: { label: 'Ario', letter: 'A', active: true },
-  not_sure: { label: 'Not sure', letter: '?', active: true },
+  lime: { label: 'Lime', letter: 'L', active: true, email: 'support-au@li.me' },
+  hello: { label: 'Hello', letter: 'H', active: true, email: 'support.au@hellobike.com' },
+  ario: { label: 'Ario', letter: 'A', active: true, email: 'feedback@ario.com' },
+  not_sure: { label: 'Not sure', letter: '?', active: true, email: null },
 } as const
 export type Operator = keyof typeof OPERATORS
 

@@ -31,3 +31,4 @@ Tick a box when the check passes at that milestone, and note what was used (devi
 | A real photo from the camera and one from the library, on iOS and Android; on current iOS, a HEIC photo arrives as JPEG |     |     | [ ] | [ ] |
 | Use my location outdoors, allowed and refused, on iOS and Android                                                       |     | [ ] | [ ] | [ ] |
 | The map on Safari 16.4, the oldest supported                                                                            | [ ] | [ ] | [ ] | [ ] |
+| Notify the service provider?: Email opens the mail app filled in, and a copied message pastes                           |     |     |     | [ ] |
