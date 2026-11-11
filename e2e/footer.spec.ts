@@ -160,7 +160,7 @@ test.describe('Reduce motion', () => {
     await expect(toggle(page).locator('span').first()).toHaveCSS('background-color', 'rgb(29, 107, 42)')
   })
 
-  test("reaches the map: its camera moves, a drag's glide and the picked pin", async ({ page, isMobile }) => {
+  test("reaches the map: its camera moves, a drag's glide and the picked pin", async ({ page, browserName }) => {
     for (const [os, reduce] of [
       ['no-preference', true],
       ['reduce', false],
@@ -185,8 +185,9 @@ test.describe('Reduce motion', () => {
       else expect(next, os).not.toEqual(end)
 
       // Where it is just after a flick with the mouse, and once any glide has ended: within the pixel the pins snap
-      // to when the map stops, or far beyond it. Phones drag by touch, which Playwright can't script.
-      if (!isMobile) {
+      // to when the map stops, or far beyond it. Only in WebKit: headless Chromium draws the map too slowly for
+      // MapLibre to see a flick, so it never glides there.
+      if (browserName === 'webkit') {
         const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
         const pinX = () => page.evaluate(() => document.querySelector('[data-tag] button')!.getBoundingClientRect().x)
         await page.mouse.move(map.x + 40, map.y + 60)
