@@ -28,7 +28,7 @@ tap the map to tag a dumped or badly parked **share bike** (Lime, Hello, Ario), 
 - Other visitors can mark a tag **Still there**, which restarts the 48 hours, or **Removed**, which hides the tag
   straight away.
 - Anyone can report a photo. It stops being shown straight away and is queued for Michael to restore or delete.
-- A **"Why this page exists"** link leads to a page whose copy Michael will supply.
+- A **"Why this page exists"** link leads to a page explaining the site, in Michael's words.
 
 **Why now.** NSW's shared e-bike laws took effect on 14 August 2026. They let councils set parking rules and fine
 operators that don't move bikes. Complaints are rising sharply: Snap Send Solve reports +931% in Marrickville. Yet
