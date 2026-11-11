@@ -192,7 +192,7 @@ for (const viewport of [
       const map = (await page.getByRole('region', { name: 'Map', exact: true }).boundingBox())!
       for (const [side] of edges) {
         const pin = (await page.getByRole('button', { name: new RegExp(`${side} St, Edge`) }).boundingBox())!
-        // A pin's tip is the middle of its bottom edge.
+        // A pin's base is the middle of its bottom edge.
         const [x, y] = [pin.x + pin.width / 2, pin.y + pin.height]
         expect([x >= map.x, x <= map.x + map.width, y >= map.y, y <= map.y + map.height], side).toEqual([
           true,

@@ -288,7 +288,7 @@ test.describe('Use my location', () => {
     const near = 'Near Llewellyn St, Marrickville, accurate to about 15 metres'
     await expect(bar(page)).toHaveText(near)
     await expect(announced(page)).toHaveText(near)
-    // The map centres there, with the pin's tip on the spot.
+    // The map centres there, with the middle of the pin's base on the spot.
     const map = await mapBox(page)
     await expect
       .poll(async () => {

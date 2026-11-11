@@ -17,7 +17,7 @@ maplibregl.addProtocol('pmtiles', new Protocol().tile)
 
 /** shortcut: HTML markers, switch to a clustered symbol layer plus the list if live tags pass 200 (§11.3). */
 const MAX_PINS = 200
-/** A pin's button: 44 px square, with the pin's tip at the middle of its bottom edge. */
+/** A pin's button: 44 px square, with the middle of the headstone's base at the middle of its bottom edge. */
 const PIN_PX = 44
 /** The picked pin: outlined like keyboard focus, and bobbing twice (§10.5, §13). */
 const SELECTED = 'outline-3 outline-offset-2 outline-focus shadow-[0_0_0_2px_white] motion-safe:animate-bob'
@@ -50,7 +50,7 @@ type Props = {
   /** A pin was picked: just that tag, or by tap where pins overlap, every tag within 44 px of it. */
   onPick: (tags: PublicTag[], pin: HTMLElement) => void
   onStatus: (status: 'ready' | 'failed') => void
-  /** The new tag's pin, with its tip on this spot. */
+  /** The new tag's pin, with the middle of its base on this spot. */
   spot?: { lat: number; lng: number }
   /** Use my location's position: the map centres there, at street level (§4.1). */
   centre?: { lat: number; lng: number }
@@ -196,14 +196,14 @@ export function MapView({ tags, now, selected, onPick, onStatus, spot, centre, o
   }, [map, placing])
 
   // On a phone the dialogs that follow placing cover all but a strip of the map under the header (Dialog.tsx): the new
-  // pin moves into that strip, its tip 8 px above the dialog.
+  // pin moves into that strip, its base 8 px above the dialog.
   const describing = !!spot && !placing
   useEffect(() => {
     if (!map || !spot || !describing || matchMedia(WIDE).matches) return
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
     const canvas = map.getCanvas().getBoundingClientRect()
-    const tipY = DIALOG_TOP_REM * rem - canvas.top - 8
-    map.panTo([spot.lng, spot.lat], { offset: [0, tipY - canvas.height / 2], animate: false })
+    const baseY = DIALOG_TOP_REM * rem - canvas.top - 8
+    map.panTo([spot.lng, spot.lat], { offset: [0, baseY - canvas.height / 2], animate: false })
   }, [map, spot, describing])
 
   // Map ready (§11.1): the first tiles drawn, and the pins on them.
@@ -250,7 +250,7 @@ export function MapView({ tags, now, selected, onPick, onStatus, spot, centre, o
 function SpotPin({ map, spot }: { map: maplibregl.Map; spot: { lat: number; lng: number } }) {
   const [element] = useState(() => {
     const div = document.createElement('div')
-    // A flex box, so the pin's bottom edge is the box's: the tip sits on the spot.
+    // A flex box, so the pin's bottom edge is the box's: the middle of its base sits on the spot.
     div.className = 'pointer-events-none flex'
     return div
   })

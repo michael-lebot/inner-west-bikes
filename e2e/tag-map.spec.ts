@@ -20,9 +20,9 @@ test.beforeEach(() => resetDb())
 // Instant camera moves, so each tap lands on the map as it will stay.
 test.use({ reducedMotion: 'reduce' })
 
-/** Where a pin's tip is: the middle of its bottom edge. */
-async function tip(pin: Locator) {
-  const box = (await pin.boundingBox())!
+/** Where a pin is: the middle of its headstone's base, the bottom edge of its drawing. */
+async function base(pin: Locator) {
+  const box = (await pin.locator('svg').boundingBox())!
   return { x: box.x + box.width / 2, y: box.y + box.height }
 }
 
@@ -44,8 +44,8 @@ async function placeAwayFromTags(page: Page, isMobile: boolean) {
 async function placeBesideLlewellynSt(page: Page, isMobile: boolean) {
   for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Zoom out' }).click()
   const pin = page.getByRole('button', { name: /Llewellyn St, Marrickville/ })
-  await tap(page, isMobile, await tip(pin))
-  const at = await tip(pin)
+  await tap(page, isMobile, await base(pin))
+  const at = await base(pin)
   await tap(page, isMobile, { x: at.x + 6, y: at.y })
   await expect(bar(page)).toHaveText('Pin on Llewellyn St, Marrickville')
 }
@@ -61,7 +61,7 @@ const greenButtons = (page: Page) =>
   )
 
 test.describe('placing the pin', () => {
-  test("puts the pin's tip where the map is tapped, and moves it with the next tap", async ({ page, isMobile }) => {
+  test("puts the pin's base where the map is tapped, and moves it with the next tap", async ({ page, isMobile }) => {
     await startTagging(page)
     await expect(bar(page)).toHaveText('Tap the map where the bike is.')
     await expect(page.getByRole('button', { name: 'Use this spot' })).toBeDisabled()
@@ -73,7 +73,7 @@ test.describe('placing the pin', () => {
     ]) {
       await tap(page, isMobile, spot)
       await expect(bar(page)).toHaveText(/^Pin on [\w' ]+, [\w ]+$/)
-      const at = await tip(newPin(page))
+      const at = await base(newPin(page))
       expect(Math.abs(at.x - spot.x)).toBeLessThanOrEqual(1)
       expect(Math.abs(at.y - spot.y)).toBeLessThanOrEqual(1)
     }
@@ -94,19 +94,19 @@ test.describe('placing the pin', () => {
     const kingSt = page.getByRole('button', { name: /King St, Newtown/ })
 
     // From far out, a tap only zooms in to street level around it (assumption 20).
-    await tap(page, isMobile, await tip(kingSt))
+    await tap(page, isMobile, await base(kingSt))
     await expect(newPin(page)).toHaveCount(0)
     await expect(bar(page)).toHaveText('Tap the map where the bike is.')
 
     // King St is the council's edge: its far side is in the City of Sydney.
-    const onKingSt = await tip(kingSt)
+    const onKingSt = await base(kingSt)
     await tap(page, isMobile, onKingSt)
     await expect(bar(page)).toHaveText('Pin on King St, Newtown')
     await tap(page, isMobile, { x: onKingSt.x + 60, y: onKingSt.y })
     await expect(bar(page)).toHaveText(OUTSIDE)
     await expect(page.locator('#announcer')).toHaveText(OUTSIDE)
     // The pin stays where it was accepted.
-    expect(await tip(newPin(page))).toEqual(onKingSt)
+    expect(await base(newPin(page))).toEqual(onKingSt)
   })
 
   test.describe('with motion', () => {
@@ -117,8 +117,8 @@ test.describe('placing the pin', () => {
       // Two seeded tags about 210 m apart: a few pixels at the council's zoom, about 100 at street level.
       const apart = async () => {
         const [a, b] = [
-          await tip(page.getByRole('button', { name: /Norton St/ })),
-          await tip(page.getByRole('button', { name: /Marion St/ })),
+          await base(page.getByRole('button', { name: /Norton St/ })),
+          await base(page.getByRole('button', { name: /Marion St/ })),
         ]
         return Math.hypot(a.x - b.x, a.y - b.y)
       }
@@ -171,18 +171,18 @@ test.describe('placing the pin', () => {
       // Enter puts the pin at the crosshair, the middle of the map.
       await page.keyboard.press('Enter')
       const map = await mapBox(page)
-      const start = await tip(newPin(page))
+      const start = await base(newPin(page))
       // MapLibre puts its markers on whole pixels.
       expect(start).toEqual({ x: Math.round(map.x + map.width / 2), y: Math.round(map.y + map.height / 2) })
       await expect(page.locator('#announcer')).toHaveText(/^Pin on /)
 
       // At street level a screen pixel is about 2 m, and the pin lands on the whole pixel nearest its spot.
       const moved = async (key: string, dx: number, dy: number) => {
-        const before = await tip(newPin(page))
+        const before = await base(newPin(page))
         await page.keyboard.press(key)
         await expect
           .poll(async () => {
-            const { x, y } = await tip(newPin(page))
+            const { x, y } = await base(newPin(page))
             return Math.max(Math.abs(x - before.x - dx), Math.abs(y - before.y - dy))
           })
           .toBeLessThanOrEqual(1)
@@ -332,11 +332,11 @@ test.describe('the dialogs', () => {
       expect([...visited].sort()).toEqual(['browser', 'dialog'])
       // A click on the dimmed map's zoom button does nothing.
       const pin = newPin(page)
-      const before = await tip(pin)
+      const before = await base(pin)
       const zoomIn = (await page.getByRole('button', { name: 'Zoom in', includeHidden: true }).boundingBox())!
       await page.mouse.click(zoomIn.x + zoomIn.width / 2, zoomIn.y + zoomIn.height / 2)
       await page.waitForTimeout(300)
-      expect(await tip(pin)).toEqual(before)
+      expect(await base(pin)).toEqual(before)
 
       await page.keyboard.press('Escape')
       await expect(dialog(page)).toHaveCount(0)
