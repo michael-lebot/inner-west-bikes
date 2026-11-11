@@ -302,8 +302,8 @@ runs.
 
 ### 4.4 "Why this page exists"
 
-- A static page at `/why`. It's linked from the footer on every screen (§4.7). Michael will supply the copy; launch
-  is blocked until it arrives.
+- A static page at `/why`, in Michael's words (supplied on 11 November 2026). It's linked from the footer on every
+  screen (§4.7).
 
 ### 4.5 Hosting costs and contributions — dropped (deferred)
 
@@ -1003,7 +1003,7 @@ keyboard. The layout is the fourth screen in `docs/mockups/graveyard-v3.html`.
 
 ## 14. Open questions
 
-1. **"Why this page exists" copy:** to be supplied by Michael; launch is blocked until then.
+1. **"Why this page exists" copy:** settled. Michael's copy has been on `/why` since 11 November 2026 (§4.4).
 2. **Operator report links:** decided on 2026-11-11. Each tag offers "Notify the service provider?" (§4.2), using
    the addresses in Appendix B.
 3. **Domain:** settled. innerwestbikegraveyard.com, live since 11 November 2026 (§2).

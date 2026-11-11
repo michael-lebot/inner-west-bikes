@@ -1641,7 +1641,7 @@ the accessibility checklist, the eSafety response procedure and the final `.env.
   branch-per-preview on; web build command `DATABASE_URL=$DATABASE_URL_UNPOOLED pnpm --filter @iwb/server migrate:deploy
   && pnpm turbo run build --filter=@iwb/web`; Blob: a **public** store for tiles (upload `inner-west-<build>.pmtiles`
   with a one-year immutable cache, set `NEXT_PUBLIC_TILES_URL`) and a **private** photo store connected to both
-  projects as `BLOB_READ_WRITE_TOKEN`; BotID with Deep Analysis on `web`, whose system environment variables stay
+  projects as `BLOB_READ_WRITE_TOKEN`; BotID at its Basic level on `web`, whose system environment variables stay
   exposed (the default: the browser's BotID check is built in only when `NEXT_PUBLIC_VERCEL_ENV` is set, while the
   server checks whenever `VERCEL` is, so without them every write gets 403); firewall rule `POST /api/*` 20 per 60 s per
   IP → 429; Resend account and API key (`RESEND_API_KEY`, `ALERT_EMAIL_TO`); `HASH_SECRET` and `CRON_SECRET`
@@ -1759,7 +1759,7 @@ These need a deployment, a real device, assistive-technology hardware, an accoun
 each one; `docs/launch.md` repeats the list as a checklist.
 
 - **Accounts and infrastructure (M0):** Vercel projects and region; Neon via the Marketplace; both Blob stores and
-  the tiles upload; BotID Deep Analysis; the firewall rule; Resend and domain verification; `HASH_SECRET`,
+  the tiles upload; BotID at its Basic level; the firewall rule; Resend and domain verification; `HASH_SECRET`,
   `CRON_SECRET`; Vercel Authentication on admin; spend alert; Speed Insights check; "empty apps deploy" and
   "Prisma migration runs on Neon".
 - **On the deployment:** §11.2 PMTiles checks (206, CORS, cache headers, repeat requests from cache) on Safari 16.4
@@ -1773,8 +1773,7 @@ each one; `docs/launch.md` repeats the list as a checklist.
 - **Assistive technology (every milestone, §10.6):** VoiceOver on iOS Safari and TalkBack on Android Chrome,
   including tagging start to finish by Choose by street and by Use my location, and reaching every pin;
   keyboard-only passes in Chrome, Safari and Firefox; touch without dragging; 200% zoom and 320 px.
-- **Content and legal (M4):** the `/why` copy (§14.1); privacy and terms review; the eSafety classification in
-  `docs/esafety.md`; the address-data licence confirmation (§14.4); the contact address.
-- **Decisions:** operator report links (§14.2, not built); the domain (§14.3); whether a photo whose tag is no
-  longer live can still be reported, as built (assumption 29).
+- **Content and legal (M4):** privacy and terms review; the eSafety classification in `docs/esafety.md`; the
+  address-data licence confirmation (§14.4); the contact address.
+- **Decisions:** whether a photo whose tag is no longer live can still be reported, as built (assumption 29).
 - **Launch sign-off (M4).**
