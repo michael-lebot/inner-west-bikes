@@ -1,13 +1,15 @@
 'use client'
 import { bikeName, PROBLEMS, type PublicTag, type TagJson } from '@iwb/shared'
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { SMALL } from './buttons'
-import { NotifyOperator } from './NotifyOperator'
 import { PinIcon } from './PinIcon'
 import { ReportLink } from './ReportLink'
 import { TagActions } from './TagActions'
 import { TagDetails } from './TagDetails'
 import { PhotoState } from './TagPhoto'
+
+// Its code loads when a card opens, never with the map screen, whose LCP has no room for it (§11.1).
+const NotifyOperator = lazy(() => import('./NotifyOperator').then((module) => ({ default: module.NotifyOperator })))
 
 /** A vertical swipe at least this long on the handle shrinks or expands the card (§12). */
 const FLICK_PX = 30
@@ -88,7 +90,9 @@ export function TagCard({
           <TagDetails tag={tag} now={now} />
           <TagActions id={tag.id} onDone={onDone} />
           {/* The card opens only in the browser, never in the server's HTML, so location is there. */}
-          <NotifyOperator tag={tag} origin={location.origin} />
+          <Suspense>
+            <NotifyOperator tag={tag} origin={location.origin} />
+          </Suspense>
           {tag.photoId && <ReportLink photoId={tag.photoId} heading="card-heading" />}
         </PhotoState>
       </div>
