@@ -352,7 +352,7 @@ runs.
 | Functions | Vercel, **region `syd1`** (Vercel's default is Washington DC, iad1) |
 | Storage | Vercel Blob: a **public** store for PMTiles and a **private** store for photos |
 | Map | MapLibre GL JS + `pmtiles` protocol + custom Overworld pixel style |
-| Bot defence | Vercel BotID (Basic free; Deep Analysis on) |
+| Bot defence | Vercel BotID at its free Basic level. Deep Analysis stays off: it uses machine learning, and the privacy page says the app uses no AI |
 | Email | Resend |
 | Tests | Vitest (unit, and integration against a real Postgres) + Playwright (end-to-end), as in StoryCraft. Required cases are in §5.5 |
 
