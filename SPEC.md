@@ -676,8 +676,8 @@ are WCAG success criteria. Where our own rule is stricter than the criterion, th
 
 - **List view** (`/list`, plus a toggle on the map screen):
   - Every live tag, rendered on the server and grouped by suburb.
-  - Each item shows street, operator, problem, last seen and disappears-in, with **Still there** and **Removed**
-    buttons.
+  - Each item shows street, operator and problem, with **Still there** and **Removed** buttons. It shows no time:
+    how long the tag has left is on the tag's page.
   - Reading works without JavaScript.
   - This is the main path for screen-reader and keyboard users (1.1.1, 2.1.1).
   - The List toggle stays on screen while the map loads and if the map fails (§11.2).
