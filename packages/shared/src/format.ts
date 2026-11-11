@@ -62,8 +62,11 @@ export const pinLabel = (tag: PublicTag, now: Date) =>
   `${bikeName(tag.operator)}, ${PROBLEMS[tag.problem].toLowerCase()}, ${tag.street}, ${tag.suburb}, ` +
   `disappears in ${duration(now, tag.expiresAt, true)}, at ${clockTime(tag.expiresAt)}`
 
+/** "a Lime e-bike", or "an Ario e-bike". */
+export const withArticle = (noun: string) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`
+
 /** A photo's text alternative, from its tag's fields (§10.4): "Photo of a Lime e-bike reported as blocking footpath". */
 export function photoAlt(tag: Pick<PublicTag, 'operator' | 'problem'>) {
   const bike = tag.operator === 'not_sure' ? 'share e-bike' : bikeName(tag.operator)
-  return `Photo of ${/^[aeiou]/i.test(bike) ? 'an' : 'a'} ${bike} reported as ${PROBLEMS[tag.problem].toLowerCase()}`
+  return `Photo of ${withArticle(bike)} reported as ${PROBLEMS[tag.problem].toLowerCase()}`
 }
