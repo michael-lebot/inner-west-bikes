@@ -172,15 +172,20 @@ test.describe('placing the pin', () => {
       await page.keyboard.press('Enter')
       const map = await mapBox(page)
       const start = await tip(newPin(page))
-      expect(start).toEqual({ x: map.x + map.width / 2, y: map.y + map.height / 2 })
+      // MapLibre puts its markers on whole pixels.
+      expect(start).toEqual({ x: Math.round(map.x + map.width / 2), y: Math.round(map.y + map.height / 2) })
       await expect(page.locator('#announcer')).toHaveText(/^Pin on /)
 
-      // At street level a screen pixel is about 2 m.
+      // At street level a screen pixel is about 2 m, and the pin lands on the whole pixel nearest its spot.
       const moved = async (key: string, dx: number, dy: number) => {
         const before = await tip(newPin(page))
         await page.keyboard.press(key)
-        await expect.poll(async () => (await tip(newPin(page))).x).toBeCloseTo(before.x + dx, 0)
-        expect((await tip(newPin(page))).y).toBeCloseTo(before.y + dy, 0)
+        await expect
+          .poll(async () => {
+            const { x, y } = await tip(newPin(page))
+            return Math.max(Math.abs(x - before.x - dx), Math.abs(y - before.y - dy))
+          })
+          .toBeLessThanOrEqual(1)
       }
       await moved('ArrowRight', 5, 0)
       await moved('ArrowDown', 0, 5)

@@ -38,8 +38,9 @@ test('sends feedback by email to the site address, named in full for screen read
   await page.goto('/privacy')
   const feedback = footer(page).getByRole('link', { name: `Feedback: ${ADDRESS}`, exact: true })
   await expect(feedback).toHaveAttribute('href', `mailto:${ADDRESS}`)
-  // A desktop has the room to show the address too.
-  expect(await feedback.innerText()).toBe(page.viewportSize()!.width >= 1024 ? `Feedback: ${ADDRESS}` : 'Feedback')
+  // A desktop has the room to show the address too; a phone shows "Feedback".
+  const shown = feedback.getByText(ADDRESS)
+  await (page.viewportSize()!.width >= 1024 ? expect(shown).toBeVisible() : expect(shown).toBeHidden())
 })
 
 test('sits under the map screen, leaving the sheet whole and every map control in the map', async ({ page }) => {
