@@ -56,7 +56,7 @@ operators, and has no reporting channel of its own.
 | Hosting | New projects inside StoryCraft's existing Vercel team and its **Vercel-managed Neon organisation, which is on the paid Launch plan** (verified, §5) |
 | Cost tracker and contributions | **Dropped.** Estimated running cost is about A$1.50–4 a week. Revisit only if that changes (§4.5) |
 | History | **Keep anonymous records** of expired and removed tags (location, operator, problem, times). Photos and visitor data are deleted |
-| Domain | **innerwestbikegraveyard.com**, with DNS at Crazy Domains. `www` and the old `inner-west-bikes.vercel.app` redirect to it, except `/api/cron/`, which Vercel's cron calls on the vercel.app address. The admin stays on `inner-west-bikes-admin.vercel.app` |
+| Domain | **innerwestbikegraveyard.com**, with DNS at Crazy Domains. `www` and the old `inner-west-bikes.vercel.app` redirect to it. The hourly cron is unaffected: Vercel calls it on the deployment's own address, and the redirect skips `/api/cron/` too. The admin stays on `inner-west-bikes-admin.vercel.app` |
 | Repo | **Public**, under `michael-lebot` |
 | Expected traffic | Under 100 visits a day at first |
 
