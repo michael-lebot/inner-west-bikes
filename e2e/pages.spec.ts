@@ -87,11 +87,15 @@ test.describe('the map screen shell', () => {
   })
 })
 
-test('pages reflow at 320 px wide with no horizontal scroll', async ({ page }) => {
+test('pages reflow at 320 px wide with no horizontal scroll, at twice the text size too', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 })
-  for (const path of ['/', '/list', `/tag/${LLEWELLYN_ST}`, '/privacy']) {
+  for (const path of ['/', '/list', `/tag/${LLEWELLYN_ST}`, '/privacy', '/accessibility']) {
     await page.goto(path)
-    expect(await page.evaluate(() => document.documentElement.scrollWidth), path).toBeLessThanOrEqual(320)
+    for (const size of ['100%', '200%']) {
+      await page.addStyleTag({ content: `:root { font-size: ${size} }` })
+      const width = await page.evaluate(() => document.documentElement.scrollWidth)
+      expect(width, `${path} at ${size}`).toBeLessThanOrEqual(320)
+    }
   }
 })
 
