@@ -541,7 +541,7 @@ Michael sees it. Reporting stops it loading from then on, but can't undo views o
     allowance;
   - watch team-wide CDN requests if traffic grows, because the included allowance is shared with StoryCraft.
 - **Blob:** about 10 MB of tiles plus a few MB of live photos (they're deleted on expiry).
-- **Other:** Resend $0. BotID Deep Analysis about US$0.30–2/month. Domain: innerwestbikegraveyard.com, registered
+- **Other:** Resend $0. BotID $0 at its Basic level. Domain: innerwestbikegraveyard.com, registered
   through Crazy Domains on 10 November 2026, renewing yearly.
 
 ## 9. Visual direction — Overworld map, plain interface
