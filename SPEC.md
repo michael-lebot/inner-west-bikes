@@ -519,8 +519,8 @@ Michael sees it. Reporting stops it loading from then on, but can't undo views o
   - what we collect and how it's hashed;
   - how long it's kept (§4.2, §6), and the day of recovery history the database keeps;
   - providers and regions: Vercel `syd1`, Neon Sydney, Resend;
-  - BotID's browser signals, which Vercel says it judges with machine learning: the one use of AI in running the
-    site;
+  - BotID's browser signals, checked in its free Basic mode, which uses no machine learning. Turning on Deep Analysis,
+    which does, would make the page's "doesn't use any AI" untrue;
   - what the host sees: every request's IP address, in its request logs and its firewall's rate limit;
   - the optional location button: the location is used in the browser and never stored (§4.1);
   - the Reduce motion choice, kept in the browser's `localStorage` and never sent (§10.5);

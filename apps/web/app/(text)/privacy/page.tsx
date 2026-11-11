@@ -9,13 +9,12 @@ export default function PrivacyPage() {
     <>
       <h1>Privacy</h1>
       <p>
-        <strong>TLDR;</strong> I used AI to create this app. The app itself doesn&apos;t use any AI, except that my
-        host&apos;s bot check uses machine learning on signals from your browser. The app accesses your location (if you
-        allow it), but only in your browser, to suggest a pin; only the spot you confirm is stored, as part of a public
-        tag. It also gives your browser a random ID and sees your IP address, as any website does; scrambled (hashed)
-        versions of both are stored in a third party database for up to {HASH_RETENTION_DAYS} days when you add, mark or
-        report something. Apart from that, the app doesn&apos;t access your name, email address, or any other
-        identifying details.
+        <strong>TLDR;</strong> I used AI to create this app. The app itself doesn&apos;t use any AI. The app accesses
+        your location (if you allow it), but it only leaves your device if you use it to add a tag, and then it&apos;s
+        shown publicly on the map. The app doesn&apos;t collect your name or email address. Like any website, it sees
+        your IP address: when you add, mark or report something, it keeps a scrambled version of it, and of a random ID
+        stored in your browser, for up to {HASH_RETENTION_DAYS} days to stop abuse. Tags, photos and the database are
+        hosted in Sydney, Australia.
       </p>
 
       <h2>What the app keeps</h2>
@@ -68,7 +67,7 @@ export default function PrivacyPage() {
         </li>
         <li>
           Vercel BotID runs a check in your browser that reads signals from it, to keep bots from adding, marking or
-          reporting things. Vercel says it uses machine learning to tell people from bots.
+          reporting things. It runs in its basic mode, which doesn&apos;t use machine learning.
         </li>
         <li>Neon runs the database, in Sydney.</li>
         <li>Resend emails me alerts about reported photos. They contain no visitor details.</li>

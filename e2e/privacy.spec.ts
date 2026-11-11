@@ -8,15 +8,15 @@ test('the privacy page opens with the TLDR, and both it and the accessibility pa
   await page.goto('/privacy')
   const tldr = page.getByRole('main').locator('p').first()
   await expect(tldr).toHaveText(/^TLDR; I used AI to create this app\./)
-  // Each correction the fact-check made to it (the pull request that wrote this page lists them).
+  // Each claim the fact-check settled (the pull request that wrote this page gives the evidence).
   for (const clause of [
-    'bot check uses machine learning',
-    'only in your browser',
-    'only the spot you confirm is stored',
-    'random ID',
+    "The app itself doesn't use any AI.",
+    'only leaves your device if you use it to add a tag',
+    'shown publicly on the map',
+    "doesn't collect your name or email address",
     'sees your IP address',
-    'scrambled (hashed)',
-    "doesn't access your name, email address",
+    'a scrambled version of it, and of a random ID',
+    'hosted in Sydney, Australia',
   ])
     await expect(tldr).toContainText(clause)
   for (const path of ['/privacy', '/accessibility']) {
