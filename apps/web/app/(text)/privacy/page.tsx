@@ -26,10 +26,10 @@ export default function PrivacyPage() {
           After that it stays in the database as a record of its spot, street, operator, problem and times.
         </li>
         <li>
-          <strong>Photos:</strong> public while their tag is. A reported photo is hidden until I restore or delete it.
-          Each one is re-encoded when it arrives, which removes its location and other hidden details, and deleted when
-          its tag&apos;s {TAG_LIFETIME_HOURS} hours run out, or sooner if I delete it. Please leave out people, faces
-          and number plates.
+          <strong>Photos:</strong> public while their tag is. A photo&apos;s first report hides it until I restore or
+          delete it. Each one is re-encoded when it arrives, which removes its location and other hidden details, and
+          deleted when its tag&apos;s {TAG_LIFETIME_HOURS} hours run out, or sooner if I delete it. Please leave out
+          people, faces and number plates.
         </li>
         <li>
           <strong>Reports:</strong> which photo, the reason you chose, and when. I keep that record, and what I decided.
