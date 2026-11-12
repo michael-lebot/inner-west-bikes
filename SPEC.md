@@ -25,8 +25,8 @@ A no-login website showing a cute, 90s-video-game-style map of the **Inner West 
 tap the map to tag a dumped or badly parked **share bike** (Lime, Hello, Ario), optionally with a photo.
 
 - A tag disappears automatically **48 hours** after it was last confirmed.
-- Other visitors can mark a tag **Still there**, which restarts the 48 hours, or **Removed**, which hides the tag
-  straight away.
+- Other visitors can mark a tag **Still there**, which restarts the 48 hours. Visitors can't remove a tag: it goes when
+  its 48 hours run out, or when Michael takes it down (§4.2).
 - Anyone can report a photo. It stops being shown straight away and is queued for Michael to restore or delete.
 - A **"Why this page exists"** link leads to a page explaining the site, in Michael's words.
 
@@ -47,7 +47,7 @@ operators, and has no reporting channel of its own.
 | Map realism | **Real streets and real street names, with a retro game skin**. Must be accurate enough to walk to |
 | Placing a tag | Three ways: **tap the map**; **Use my location**, which proposes a pin to confirm; or pick a street and then a house number or the nearest corner, which needs no map (§4.1, §10.3). On a phone, **Take a photo of a bike** does it in one step: the camera, then the form with the photo and the spot filled in (§4.3). Tags up to **20 m outside the council boundary** are accepted |
 | Tag fields | Operator picker + problem pick-list + optional photo. **No free text** is stored or published |
-| "Removed" | Instant, but **rate-limited per visitor**. Every removal is logged so the admin can undo it. An undo gives the tag back only the time it had left, and **can't revive it once its 48 hours have run out**; the bike has to be tagged again (§4.2) |
+| "Removed" | **Dropped on 12 November 2026.** Visitors cleared live tags in pairs within a minute, with no way to tell a collected bike from a cleared map. A tag now goes only when its 48 hours run out or Michael takes it down. Tags removed before then keep their status, and the admin can undo them until their 48 hours run out (§4.2) |
 | Bikes close together | A tag within about 25 m of another is **a suggestion, never a block**. The visitor is asked "Is it one of these?" and can always add a separate tag (§4.2) |
 | Photo screening | **Published instantly**. Community reports are the safety net; no automated scan. The risk this leaves is accepted and recorded in §6 |
 | Reported photos | A reported photo **stops loading from the next request**. Pages that already had it open catch up within 5 minutes (§4.3) |
@@ -65,7 +65,7 @@ operators, and has no reporting channel of its own.
 The three main phone screens and the desktop layout are shown in `docs/mockups/graveyard-v3.html`.
 
 1. **Browse.** The map opens on the whole council area, with everything outside it greyed out and live tags shown as
-   pins. A tag is live until it is removed or its 48 hours run out (§4.2).
+   pins. A tag is live until its 48 hours run out or it is taken down (§4.2).
    - Each pin is a small headstone coloured by operator, with a letter (L/H/A/?) on its face, so colour is never the
      only cue.
    - The panel below the map shows "N bikes in the graveyard", the operator key and one primary action.
@@ -98,7 +98,7 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
 3. **Confirm.** Tap a pin to open a card showing:
    - the photo, operator, problem and street;
    - "Last seen Xh ago · Disappears in Yh", with a timer bar;
-   - "Is it still there?" with **Still there** and **Removed** buttons;
+   - "Is it still there?" with a **Still there** button;
    - **Notify the service provider?**, which opens to an email link and a message to copy (§4.2);
    - a low-key **Report this photo** link;
    - a handle at the top, which shrinks the card to one line to show more of the map, and brings it back (§12).
@@ -228,7 +228,7 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
   - **The button says what it will do:** "Add to the map" for one bike, "Add 3 bikes to the map" for three. Afterwards
     "3 bikes added" is announced.
   - **Each bike is its own tag,** with its own id (§5.3) and its own 48 hours, at the same spot and street. Each is
-    confirmed, removed and notified about on its own. On the map they stack under one pin marked ×3, which opens "3
+    confirmed and notified about on its own. On the map they stack under one pin marked ×3, which opens "3
     bikes here" (§4.1).
   - **The photo goes on every one of them** (§4.3).
   - **The match check** runs once for the spot, before the form, as for one bike. Change location keeps every bike
@@ -290,8 +290,7 @@ runs.
 |---|---|---|---|
 | Create | Visitor | The spot is inside the buffered boundary | A new `active` tag with `expires_at` = now + 48h |
 | Still there | Visitor | The tag is live | `last_confirmed_at` = now and `expires_at` = now + 48h. It resets the clock; it never adds time on top |
-| Removed | Visitor | The tag is live | `status = 'removed'`. `expires_at` is left alone |
-| Undo removal | Admin | The tag is `removed` and `expires_at > now()` | `status = 'active'`. The tag gets back only the time it had left, because an undo is not a new sighting |
+| Undo removal | Admin | The tag is `removed` (only tags removed before 12 November 2026, when visitors could) and `expires_at > now()` | `status = 'active'`. The tag gets back only the time it had left, because an undo is not a new sighting |
 | Take down | Admin | The tag isn't already taken down | `status = 'taken_down'` and its photo is deleted. Final: no action brings it back |
 | Expire | Time | `expires_at` has passed | Nothing is written. The tag is no longer live, for good |
 
@@ -301,8 +300,7 @@ runs.
   - So a tag can't be confirmed back to life a minute after it expired, and an undo can't report success on a tag
     that stays invisible. The admin sees "Expired, can't undo" instead.
 - **Reads** return live tags only, so tags vanish on time with no scheduled job involved.
-- **Limits:** Still there is limited to one per tag per visitor per 12h. Removed is rate-limited per visitor (§6).
-  Every removal is logged with the visitor's hashed identifiers, so the admin can see who did it and undo it.
+- **Limits:** Still there is limited to one per tag per visitor per 12h (§6).
 - **History:** tags that are no longer live keep only location, suburb, operator, problem and timestamps. Hashed
   visitor identifiers are cleared after 30 days (§6).
 
@@ -525,7 +523,6 @@ site_state      one row: uploads_paused_at · uploads_paused_reason
 | `GET /api/tags` | Live tags, read from the database on every request (`Cache-Control: no-store`). There is no CDN cache, so nothing needs clearing when the admin app changes a tag (§11.3) |
 | `POST /api/tags` | BotID → rate limit → Zod validation → buffered-boundary check → insert. The browser supplies the tag's ID (§5.3) |
 | `POST /api/tags/:id/still-there` | BotID → rate limit → conditional update (§4.2) |
-| `POST /api/tags/:id/removed` | BotID → rate limit → conditional update and log (§4.2) |
 | `POST /api/tags/:id/photo` | BotID → rate limit → the attach rules and pipeline in §4.3. No deadline |
 | `GET /photo/:id[/thumb]` | Streams from the private store only if the photo is `visible` and its tag is live (§4.3) |
 | `POST /api/photos/:id/report` | BotID → rate limit → hide → log → email |
@@ -539,7 +536,7 @@ it returns the current state.
 - **Every write carries an ID made in the browser.**
   - **Create:** the ID is the tag's own `id`. The insert uses `ON CONFLICT (id) DO NOTHING`, and a repeat returns the
     existing tag.
-  - **Still there, Removed, Report:** the ID is a `request_id`, held under a unique constraint on the event or
+  - **Still there, Report:** the ID is a `request_id`, held under a unique constraint on the event or
     report row. That row is inserted first, inside the write's transaction.
   - **Photo:** a tag has at most one photo (`tag_id` is unique), so a repeat returns the photo already attached.
   - **Several bikes added together (§4.2):** each bike has its own ID from the moment it is described, so sending
@@ -570,10 +567,9 @@ same result as running it once.
 
 These are exit criteria for M2 and M3 (§15). They run in Vitest against a real Postgres unless marked Playwright.
 
-- **Expiry edges:** Still there and Removed work one second before `expires_at` and change nothing one second after.
+- **Expiry edges:** Still there works one second before `expires_at` and change nothing one second after.
   Undo is refused after `expires_at`.
-- **Two at once:** two simultaneous requests can't take a visitor past a rate limit. Two simultaneous Removed
-  requests write one removal.
+- **Two at once:** two simultaneous requests can't take a visitor past a rate limit.
 - **Repeats:** sending each kind of write again with the same ID returns the current state, with one event, one
   rate-limit count and one email.
 - **Photo and tag together:** report → remove → undo leaves the photo hidden. A photo URL returns 404 once its tag
@@ -633,7 +629,6 @@ mobile users share one IP.
 | Create tag | 5/hour, 15/day | 40/day | Nearby tags are suggested, never blocked (§4.2). Several bikes added together count one each |
 | Upload photo | 1 per tag, 10/day | 25/day | Stops while uploads are paused (§4.6) |
 | Still there | 1 per tag per 12h, 30/day | 60/day | Resets to 48h; never adds time |
-| Removed | 3/day | 8/day | Soft delete; admin can undo until the tag's 48h run out |
 | Report | 5/day | 10/day | More than 15/hour site-wide: uploads pause until Michael resumes them |
 
 **Visitor identity without accounts:**
@@ -801,7 +796,7 @@ are WCAG success criteria. Where our own rule is stricter than the criterion, th
 
 - **List view** (`/list`, plus a toggle on the map screen):
   - Every live tag, rendered on the server and grouped by suburb.
-  - Each item shows street, operator and problem, with **Still there** and **Removed** buttons. It shows no time:
+  - Each item shows street, operator and problem, with a **Still there** button. It shows no time:
     how long the tag has left is on the tag's page.
   - Reading works without JavaScript.
   - This is the main path for screen-reader and keyboard users (1.1.1, 2.1.1).
@@ -1166,7 +1161,7 @@ keyboard. The layout is the fourth screen in `docs/mockups/graveyard-v3.html`.
 |---|---|---|
 | **M0 Infra** | GitHub repo; Turborepo skeleton; Vercel projects (`web`, `admin`) in `michael-lebot's projects`, region `syd1`; Neon via the Vercel Marketplace (Sydney); Blob stores (public and private); Resend; `CRON_SECRET`; CI (lint, typecheck, Vitest, axe, Lighthouse CI and the Playwright performance checks from §11.4, contrast test); spend alert | Empty apps deploy; Prisma migration runs on Neon; CI gates run; the bare build is measured and the §11.1 budgets are confirmed or reset |
 | **M1 Map prototype** | PMTiles extract on Blob; Overworld MapLibre style with pattern sprites; mask and gold council line; Atkinson Hyperlegible glyphs; HTML-marker pins with the crowded-pin chooser; zoom and Move map buttons; static preview image and the map-failed fallback; bottom sheet with its three heights, inner scrolling and the tag card's handle; the desktop side-panel layout (§13) | On a real mid-range Android over 4G, the §11.1 budgets pass, including "map ready"; the PMTiles checks in §11.2 pass; street names are legible at zoom 16 on a 320 px screen; VoiceOver and TalkBack can reach every pin; a spot that starts off screen can be reached with taps alone; a tag card shrinks and restores by tap and by flick; the desktop layout passes the keyboard-only check; contrast test passes |
-| **M2 Tags** | Placement step and form dialog (zoom ≥ 16, buffered boundary, keyboard crosshair, Use my location, Choose by street with house numbers and corners, Change location); nearby-tag suggestion; still-there and removed under the §4.2 rules; safe retries (§5.3); BotID; rate limits; the hourly job; `/list` and `/tag/[id]`; admin Tags screen with Undo and Take down | Playwright (desktop and mobile projects): create → confirm → remove → admin undo, by touch, by keyboard, by Use my location, and by Choose by street with no map (by house number and by corner); the §5.5 tests for expiry edges, two at once, repeats, access, the hourly job, house numbers and Use my location pass; axe finds no A or AA violations; at the largest text size on an SE-sized screen, the form can be submitted and cancelled |
+| **M2 Tags** | Placement step and form dialog (zoom ≥ 16, buffered boundary, keyboard crosshair, Use my location, Choose by street with house numbers and corners, Change location); nearby-tag suggestion; still-there under the §4.2 rules (visitor Removed was built here and dropped on 12 November 2026); safe retries (§5.3); BotID; rate limits; the hourly job; `/list` and `/tag/[id]`; admin Tags screen with Undo and Take down | Playwright (desktop and mobile projects): create → confirm, by touch, by keyboard, by Use my location, and by Choose by street with no map (by house number and by corner); admin Undo on a removal made directly in the database; the §5.5 tests for expiry edges, two at once, repeats, access, the hourly job, house numbers and Use my location pass; axe finds no A or AA violations; at the largest text size on an SE-sized screen, the form can be submitted and cancelled |
 | **M3 Photos and moderation** | Upload pipeline; photo attach with its own retry; private serving; reports; email with digest retry; admin queue; pause switch and circuit breaker | A reported photo returns 404 on the next request and stays hidden through remove → undo; a photo returns 404 once its tag is no longer live; restore works; the §5.5 photo, bad-image and outside-failure tests pass; generated alt text is present; the admin app passes axe |
 | **M4 Launch** | `/why`, `/accessibility`, `/privacy`, `/terms`; eSafety classification and response procedure (§7); address-data licence confirmed (§14); domain; OSM and NSW attribution; manual assistive-technology pass (§10.6); launch checklist | Michael signs off |
 
