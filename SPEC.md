@@ -45,7 +45,7 @@ operators, and has no reporting channel of its own.
 | Bike type | Share-scheme bikes and e-bikes only (Lime, Hello, Ario, plus "Not sure") |
 | Who acts on tags | **Public visibility**, plus **Notify the service provider?** on each tag: the visitor's own email app writes to the operator (§4.2). No operator or council integrations, and the site sends nothing |
 | Map realism | **Real streets and real street names, with a retro game skin**. Must be accurate enough to walk to |
-| Placing a tag | Three ways: **tap the map**; **Use my location**, which proposes a pin to confirm; or pick a street and then a house number or the nearest corner, which needs no map (§4.1, §10.3). Tags up to **20 m outside the council boundary** are accepted |
+| Placing a tag | Three ways: **tap the map**; **Use my location**, which proposes a pin to confirm; or pick a street and then a house number or the nearest corner, which needs no map (§4.1, §10.3). On a phone, **Take a photo of a bike** does it in one step: the camera, then the form with the photo and the spot filled in (§4.3). Tags up to **20 m outside the council boundary** are accepted |
 | Tag fields | Operator picker + problem pick-list + optional photo. **No free text** is stored or published |
 | "Removed" | Instant, but **rate-limited per visitor**. Every removal is logged so the admin can undo it. An undo gives the tag back only the time it had left, and **can't revive it once its 48 hours have run out**; the bike has to be tagged again (§4.2) |
 | Bikes close together | A tag within about 25 m of another is **a suggestion, never a block**. The visitor is asked "Is it one of these?" and can always add a separate tag (§4.2) |
@@ -90,6 +90,10 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
       **What's wrong?**, optionally add a photo, then tap **Add to the map**.
    6. **Photo.** The tag is saved first and the photo is sent after it. If the photo fails, the tag stays and the
       photo can be retried on its own (§4.3).
+
+   **Or start with the camera (phones and tablets).** For someone standing at the bike, **Take a photo of a bike**
+   replaces steps 1 to 4: one tap opens the phone's own camera, and the form opens with the photo attached and the
+   spot filled in from the phone's location. Only Whose bike?, What's wrong? and Add to the map are left (§4.3).
 3. **Confirm.** Tap a pin to open a card showing:
    - the photo, operator, problem and street;
    - "Last seen Xh ago · Disappears in Yh", with a timer bar;
@@ -185,8 +189,12 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
 - **Inside-the-council check:** turf `booleanPointInPolygon` against the buffered polygon, run in the browser for
   instant feedback and again on the server as the rule that counts. PostGIS isn't needed in v1.
 - **Use my location (optional).** A button in the placement step, for someone standing beside the bike.
-  - The browser asks for permission only when the button is tapped, never when the page loads.
-  - The location is read once and never tracked. It stays in the browser. Only the pin the visitor confirms is sent,
+  - The browser asks for permission only when the button is tapped, or after a photo taken with **Take a photo of a
+    bike** (§4.3), never when the page loads.
+  - **Reading it:** a phone's first reading is often a rough one from Wi-Fi, before GPS settles. So the page listens
+    for up to 10 seconds and stops at the first reading accurate to 50 m or better. If none comes, it uses the most
+    accurate reading it got. Then it stops listening.
+  - The location is read for that one try and never tracked. It stays in the browser. Only the pin the visitor confirms is sent,
     as for any tag.
   - **Accurate to 50 m or better:** the map centres there and a pin is proposed. The visitor confirms it with **Use
     this spot** or taps to move it. Nothing is submitted automatically.
@@ -277,6 +285,45 @@ runs.
   - **Verify on current iOS before launch.**
   - Beside the photo input: "Photos are public. Leave out people, faces and number plates.", with a link to the
     terms (§7).
+- **Take a photo of a bike (camera first).** The quickest way to tag for someone standing at the bike: the camera
+  opens in one tap, and the photo and the phone's location fill in the form.
+  - **The button** is a second file input, with the same `accept` list and `capture="environment"`. On iOS and
+    Android that opens the phone's own camera app, rear camera, straight from the tap, with no camera permission
+    for the site and no camera interface of ours to build. A camera glyph sits before its label.
+  - **Where it shows:** in the sheet's first view on the map screen, on its own row above **Tag a dumped bike**, and
+    beside that button on `/list`. Only on a device whose main pointer is touch (`pointer: coarse`): on a computer
+    `capture` is ignored and the button would open a file picker. It is hidden while uploads are paused (§4.6) and
+    without JavaScript.
+    - Where it shows it is the screen's one green button. **Tag a dumped bike** beside it is outlined (§9) and
+      reads **Tag without a photo**, to say how it differs. Everywhere else it stays green and keeps its name.
+    - Map and List on the same row are as tall as the button, 48 px, so the row lines up.
+    - The form's own **Add a photo** is unchanged, and still offers the camera or the library.
+  - **After the photo** (the camera's own "Use Photo"):
+    1. The photo is shrunk as any other (above). If the browser can't read it, the message for a bad image shows
+       under the button and nothing else happens.
+    2. Tagging starts on the placement step, which says "Got your photo. Finding where you are…". The browser asks
+       for the location now, if it hasn't been allowed already. The location is read as for Use my location (§4.1).
+       The page asks after the camera, not at the tap, so the permission prompt can't collide with the camera
+       opening.
+    3. **Accurate to 50 m or better, and inside the council plus 20 m:** the spot is set, and the flow goes straight
+       on: the match check if live tags are within about 25 m (§4.2), then the form. The form shows the street, the
+       photo and the notice about public photos. **Change location** goes to the placement step with the map
+       centred there, as always.
+    4. **Otherwise** (too rough, outside, refused, or nothing in 10 seconds): the placement step stays, with Use my
+       location's message after "Got your photo.", for example "Got your photo. Your browser didn't share your
+       location. Tap the map or choose a street." A rough reading still centres the map. Once a spot is used, the
+       form opens with the photo already attached.
+  - **The visitor stays in charge.** While the location is being found, the placement step works as usual. If the
+    visitor taps a spot, picks a street or cancels first, the location that arrives later is ignored.
+  - **Nothing is sent** until **Add to the map**, which sends the tag and then the photo as usual. The spot is the
+    one where the visitor stood, as with Use my location: a convenience, not proof.
+  - **Backing out of the camera** without a photo changes nothing.
+  - **"Yes, this bike"** at the match check marks that tag Still there and drops the new photo: a tag takes a photo
+    only from the visitor who created it.
+  - **The photo's own location data is never read.** iOS and Android strip it from photos handed to a browser, so it
+    can't be relied on, and the shrink step drops it before anything leaves the phone.
+  - **Known limit:** a phone short on memory can reload the page while its camera app is open (mostly Android). The
+    photo is lost and the visitor is back on the map with nothing changed.
 - **Server route** (multipart, through an API route, never uploaded straight to Blob):
   1. Reject anything over 4 MB.
   2. Check the magic bytes; ignore the Content-Type header.
@@ -509,6 +556,18 @@ These are exit criteria for M2 and M3 (§15). They run in Vitest against a real 
   (10–14) all match. An unknown number gives the message and no pin.
 - **Use my location** (Playwright, with a mocked position): an accurate position inside the council proposes a pin. A
   rough position, one outside the council, and a refused permission each leave no pin and the other ways working.
+  A rough first reading followed by an accurate one proposes the pin.
+- **Take a photo of a bike** (Playwright, phone projects, with a file set on the input and a mocked position):
+  - the input has `capture="environment"` and the photo `accept` list; the button is hidden in the desktop project
+    and while uploads are paused, where Tag a dumped bike is the green button;
+  - an accurate position opens the form with the street and the photo's preview, and Add to the map stores the tag
+    at that position with its photo, from the map screen and from `/list`;
+  - with a live tag within 25 m, "Is it one of these?" comes first, and "No, it's another bike" reaches the form
+    with the photo;
+  - a rough position, and a refused permission, each leave the placement step saying so after "Got your photo.";
+    a tap on the map and Use this spot then open the form with the photo still attached;
+  - a spot tapped before the location arrives isn't replaced by it;
+  - a file that isn't an image shows the bad-image message and starts nothing.
 
 ## 6. Abuse protection and privacy
 
@@ -576,7 +635,8 @@ Michael sees it. Reporting stops it loading from then on, but can't undo views o
   - BotID's browser signals, checked in its free Basic mode, which uses no machine learning. Turning on Deep Analysis,
     which does, would make the page's "doesn't use any AI" untrue;
   - what the host sees: every request's IP address, in its request logs and its firewall's rate limit;
-  - the optional location button: the location is used in the browser and never stored (§4.1);
+  - the optional location button, and the location asked for after Take a photo of a bike: it is used in the browser
+    and never stored, unless the visitor adds the tag at that spot (§4.1, §4.3);
   - the Reduce motion choice, kept in the browser's `localStorage` and never sent (§10.5);
   - a contact address: the feedback address (§4.7).
 
@@ -727,6 +787,10 @@ are WCAG success criteria. Where our own rule is stricter than the criterion, th
     spot**.
   - If the location isn't accurate enough, the visitor is pointed to Choose by street.
   - It never replaces Choose by street, because permission can be refused.
+- **Take a photo of a bike** (§4.3) needs no map and no pointing either: the phone's camera app is the system's own
+  and works with its screen reader. Each step is announced through the live region (§10.4): "Got your photo. Finding
+  where you are…", then where it put the spot or why it couldn't. Focus moves to the placement step's heading and
+  then into the form, as in the usual flow.
 - **Placing on the map without precise pointing:**
   - **Keyboard crosshair:** arrow keys move 10 m, Shift+arrows 50 m, Enter places the tag, Esc cancels.
   - **Move map buttons** pan the map with single taps (§10.5).
@@ -836,7 +900,7 @@ dependency versions. If Next.js and MapLibre alone don't fit, the budgets are re
 
 | Measure | Budget |
 |---|---|
-| Largest Contentful Paint (LCP) | ≤ 2.5 s |
+| Largest Contentful Paint (LCP) | ≤ 2.5 s (`/`: ≤ 2.7 s since 12 November 2026. One more small script file costs a simulated round trip there; the field target stays 2.5 s) |
 | Cumulative Layout Shift (CLS) | ≤ 0.1 |
 | Total Blocking Time (the lab stand-in for INP) | ≤ 200 ms on pages without the map (set in PR 2: headless Chrome draws the map in software, and TBT on the map page measured 4.7 to 7 s in CI, while with a GPU opening a card takes 48 ms; the scripted interactions gate the map page instead) |
 | Scripted interactions: open a card, pick a chip, zoom, open the form, type in the street search, choose a street | Each ≤ 200 ms to the next paint (in the lab, picking a chip and the two street-picker steps keep 200 ms, as they move no map, and the other three get 600 ms, set in PR 2: headless Chrome reads its software-drawn canvas back in each frame the map takes part in, and with a GPU opening a card takes 48 ms; the M1 real-phone check holds 200 ms) |
@@ -970,7 +1034,9 @@ under 100 visits a day there may be too little data to judge these, so they are 
   - native radio inputs styled as 44 px chips;
   - no typing is needed to tag a bike. The street search and house number (§10.3) are the only text boxes, and
     both are optional;
-  - the photo input lets iOS and Android offer camera or library.
+  - the photo input lets iOS and Android offer camera or library;
+  - **Take a photo of a bike** goes straight to the camera and fills in the photo and the spot (§4.3). It adds one
+    48 px row to the sheet's first view.
 - **Poor connections:**
   - Every write carries an ID made in the browser, and the server returns the current state for a repeat, so a retry
     can't act twice (§5.3).
@@ -991,6 +1057,8 @@ under 100 visits a day there may be too little data to judge these, so they are 
     - the largest system text size, landscape, and the browser's toolbar both expanded and collapsed;
     - the street search and house number with the on-screen keyboard open;
     - a real photo from the camera and one from the library, on both iOS and Android;
+    - Take a photo of a bike outdoors on both iOS and Android: the camera opens from the one tap, location allowed
+      for the first time, already allowed, and refused, and backing out of the camera;
     - Use my location outdoors, both allowed and refused, on both iOS and Android;
     - the map on the oldest supported Safari (16.4).
 
@@ -1028,6 +1096,7 @@ keyboard. The layout is the fourth screen in `docs/mockups/graveyard-v3.html`.
 - **Use my location:** a computer usually works out its location from Wi-Fi or the network, which is often worse
   than the 50 m cut-off. The map then centres roughly and asks for a click (§4.1). That is the expected result on
   desktop, not an error.
+- **Take a photo of a bike** (§4.3) doesn't show on a computer. The form's **Add a photo** opens a file picker.
 - **Photos:** the same file input opens a file picker. Dragging a file onto the page isn't needed in v1.
 - **Performance:** the budgets are set and gated on mobile (§11.1). Desktop has no separate gate.
 - **Testing:** the Playwright desktop project (1280 × 800) runs every flow and the axe checks at this layout.
