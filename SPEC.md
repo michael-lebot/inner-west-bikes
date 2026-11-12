@@ -87,7 +87,8 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
       new one (§4.2).
    5. **Describe.** The form opens as a dialog over a short map strip. It shows the chosen street with a **Change
       location** button, which goes back to step 2. Choose **Whose bike?** (Lime / Hello / Ario / Not sure) and
-      **What's wrong?**, optionally add a photo, then tap **Add to the map**.
+      **What's wrong?**, optionally add a photo, then tap **Add to the map**. Where several bikes are dumped
+      together, **Add another bike here** describes each one in the same form, and one tap adds them all (§4.2).
    6. **Photo.** The tag is saved first and the photo is sent after it. If the photo fails, the tag stays and the
       photo can be retried on its own (§4.3).
 
@@ -216,6 +217,29 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
     records still display.
 - **Problems (pick-list):** Blocking footpath · Knocked over · Blocking ramp / driveway · In waterway ·
   In park or reserve · Damaged · Abandoned.
+- **Several bikes at one spot, in one go.** Bikes are often dumped in a pile. The form can describe up to 5 of them
+  and add them together, with one spot and one photo.
+  - **One bike is the form as it always was.** Under What's wrong? sits an outlined **Add another bike here**.
+  - **It adds "Bike 2":** a group with its own Whose bike? and What's wrong?, already answered the same as the bike
+    above it, since a pile usually shares both. The visitor changes only what differs. The first group is then
+    headed "Bike 1". Every group after the first has a **Remove bike N** button.
+  - **Five is the most,** which is the hourly limit on tags (§6). At five the button makes way for "That's the most
+    in one go."
+  - **The button says what it will do:** "Add to the map" for one bike, "Add 3 bikes to the map" for three. Afterwards
+    "3 bikes added" is announced.
+  - **Each bike is its own tag,** with its own id (§5.3) and its own 48 hours, at the same spot and street. Each is
+    confirmed, removed and notified about on its own. On the map they stack under one pin marked ×3, which opens "3
+    bikes here" (§4.1).
+  - **The photo goes on every one of them** (§4.3).
+  - **The match check** runs once for the spot, before the form, as for one bike. Change location keeps every bike
+    described so far.
+  - **Sending:** the tags go one after another, then the photos.
+    - If a tag fails, the ones already added show on the map, and the form stays filled in under "2 of 3 bikes
+      added." and the reason. Sending again is safe and adds only the rest (§5.3).
+    - If a photo fails: "Bikes added, but the photo didn't upload for 2 of them.", with **Try again**, which sends
+      only those, and **Skip**.
+  - **Limits don't change:** every bike counts as one tag and every copy of the photo as one upload (§6).
+  - **No server change.** The form sends the requests it always sent, once per bike.
 - **Nearby tags are a suggestion, never a block.** Two dumped bikes can sit a metre apart.
   - When a visitor picks a spot within about 25 m of live tags, the app lists those tags and asks "Is it one of
     these?"
@@ -340,6 +364,10 @@ runs.
     the tag, and uploads aren't paused (§4.6). There is no deadline.
   - **If the photo fails,** the tag is still saved. The visitor sees "Tag added, but the photo didn't upload", with
     **Try again** and **Skip**. Try again sends only the photo, to the same tag.
+  - **Several bikes added together (§4.2)** each get the photo: the browser sends it once per tag, so each tag has
+    its own copy, stored, shown, reported and deleted on its own.
+    - `shortcut: a copy per tag, so a report hides the photo on one bike of the pile and not the others; store it
+      once and link it to each tag if a reported photo is ever left showing on its neighbours.`
 - **A photo's status records moderation only:** `visible`, `hidden` (reported and waiting for Michael) or `deleted`.
   It never changes because its tag changed.
   - **Report:** `visible` → `hidden`.
@@ -509,6 +537,8 @@ it returns the current state.
   - **Still there, Removed, Report:** the ID is a `request_id`, held under a unique constraint on the event or
     report row. That row is inserted first, inside the write's transaction.
   - **Photo:** a tag has at most one photo (`tag_id` is unique), so a repeat returns the photo already attached.
+  - **Several bikes added together (§4.2):** each bike has its own ID from the moment it is described, so sending
+    the form again adds only the bikes that weren't added the first time.
 - **A repeat does nothing new.** If the ID is already stored, the server returns the tag's or photo's current state.
   It adds nothing to a rate limit, writes no second event and sends no second email.
 - **A repeat only counts from the same visitor.** The same ID from a different visitor gets a 409.
@@ -557,6 +587,17 @@ These are exit criteria for M2 and M3 (§15). They run in Vitest against a real 
 - **Use my location** (Playwright, with a mocked position): an accurate position inside the council proposes a pin. A
   rough position, one outside the council, and a refused permission each leave no pin and the other ways working.
   A rough first reading followed by an accurate one proposes the pin.
+- **Several bikes at one spot** (Playwright):
+  - one bike: the form, its button and what it sends are as before;
+  - Add another bike here adds Bike 2 with Bike 1's answers and takes the focus there; Remove bike 2 takes it away
+    and gives the focus back; the fifth bike replaces the button with the line;
+  - three bikes with a photo store three tags at the same spot, each with its own operator, problem and photo, and
+    the map shows one pin marked ×3;
+  - Change location keeps all of them;
+  - the second tag failing leaves the first on the map and the form saying "1 of 3 bikes added."; sending again
+    adds the other two and no duplicate;
+  - one photo failing leaves the tags, names how many it failed for, and Try again sends only those;
+  - axe finds nothing with three bikes open, and the form can be submitted at the largest text size.
 - **Take a photo of a bike** (Playwright, phone projects, with a file set on the input and a mocked position):
   - the input has `capture="environment"` and the photo `accept` list; the button is hidden in the desktop project
     and while uploads are paused, where Tag a dumped bike is the green button;
@@ -583,7 +624,7 @@ mobile users share one IP.
 
 | Action | Per visitor | Per IP | Extra |
 |---|---|---|---|
-| Create tag | 5/hour, 15/day | 40/day | Nearby tags are suggested, never blocked (§4.2) |
+| Create tag | 5/hour, 15/day | 40/day | Nearby tags are suggested, never blocked (§4.2). Several bikes added together count one each |
 | Upload photo | 1 per tag, 10/day | 25/day | Stops while uploads are paused (§4.6) |
 | Still there | 1 per tag per 12h, 30/day | 60/day | Resets to 48h; never adds time |
 | Removed | 3/day | 8/day | Soft delete; admin can undo until the tag's 48h run out |
@@ -824,6 +865,9 @@ are WCAG success criteria. Where our own rule is stricter than the criterion, th
   the sheet never covers any part of it.
 - **Forms:**
   - Option chips are native radio inputs in `<fieldset>`/`<legend>` groups.
+  - With several bikes in the form (§4.2), each bike is a named group, "Bike 2", around its two questions, and its
+    radios have their own names. Adding a bike moves focus to its group and announces "Bike 2 added, the same as bike
+    1". Removing one announces it and moves focus to **Add another bike here**.
   - Results and errors ("Tag added", "Marked still there", "Photo reported and hidden", "That spot is outside the
     Inner West") are announced through one polite `aria-live` region (4.1.3).
 - **Times:** relative times include the absolute time in their accessible name ("disappears at 3:40 pm Tuesday").
