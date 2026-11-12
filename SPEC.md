@@ -223,7 +223,7 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
   - **It adds "Bike 2":** a group with its own Whose bike? and What's wrong?, already answered the same as the bike
     above it, since a pile usually shares both. The visitor changes only what differs. The first group is then
     headed "Bike 1". Every group after the first has a **Remove bike N** button.
-  - **Five is the most,** which is the hourly limit on tags (§6). At five the button makes way for "That's the most
+  - **Five is the most,** to keep one form small enough to check at a glance. At five the button makes way for "That's the most
     in one go."
   - **The button says what it will do:** "Add to the map" for one bike, "Add 3 bikes to the map" for three. Afterwards
     "3 bikes added" is announced.
@@ -621,13 +621,17 @@ These are exit criteria for M2 and M3 (§15). They run in Vitest against a real 
   (`INSERT … ON CONFLICT DO UPDATE … RETURNING count`). A repeat of an earlier request isn't counted (§5.3).
 - The hourly job is not a browser route. It is protected by `CRON_SECRET` instead (§5.4).
 
+**Limits for tags and photos are set to stop abuse, not a busy street** (13 November 2026). Michael passed 20+ dumped
+bikes on one street in about 5 minutes, so a visitor can add 100 tags and 100 photos an hour. Bursts are the firewall's
+job: at most 20 public writes a minute per IP (below). The form's five-bike cap (§4.2) is its own number, not a limit.
+
 **Starting limits** (to be tuned from real usage). The per-IP limits are about 3× the per-visitor limits, because many
 mobile users share one IP.
 
 | Action | Per visitor | Per IP | Extra |
 |---|---|---|---|
-| Create tag | 5/hour, 50/day (15 until 13 November 2026) | 150/day (40 until then) | Nearby tags are suggested, never blocked (§4.2). Several bikes added together count one each |
-| Upload photo | 1 per tag, 10/day | 25/day | Stops while uploads are paused (§4.6) |
+| Create tag | 100/hour, 300/day | 900/day | Nearby tags are suggested, never blocked (§4.2). Several bikes added together count one each |
+| Upload photo | 1 per tag, 100/hour, 300/day | 900/day | Stops while uploads are paused (§4.6) |
 | Still there | 1 per tag per 12h, 30/day | 60/day | Resets to 48h; never adds time |
 | Report | 5/day | 10/day | More than 15/hour site-wide: uploads pause until Michael resumes them |
 
