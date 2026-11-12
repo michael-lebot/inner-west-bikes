@@ -234,8 +234,13 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
   - **The match check** runs once for the spot, before the form, as for one bike. Change location keeps every bike
     described so far.
   - **Sending:** the tags go one after another, then the photos.
+    - **Nothing can close or change the form while it is sending:** Esc, Cancel, Skip and every other control are
+      out of reach until it ends. A batch of several announces "Adding 3 bikes…" as it starts.
     - If a tag fails, the ones already added show on the map, and the form stays filled in under "2 of 3 bikes
       added." and the reason. Sending again is safe and adds only the rest (§5.3).
+    - **An added bike stays as it was added.** Its group is headed "Bike 1, added", its answers can't be changed
+      and it has no Remove button. Change location is gone, because the added bikes are at this spot. Bikes not
+      yet added can still be changed or removed, and more can be added up to five.
     - If a photo fails: "Bikes added, but the photo didn't upload for 2 of them.", with **Try again**, which sends
       only those, and **Skip**.
   - **Limits don't change:** every bike counts as one tag and every copy of the photo as one upload (§6).
@@ -594,8 +599,9 @@ These are exit criteria for M2 and M3 (§15). They run in Vitest against a real 
   - three bikes with a photo store three tags at the same spot, each with its own operator, problem and photo, and
     the map shows one pin marked ×3;
   - Change location keeps all of them;
-  - the second tag failing leaves the first on the map and the form saying "1 of 3 bikes added."; sending again
-    adds the other two and no duplicate;
+  - the third tag failing leaves the first two on the map and the form saying "2 of 3 bikes added.", with no "Is
+    it one of these?", the two added bikes frozen and Change location gone; sending again sends only the third;
+  - while a batch is sending, Esc, Cancel and Change location do nothing, and every bike is added;
   - one photo failing leaves the tags, names how many it failed for, and Try again sends only those;
   - axe finds nothing with three bikes open, and the form can be submitted at the largest text size.
 - **Take a photo of a bike** (Playwright, phone projects, with a file set on the input and a mocked position):
