@@ -294,8 +294,9 @@ runs.
     beside that button on `/list`. Only on a device whose main pointer is touch (`pointer: coarse`): on a computer
     `capture` is ignored and the button would open a file picker. It is hidden while uploads are paused (§4.6) and
     without JavaScript.
-    - Where it shows it is the screen's one green button, and **Tag a dumped bike** is outlined (§9). Everywhere
-      else **Tag a dumped bike** stays green.
+    - Where it shows it is the screen's one green button. **Tag a dumped bike** beside it is outlined (§9) and
+      reads **Tag without a photo**, to say how it differs. Everywhere else it stays green and keeps its name.
+    - Map and List on the same row are as tall as the button, 48 px, so the row lines up.
     - The form's own **Add a photo** is unchanged, and still offers the camera or the library.
   - **After the photo** (the camera's own "Use Photo"):
     1. The photo is shrunk as any other (above). If the browser can't read it, the message for a bad image shows
@@ -899,7 +900,7 @@ dependency versions. If Next.js and MapLibre alone don't fit, the budgets are re
 
 | Measure | Budget |
 |---|---|
-| Largest Contentful Paint (LCP) | ≤ 2.5 s |
+| Largest Contentful Paint (LCP) | ≤ 2.5 s (`/`: ≤ 2.7 s since 12 November 2026. One more small script file costs a simulated round trip there; the field target stays 2.5 s) |
 | Cumulative Layout Shift (CLS) | ≤ 0.1 |
 | Total Blocking Time (the lab stand-in for INP) | ≤ 200 ms on pages without the map (set in PR 2: headless Chrome draws the map in software, and TBT on the map page measured 4.7 to 7 s in CI, while with a GPU opening a card takes 48 ms; the scripted interactions gate the map page instead) |
 | Scripted interactions: open a card, pick a chip, zoom, open the form, type in the street search, choose a street | Each ≤ 200 ms to the next paint (in the lab, picking a chip and the two street-picker steps keep 200 ms, as they move no map, and the other three get 600 ms, set in PR 2: headless Chrome reads its software-drawn canvas back in each frame the map takes part in, and with a GPU opening a card takes 48 ms; the M1 real-phone check holds 200 ms) |
