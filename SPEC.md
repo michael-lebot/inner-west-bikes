@@ -626,7 +626,7 @@ mobile users share one IP.
 
 | Action | Per visitor | Per IP | Extra |
 |---|---|---|---|
-| Create tag | 5/hour, 15/day | 40/day | Nearby tags are suggested, never blocked (§4.2). Several bikes added together count one each |
+| Create tag | 5/hour, 50/day (15 until 13 November 2026) | 150/day (40 until then) | Nearby tags are suggested, never blocked (§4.2). Several bikes added together count one each |
 | Upload photo | 1 per tag, 10/day | 25/day | Stops while uploads are paused (§4.6) |
 | Still there | 1 per tag per 12h, 30/day | 60/day | Resets to 48h; never adds time |
 | Report | 5/day | 10/day | More than 15/hour site-wide: uploads pause until Michael resumes them |
