@@ -193,8 +193,8 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
   - The browser asks for permission only when the button is tapped, or after a photo taken with **Take a photo of a
     bike** (§4.3), never when the page loads.
   - **Reading it:** a phone's first reading is often a rough one from Wi-Fi, before GPS settles.
-    - The first reading has up to 10 seconds, counted by the browser from after the permission prompt. A fix from the
-      last 15 seconds answers at once, as after the camera or a second tap.
+    - The first reading has up to 10 seconds, counted by the browser from after the permission prompt. It is always a
+      fresh fix, never the last one again: a second tap means try again.
     - The page stops at the first reading accurate to 50 m or better. After a rough first reading it listens up to 5
       seconds more, then uses the most accurate reading it got. Then it stops listening.
     - **Never silent:** while it waits, each better rough reading shows in the bar, "Finding you… accurate to about
