@@ -208,13 +208,17 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
   - **Worse than 50 m:** the map centres there with no pin, and a message says "Your location is only accurate to
     about 80 m. Tap where the bike is, or choose a street."
   - **Outside the council plus 20 m:** "You're outside the Inner West. Tap the map or choose a street."
-  - **Worse than 1 km after the wait:** an approximate location, as iOS gives with Precise Location off. The map stays
-    put, and "Your phone is sharing only an approximate location. Turn on Precise Location for your browser, or tap
-    the map or choose a street."
+  - **Worse than 1 km after the wait:** an approximate location, as iOS gives with Precise Location off, though a phone
+    still settling can be as rough. The map stays put, while waiting too, and "Your phone is only giving an
+    approximate location, about 3000 m. Turning on Precise Location for your browser helps, or tap the map or choose a
+    street."
   - **Nothing to place:** a plain message saying why and what to do, and the other two ways still work:
     - refused: "Your browser didn't share your location. You can allow it in your phone's settings.";
     - no first reading in 10 seconds: "We couldn't find your location in time. It's quicker outdoors.";
-    - location turned off or unavailable: "We couldn't find your location. Check that location is turned on."
+    - location turned off or unavailable: "We couldn't find your location. Check that location is turned on.";
+    - the street data didn't load: "The street data didn't load. Check your connection and try again."
+  - **A newer choice wins.** Use this spot, a tap on the map, Choose by street or Cancel stops a reading still on its
+    way, drops anything it would still say, and takes back "Finding you…".
   - It is a convenience, not proof that the visitor was there. The server doesn't check it.
 - **Accessibility, performance and mobile behaviour** of the map are specified in §10–§12.
 
