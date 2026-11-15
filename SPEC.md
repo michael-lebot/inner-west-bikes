@@ -192,9 +192,15 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
 - **Use my location (optional).** A button in the placement step, for someone standing beside the bike.
   - The browser asks for permission only when the button is tapped, or after a photo taken with **Take a photo of a
     bike** (§4.3), never when the page loads.
-  - **Reading it:** a phone's first reading is often a rough one from Wi-Fi, before GPS settles. So the page listens
-    for up to 10 seconds and stops at the first reading accurate to 50 m or better. If none comes, it uses the most
-    accurate reading it got. Then it stops listening.
+  - **Reading it:** a phone's first reading is often a rough one from Wi-Fi, before GPS settles.
+    - The first reading has up to 10 seconds, counted by the browser from after the permission prompt. A fix from the
+      last 15 seconds answers at once, as after the camera or a second tap.
+    - The page stops at the first reading accurate to 50 m or better. After a rough first reading it listens up to 5
+      seconds more, then uses the most accurate reading it got. Then it stops listening.
+    - **Never silent:** while it waits, each better rough reading shows in the bar, "Finding you… accurate to about
+      120 m so far.", and centres the map there. Only the result is announced (§10.4).
+    - (Until 16 November 2026 it waited 10 seconds more, saying nothing, which on a phone with a rough fix looked like
+      it wasn't working.)
   - The location is read for that one try and never tracked. It stays in the browser. Only the pin the visitor confirms is sent,
     as for any tag.
   - **Accurate to 50 m or better:** the map centres there and a pin is proposed. The visitor confirms it with **Use
@@ -202,7 +208,13 @@ The three main phone screens and the desktop layout are shown in `docs/mockups/g
   - **Worse than 50 m:** the map centres there with no pin, and a message says "Your location is only accurate to
     about 80 m. Tap where the bike is, or choose a street."
   - **Outside the council plus 20 m:** "You're outside the Inner West. Tap the map or choose a street."
-  - **Permission refused, or no location within 10 seconds:** a plain message, and the other two ways still work.
+  - **Worse than 1 km after the wait:** an approximate location, as iOS gives with Precise Location off. The map stays
+    put, and "Your phone is sharing only an approximate location. Turn on Precise Location for your browser, or tap
+    the map or choose a street."
+  - **Nothing to place:** a plain message saying why and what to do, and the other two ways still work:
+    - refused: "Your browser didn't share your location. You can allow it in your phone's settings.";
+    - no first reading in 10 seconds: "We couldn't find your location in time. It's quicker outdoors.";
+    - location turned off or unavailable: "We couldn't find your location. Check that location is turned on."
   - It is a convenience, not proof that the visitor was there. The server doesn't check it.
 - **Accessibility, performance and mobile behaviour** of the map are specified in §10–§12.
 
@@ -587,7 +599,8 @@ These are exit criteria for M2 and M3 (§15). They run in Vitest against a real 
   (10–14) all match. An unknown number gives the message and no pin.
 - **Use my location** (Playwright, with a mocked position): an accurate position inside the council proposes a pin. A
   rough position, one outside the council, and a refused permission each leave no pin and the other ways working.
-  A rough first reading followed by an accurate one proposes the pin.
+  A rough first reading followed by an accurate one proposes the pin. A rough position shows "Finding you… accurate to
+  about 80 m so far." before its result, and an approximate one (3 km) gives the Precise Location message.
 - **Several bikes at one spot** (Playwright):
   - one bike: the form, its button and what it sends are as before;
   - Add another bike here adds Bike 2 with Bike 1's answers and takes the focus there; Remove bike 2 takes it away
